@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1B4F72" />
+  <meta name="description" content="BT42.195 km Race 2026 — Full marathon, 10 km & 5 km fun runs. 26 September 2026, Blantyre." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>BT42.195 km Race 2026</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <!-- App Shell -->
+  <div id="app">
+    <!-- Header -->
+    <header class="header" id="header">
+      <div class="header-inner">
+        <a href="#home" class="logo" onclick="navigate('home')">
+          <span class="logo-mark">BT</span>
+          <span class="logo-text">42.195<span class="logo-year">2026</span></span>
+        </a>
+        <button class="nav-toggle" id="navToggle" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="nav" id="nav">
+          <a href="#home" data-page="home">Home</a>
+          <a href="#races" data-page="races">Races</a>
+          <a href="#register" data-page="register" class="nav-cta">Register</a>
+          <a href="#course" data-page="course">Course</a>
+          <a href="#sponsors" data-page="sponsors">Sponsors</a>
+          <a href="#info" data-page="info">Info</a>
+        </nav>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="main">
+      <!-- HOME -->
+      <section id="page-home" class="page active">
+        <div class="hero">
+          <div class="hero-content">
+            <p class="hero-eyebrow">Malawi National Council of Sports</p>
+            <h1>BT<span class="accent">42.195</span></h1>
+            <p class="hero-sub">Blantyre · 26 September 2026</p>
+            <p class="hero-date">Saturday, 26 September 2026</p>
+            <p class="hero-tagline">Embrace the Challenge · Race Up Blantyre</p>
+            <div class="hero-actions">
+              <a href="#register" class="btn btn-primary" onclick="navigate('register')">Register Now</a>
+              <a href="#races" class="btn btn-outline" onclick="navigate('races')">View Races</a>
+            </div>
+            <div class="countdown" id="countdown">
+              <div class="cd-item"><span id="cd-days">--</span><label>Days</label></div>
+              <div class="cd-item"><span id="cd-hours">--</span><label>Hours</label></div>
+              <div class="cd-item"><span id="cd-mins">--</span><label>Mins</label></div>
+              <div class="cd-item"><span id="cd-secs">--</span><label>Secs</label></div>
+            </div>
+          </div>
+          <div class="hero-visual">
+            <div class="hero-badge">
+              <span class="badge-num">42.195</span>
+              <span class="badge-unit">km</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="section container">
+          <h2 class="section-title">Three Distances. One Great Day.</h2>
+          <div class="race-cards">
+            <article class="race-card marathon">
+              <div class="race-dist">42.195 km</div>
+              <h3>Full Marathon</h3>
+              <p>The flagship race for elite and serious runners. Competitive prizes and age-group categories.</p>
+              <ul>
+                <li>Elite & age groups</li>
+                <li>Chip timing (planned)</li>
+                <li>Strong prize structure</li>
+              </ul>
+              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter Marathon</a>
+            </article>
+            <article class="race-card tenk">
+              <div class="race-dist">10 km</div>
+              <h3>10 km Race</h3>
+              <p>Perfect balance of challenge and accessibility. Competitive and fun categories.</p>
+              <ul>
+                <li>Competitive + recreational</li>
+                <li>Great for club runners</li>
+                <li>Medals for finishers</li>
+              </ul>
+              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter 10 km</a>
+            </article>
+            <article class="race-card fivek">
+              <div class="race-dist">5 km</div>
+              <h3>5 km Fun Run</h3>
+              <p>Community-focused. Families, first-timers, and anyone who wants to be part of the day.</p>
+              <ul>
+                <li>Inclusive & welcoming</li>
+                <li>Family friendly</li>
+                <li>Festival atmosphere</li>
+              </ul>
+              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter 5 km</a>
+            </article>
+          </div>
+        </div>
+
+        <div class="section section-alt">
+          <div class="container">
+            <h2 class="section-title">Why Run BT42.195?</h2>
+            <div class="features">
+              <div class="feature">
+                <div class="feature-icon">🏁</div>
+                <h3>Established Event</h3>
+                <p>Part of Malawi’s growing long-distance calendar under the National Council of Sports.</p>
+              </div>
+              <div class="feature">
+                <div class="feature-icon">🏙️</div>
+                <h3>Blantyre Streets</h3>
+                <p>A challenging yet rewarding city course finishing at the iconic Kamuzu Stadium.</p>
+              </div>
+              <div class="feature">
+                <div class="feature-icon">🤝</div>
+                <h3>Community Festival</h3>
+                <p>5 km & 10 km fun runs, aerobics, and a lively finish area for everyone.</p>
+              </div>
+              <div class="feature">
+                <div class="feature-icon">📱</div>
+                <h3>Digital First</h3>
+                <p>Easy registration, mobile-money payments, and live updates via this platform.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RACES -->
+      <section id="page-races" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Race Information</h1>
+            <p>Choose your distance and prepare for 26 September 2026</p>
+          </div>
+        </div>
+        <div class="container section">
+          <div class="info-grid">
+            <div class="info-card">
+              <h3>42.195 km Marathon</h3>
+              <table class="info-table">
+                <tr><td>Distance</td><td>42.195 km</td></tr>
+                <tr><td>Start (target)</td><td>~06:30</td></tr>
+                <tr><td>Categories</td><td>Open, Age Groups, Veterans</td></tr>
+                <tr><td>Prizes</td><td>Competitive (details soon)</td></tr>
+                <tr><td>Entry (indicative)</td><td>From K20,000</td></tr>
+              </table>
+            </div>
+            <div class="info-card">
+              <h3>10 km Race</h3>
+              <table class="info-table">
+                <tr><td>Distance</td><td>10 km</td></tr>
+                <tr><td>Start (target)</td><td>~06:45–07:00</td></tr>
+                <tr><td>Categories</td><td>Open + recreational</td></tr>
+                <tr><td>Prizes</td><td>Scaled prizes</td></tr>
+                <tr><td>Entry (indicative)</td><td>From K15,000</td></tr>
+              </table>
+            </div>
+            <div class="info-card">
+              <h3>5 km Fun Run</h3>
+              <table class="info-table">
+                <tr><td>Distance</td><td>5 km</td></tr>
+                <tr><td>Start (target)</td><td>~07:15–07:30</td></tr>
+                <tr><td>Focus</td><td>Community & families</td></tr>
+                <tr><td>Prizes</td><td>Recognition + medals</td></tr>
+                <tr><td>Entry (indicative)</td><td>Affordable / early bird</td></tr>
+              </table>
+            </div>
+          </div>
+          <div class="notice">
+            <strong>Note:</strong> Exact start times, fees, and prize amounts will be confirmed after the first Organising Committee meeting and published here. Early registration is encouraged.
+          </div>
+        </div>
+      </section>
+
+      <!-- REGISTER -->
+      <section id="page-register" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Register</h1>
+            <p>Secure your place — registration opens mid-August 2026</p>
+          </div>
+        </div>
+        <div class="container section">
+          <div class="register-layout">
+            <form id="regForm" class="reg-form" name="bt42-registration" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="return handleRegister(event)">
+              <input type="hidden" name="form-name" value="bt42-registration" />
+              <p class="hidden" style="display:none"><label>Don’t fill this out: <input name="bot-field" /></label></p>
+              <h2>Entry Form</h2>
+              <p class="form-note">Complete the form below. After submission you will receive payment instructions for Airtel Money or TNM Mpamba. Your place is confirmed once payment is received.</p>
+
+              <div class="form-group">
+                <label for="fullName">Full Name *</label>
+                <input type="text" id="fullName" name="fullName" required placeholder="As on ID / passport" />
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="phone">Mobile Number *</label>
+                  <input type="tel" id="phone" name="phone" required placeholder="e.g. 0999 123 456" />
+                </div>
+                <div class="form-group">
+                  <label for="email">Email</label>
+                  <input type="email" id="email" name="email" placeholder="optional" />
+                </div>
+              </div>
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="gender">Gender *</label>
+                  <select id="gender" name="gender" required>
+                    <option value="">Select</option>
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Prefer not to say</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="dob">Date of Birth *</label>
+                  <input type="date" id="dob" name="dob" required />
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="distance">Distance *</label>
+                <select id="distance" name="distance" required>
+                  <option value="">Choose your race</option>
+                  <option value="42.195">42.195 km Marathon</option>
+                  <option value="10">10 km Race</option>
+                  <option value="5">5 km Fun Run</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="emergency">Emergency Contact Name & Phone *</label>
+                <input type="text" id="emergency" name="emergency" required placeholder="Name + number" />
+              </div>
+              <div class="form-group checkbox">
+                <label>
+                  <input type="checkbox" id="terms" name="terms" required />
+                  I agree to the event rules, medical disclaimer, and data use for race organisation.
+                </label>
+              </div>
+              <button type="submit" class="btn btn-primary btn-block">Submit &amp; Get Payment Instructions</button>
+              <p class="form-foot">After you pay using the reference shown next, the team will confirm your entry (usually within 1–2 working days).</p>
+            </form>
+
+            <aside class="reg-sidebar">
+              <div class="sidebar-card">
+                <h3>Registration Status</h3>
+                <p class="status-pill open">Registration Open</p>
+                <ul class="checklist">
+                  <li>Online form (this page)</li>
+                  <li>Mobile money payments</li>
+                  <li>Physical registration points (TBC)</li>
+                  <li>Early-bird discounts planned</li>
+                </ul>
+              </div>
+              <div class="sidebar-card">
+                <h3>Need Help?</h3>
+                <p>Contact the organising team via the channels published by MNCS closer to opening.</p>
+              </div>
+            </aside>
+          </div>
+          <div id="regSuccess" class="success-msg hidden">
+            <h3>Registration received</h3>
+            <p><strong>Next step: Pay via mobile money</strong></p>
+            <p>Use your phone number as the payment reference. Send the entry fee via <strong>Airtel Money</strong> or <strong>TNM Mpamba</strong> to the number published on the confirmation screen / SMS.</p>
+            <p>Once payment is confirmed by the organisers you will receive final confirmation and bib details closer to race day.</p>
+            <p style="font-size:0.85rem;margin-top:1rem;opacity:0.85">Keep your mobile money SMS as proof of payment.</p>
+            <button class="btn btn-outline" onclick="document.getElementById('regSuccess').classList.add('hidden')">Close</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- COURSE -->
+      <section id="page-course" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Course</h1>
+            <p>Blantyre city route — final map to be confirmed with authorities</p>
+          </div>
+        </div>
+        <div class="container section">
+          <div class="course-placeholder">
+            <div class="map-mock">
+              <p>📍 Course Map</p>
+              <p class="map-note">Interactive map will be embedded here once the official route is locked (historically involving Kamuzu Highway, key Blantyre arteries, and finish at Kamuzu Stadium).</p>
+            </div>
+          </div>
+          <div class="info-grid two-col">
+            <div class="info-card">
+              <h3>Key Points (Indicative)</h3>
+              <ul class="simple-list">
+                <li>Start / Finish area near Kamuzu Stadium</li>
+                <li>Major roads under traffic management</li>
+                <li>Water & medical stations approximately every 5 km</li>
+                <li>Clear kilometre markers</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h3>What to Expect</h3>
+              <ul class="simple-list">
+                <li>Urban course with some hills</li>
+                <li>Early morning start (cooler temperatures)</li>
+                <li>Police and marshal support</li>
+                <li>Live tracking / updates via this app (planned)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SPONSORS -->
+      <section id="page-sponsors" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Partners & Sponsors</h1>
+            <p>Supporting long-distance running and community sport in Malawi</p>
+          </div>
+        </div>
+        <div class="container section">
+          <p class="sponsors-intro">We are actively engaging partners for the 2026 edition. Previous and target partners include leading Malawian brands in telecom, banking, beverages, and more.</p>
+          <div class="sponsor-tiers">
+            <div class="tier">
+              <h3>Platinum / Title</h3>
+              <div class="sponsor-slots">
+                <div class="sponsor-slot">Premier Bet (previous Platinum)</div>
+                <div class="sponsor-slot open">Open — Major Partner</div>
+              </div>
+            </div>
+            <div class="tier">
+              <h3>Gold</h3>
+              <div class="sponsor-slots">
+                <div class="sponsor-slot open">Telecom / Mobile Money</div>
+                <div class="sponsor-slot open">Banking Partner</div>
+                <div class="sponsor-slot open">Hydration Partner</div>
+              </div>
+            </div>
+            <div class="tier">
+              <h3>Supporting & In-kind</h3>
+              <div class="sponsor-slots">
+                <div class="sponsor-slot open">Media Partners</div>
+                <div class="sponsor-slot open">Medical & Logistics</div>
+                <div class="sponsor-slot open">Community Partners</div>
+              </div>
+            </div>
+          </div>
+          <div class="cta-box">
+            <h3>Interested in sponsoring?</h3>
+            <p>Contact the Organising Committee for packages (Platinum, Gold, Silver, In-kind). Strong visibility across race materials, digital platforms, and race-day activation.</p>
+            <a href="#info" class="btn btn-primary" onclick="navigate('info')">Get in Touch</a>
+          </div>
+        </div>
+      </section>
+
+      <!-- INFO -->
+      <section id="page-info" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Event Info</h1>
+            <p>Everything you need to know</p>
+          </div>
+        </div>
+        <div class="container section">
+          <div class="accordion">
+            <details open>
+              <summary>About the Event</summary>
+              <p>The BT42.195 km Race is an annual long-distance event organised under the Malawi National Council of Sports. It features a full marathon, 10 km, and 5 km races, attracting elite athletes and community runners from across Malawi and beyond.</p>
+            </details>
+            <details>
+              <summary>Key Dates</summary>
+              <ul>
+                <li><strong>Registration opens:</strong> 18 August 2026 (target)</li>
+                <li><strong>Packet pickup / Expo:</strong> 24–25 September 2026</li>
+                <li><strong>Race Day:</strong> Saturday, 26 September 2026</li>
+              </ul>
+            </details>
+            <details>
+              <summary>What to Bring on Race Day</summary>
+              <ul>
+                <li>Your bib and timing chip (if issued)</li>
+                <li>Appropriate running kit and shoes</li>
+                <li>Personal hydration if preferred (stations will be available)</li>
+                <li>ID for collection if required</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Medical & Safety</summary>
+              <p>Professional medical cover, ambulances, and first-aid posts will be positioned along the course and at the finish. Participants with medical conditions should consult a doctor before racing and declare relevant information at registration.</p>
+            </details>
+            <details>
+              <summary>Contact</summary>
+              <p>Organising Committee Chair and MNCS contacts will be published here once the committee is fully constituted. For now, monitor official MNCS channels and this platform for updates.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom Tab Bar (App-like on mobile) -->
+    <nav class="tabbar" id="tabbar">
+      <a href="#home" data-page="home" class="tab active">
+        <span class="tab-icon">🏠</span>
+        <span>Home</span>
+      </a>
+      <a href="#races" data-page="races" class="tab">
+        <span class="tab-icon">🏃</span>
+        <span>Races</span>
+      </a>
+      <a href="#register" data-page="register" class="tab">
+        <span class="tab-icon">📝</span>
+        <span>Register</span>
+      </a>
+      <a href="#course" data-page="course" class="tab">
+        <span class="tab-icon">🗺️</span>
+        <span>Course</span>
+      </a>
+      <a href="#info" data-page="info" class="tab">
+        <span class="tab-icon">ℹ️</span>
+        <span>Info</span>
+      </a>
+    </nav>
+
+    <footer class="footer">
+      <div class="container">
+        <p><strong>BT42.195 km Race 2026</strong> · Blantyre, Malawi</p>
+        <p>Organised under the Malawi National Council of Sports</p>
+        <p class="footer-note">BT42.195 km Race · 26 September 2026</p>
+      </div>
+    </footer>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
