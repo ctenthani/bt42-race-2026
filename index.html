@@ -17,6 +17,7 @@
 <body>
   <!-- App Shell -->
   <div id="app">
+    <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="OC Control Room">⚙️ OC</button>
     <!-- Header -->
     <header class="header" id="header">
       <div class="header-inner">
@@ -34,6 +35,7 @@
           <a href="#course" data-page="course">Course</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
           <a href="#info" data-page="info">Info</a>
+          <a href="#control" data-page="control" class="nav-control">Control</a>
         </nav>
       </div>
     </header>
@@ -428,6 +430,94 @@
       </a>
     </nav>
 
+
+      <!-- CONTROL ROOM -->
+      <section id="page-control" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Control Room</h1>
+            <p>OC dashboard · Interactive planner · Live metrics</p>
+          </div>
+        </div>
+
+        <div class="container section">
+          <!-- PIN Gate -->
+          <div id="control-gate" class="control-gate">
+            <h2>OC Access</h2>
+            <p>Enter the Control Room PIN to view the interactive planner, metrics and tools.</p>
+            <form id="control-pin-form">
+              <input type="password" id="control-pin" placeholder="PIN" autocomplete="off" />
+              <button type="submit" class="btn btn-primary btn-block">Enter Control Room</button>
+            </form>
+            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Default PIN: <code>bt42oc</code> — change after first use if needed.</p>
+          </div>
+
+          <!-- Control Room content -->
+          <div id="control-room" class="control-room hidden">
+            <div class="ctrl-tabs">
+              <button class="ctrl-tab active" data-panel="dash">Dashboard</button>
+              <button class="ctrl-tab" data-panel="checklist">Checklist</button>
+              <button class="ctrl-tab" data-panel="meetings">Meetings</button>
+              <button class="ctrl-tab" data-panel="sponsors">Sponsors</button>
+              <button class="ctrl-tab" data-panel="budget">Budget</button>
+              <button class="ctrl-tab" data-panel="runsheet">Race Day</button>
+              <button class="ctrl-tab" data-panel="roles">Roles</button>
+              <button class="ctrl-tab" data-panel="notes">Notes</button>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="panel-dash" class="ctrl-panel active">
+              <div id="ctrl-metrics" class="metrics-grid"></div>
+              <div class="progress-wrap"><div id="ctrl-progress-bar" class="progress-bar"></div></div>
+              <div id="ctrl-next-meeting" class="next-meeting-box"></div>
+              <h3 class="ctrl-section-title">Success Targets</h3>
+              <div id="ctrl-targets"></div>
+            </div>
+
+            <!-- Checklist -->
+            <div id="panel-checklist" class="ctrl-panel">
+              <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem">Tap the status icon to cycle: To do → In progress → Done → Blocked. Status is saved on this device.</p>
+              <div id="ctrl-checklist"></div>
+            </div>
+
+            <!-- Meetings -->
+            <div id="panel-meetings" class="ctrl-panel">
+              <div id="ctrl-meetings"></div>
+            </div>
+
+            <!-- Sponsors -->
+            <div id="panel-sponsors" class="ctrl-panel">
+              <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem">Update status as outreach progresses. Changes are saved locally.</p>
+              <div id="ctrl-sponsors"></div>
+            </div>
+
+            <!-- Budget -->
+            <div id="panel-budget" class="ctrl-panel">
+              <div id="ctrl-budget"></div>
+            </div>
+
+            <!-- Race Day -->
+            <div id="panel-runsheet" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Race Day Run Sheet (Draft)</h3>
+              <div id="ctrl-runsheet"></div>
+            </div>
+
+            <!-- Roles -->
+            <div id="panel-roles" class="ctrl-panel">
+              <h3 class="ctrl-section-title">OC Roles & Contacts</h3>
+              <div id="ctrl-roles"></div>
+            </div>
+
+            <!-- Notes -->
+            <div id="panel-notes" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Shared Notes (this device)</h3>
+              <textarea id="ctrl-notes" placeholder="Action items, decisions, reminders…"></textarea>
+              <p style="font-size:0.8rem;color:var(--text-muted);margin-top:0.5rem">Notes are stored in this browser only. For shared notes use a WhatsApp group or Google Doc linked from here later.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
     <footer class="footer">
       <div class="container">
         <p><strong>BT42.195 km Race 2026</strong> · Blantyre, Malawi</p>
@@ -437,6 +527,8 @@
     </footer>
   </div>
 
+  <script src="js/control-data.js"></script>
+  <script src="js/control.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

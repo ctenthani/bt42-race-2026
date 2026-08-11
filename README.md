@@ -1,77 +1,73 @@
-# BT42.195 km Race 2026 — Official Event Website
+# BT42.195 km Race 2026 — Event Website + Control Room
 
-Mobile-first event site for the **BT42.195 km Race** (full marathon, 10 km & 5 km)  
-**Race day:** Saturday, 26 September 2026 · Blantyre, Malawi
+Mobile-first public website **and** interactive OC Control Room for the **BT42.195 km Race**.
 
+**Race day:** Saturday, 26 September 2026 · Blantyre, Malawi  
 Organised under the Malawi National Council of Sports.
 
 ---
 
-## Live features
+## What is included
 
-- Responsive design (phone → desktop)
-- Live countdown to race day
+### Public site
+- Home with live countdown
 - Race information (42.195 km / 10 km / 5 km)
-- Online registration form (Netlify Forms)
-- Guided mobile-money payment messaging (Airtel Money & TNM Mpamba)
-- Course, sponsors and info sections
-- Progressive Web App manifest (add to home screen)
+- Online registration (Netlify Forms)
+- Course, Sponsors, Info sections
+- Mobile bottom tab bar + PWA support
+
+### Control Room (OC only)
+Interactive version of the full project planner:
+- **Dashboard** — days to race, checklist progress %, sponsors contacted, registration counter placeholder
+- **Checklist** — 40+ tasks; tap to cycle status (To do → In progress → Done → Blocked); saved on device
+- **Meetings** — all 8 OC meetings with full agendas
+- **Sponsors** — pipeline with editable status dropdowns
+- **Budget** — expenditure & income targets
+- **Race Day** — full run sheet
+- **Roles** — OC organogram
+- **Notes** — local scratch pad
+
+**Access:** Click **⚙️ OC** (bottom-right) or go to `#control`.  
+**Default PIN:** `bt42oc` (change in `js/control.js` if desired).
 
 ---
 
-## Deploy to Netlify via GitHub (recommended)
+## Deploy to Netlify via GitHub
 
-### 1. Create a new GitHub repository
-1. Go to [github.com/new](https://github.com/new)
-2. Name it e.g. `bt42-race-2026` (public or private)
-3. **Do not** initialise with a README (this folder already has one)
-4. Click **Create repository**
+### 1. Create empty GitHub repo
+[github.com/new](https://github.com/new) → name e.g. `bt42-race-2026` → create **without** README.
 
-### 2. Push this folder to GitHub
+### 2. Push
 
 ```bash
-# From inside this folder (github-ready)
-git init
-git add .
-git commit -m "Initial launch: BT42.195 km Race 2026 website"
-git branch -M main
+cd github-ready   # this folder
 git remote add origin https://github.com/YOUR_USERNAME/bt42-race-2026.git
 git push -u origin main
 ```
 
-Replace `YOUR_USERNAME` with your GitHub username.
+(If you received the zip: unzip, then `git init && git add . && git commit -m "Launch" && git branch -M main` before adding the remote.)
 
-### 3. Connect to Netlify
-1. Go to [app.netlify.com](https://app.netlify.com) and log in (or sign up free)
-2. Click **Add new site** → **Import an existing project**
-3. Choose **GitHub** and authorise Netlify if asked
-4. Select the `bt42-race-2026` repository
-5. Build settings (leave as defaults):
-   - **Build command:** *(leave empty)*
-   - **Publish directory:** `.`  (or leave blank — netlify.toml already sets it)
-6. Click **Deploy site**
+### 3. Netlify
+1. [app.netlify.com](https://app.netlify.com) → Add new site → Import from GitHub
+2. Select the repo
+3. Build command: *(empty)* · Publish directory: `.`
+4. Deploy
 
-Netlify will give you a URL like `https://random-name-123.netlify.app`.  
-You can change it later under **Site settings → Domain management**.
-
-### 4. Enable Netlify Forms
-After the first deploy:
-1. Go to **Forms** in the Netlify dashboard
-2. You should see the form `bt42-registration`
-3. Submissions will appear there automatically
-4. (Optional) Set up email notifications under **Forms → Form notifications**
+### 4. Enable Forms
+After first deploy → **Forms** in Netlify dashboard → you will see `bt42-registration`.  
+Optionally add email notifications.
 
 ### 5. Custom domain (optional)
-In Netlify → **Domain management** you can add a custom domain (e.g. `bt42.mw` or `race.malawisport.mw`) and follow the DNS instructions.
+Site settings → Domain management.
 
 ---
 
-## Local testing
+## Local test
 
 ```bash
-# From this folder
 python3 -m http.server 8080
 # Open http://localhost:8080
+# Control Room: http://localhost:8080/#control  (PIN: bt42oc)
 ```
 
 ---
@@ -79,27 +75,26 @@ python3 -m http.server 8080
 ## Project structure
 
 ```
-├── index.html          # Main app (SPA with hash routing)
+├── index.html
 ├── css/styles.css
-├── js/app.js
-├── manifest.json       # PWA
-├── netlify.toml        # Netlify config + SPA redirects
+├── js/
+│   ├── app.js           # Public site navigation + form
+│   ├── control-data.js  # Full planner data
+│   └── control.js       # Interactive Control Room logic
+├── manifest.json
+├── netlify.toml
 ├── _redirects
-├── robots.txt
-└── assets/             # (add logo / icons here later)
+└── robots.txt
 ```
 
 ---
 
-## Next improvements (after launch)
+## Security note
 
-- Connect a real payment reference generator + admin sheet
-- Add official course map image or embed
-- Replace placeholder sponsor slots with real logos
-- Add results page after race day
-- Custom domain + SSL (automatic on Netlify)
+The Control Room PIN is a simple client-side gate intended for convenience among the OC.  
+It is **not** strong security. Do not put highly sensitive personal data or financial credentials only behind this PIN. For stronger protection later, add Netlify Identity or a proper auth layer.
 
 ---
 
-**Organising Committee Chair:** Chifundo Tenthani  
+**Chair:** Chifundo Tenthani  
 **Event:** BT42.195 km Race · 26 September 2026

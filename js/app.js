@@ -138,3 +138,12 @@
 
   console.log('BT42.195 Race App — launch ready');
 })();
+
+  // Initialise Control Room when that page is shown
+  const origNavigate = window.navigate;
+  window.navigate = function (pageId) {
+    origNavigate(pageId);
+    if (pageId === 'control' && window.BT42Control) {
+      window.BT42Control.init();
+    }
+  };
