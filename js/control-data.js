@@ -4,122 +4,155 @@ window.BT42_DATA = {
   raceDate: '2026-09-26T06:30:00+02:00',
   eventName: 'BT42.195 km Race 2026',
   chair: 'Chifundo Tenthani',
+  chairOnlyNote: 'Chair-only Control Room. Do not share the PIN outside Organising Committee leadership.',
 
-  keyDates: [
-    { label: 'First OC Meeting', date: '2026-08-13', status: 'upcoming' },
-    { label: 'Registration Opens', date: '2026-08-18', status: 'upcoming' },
-    { label: 'Sponsorship Soft Deadline', date: '2026-09-05', status: 'upcoming' },
-    { label: 'Course Marking', date: '2026-09-15', status: 'upcoming' },
-    { label: 'Packet Pickup / Expo', date: '2026-09-24', status: 'upcoming' },
-    { label: 'RACE DAY', date: '2026-09-26', status: 'race' },
-    { label: 'Post-Race Debrief', date: '2026-10-02', status: 'upcoming' }
+  dashboardDefaults: {
+    registrationsTarget: 450,
+    registrationsActual: 0,
+    marathonTarget: 120,
+    marathonActual: 0,
+    sponsorshipTargetMk: 30000000,
+    sponsorshipActualMk: 0,
+    satisfactionTarget: 85,
+    mediaNotes: 'National TV/radio + strong social coverage',
+    safetyStatus: 'On track — zero major incidents target'
+  },
+
+  deadlines: [
+    { id: 'dl01', when: '2026-08-13', title: 'OC kick-off complete', detail: 'Roles confirmed, budget draft agreed, registration approach locked.', critical: true },
+    { id: 'dl02', when: '2026-08-15', title: 'Sponsor packages final', detail: 'Platinum/Gold/Silver/In-kind benefits sheet ready to send.', critical: true },
+    { id: 'dl03', when: '2026-08-18', title: 'Registration LIVE', detail: 'Form live on Netlify; payment instructions published; marketing launch.', critical: true },
+    { id: 'dl04', when: '2026-08-22', title: 'Priority sponsor outreach done', detail: 'Premier Bet, Airtel, TNM, NBM, Standard Bank, FCB, NBS contacted.', critical: true },
+    { id: 'dl05', when: '2026-08-25', title: 'Medical Lead + timing supplier', detail: 'Medical provider appointed; timing/chip contract signed.', critical: true },
+    { id: 'dl06', when: '2026-08-27', title: 'Sponsorship deep-dive meeting', detail: 'Pipeline reviewed; LOIs chased; risk register updated.', critical: false },
+    { id: 'dl07', when: '2026-09-01', title: 'Media partnerships locked', detail: 'Radio/print partners confirmed; content calendar running.', critical: false },
+    { id: 'dl08', when: '2026-09-05', title: 'Core sponsorships signed', detail: 'Soft deadline for cash sponsors; pivot plan if gaps remain.', critical: true },
+    { id: 'dl09', when: '2026-09-10', title: 'Operations readiness review', detail: 'Course, medical, water stations, bibs/medals status locked.', critical: true },
+    { id: 'dl10', when: '2026-09-15', title: 'Course marking window opens', detail: 'Final route confirmed with authorities; marking materials ready.', critical: true },
+    { id: 'dl11', when: '2026-09-20', title: 'Race-day run sheet final', detail: 'Minute-by-minute plan, emergency contacts, volunteer roster complete.', critical: true },
+    { id: 'dl12', when: '2026-09-22', title: 'Prize-giving & results process ready', detail: 'Script, podium protocol, verification team briefed.', critical: false },
+    { id: 'dl13', when: '2026-09-24', title: 'Pre-race briefing (on-site)', detail: 'Marshals, medical, media, start lists final.', critical: true },
+    { id: 'dl14', when: '2026-09-25', title: 'Packet pickup day 2 / final checks', detail: 'Equipment, water, radios, weather contingency confirmed.', critical: true },
+    { id: 'dl15', when: '2026-09-26', title: 'RACE DAY', detail: 'Execute run sheet. Safety first. Document issues for debrief.', critical: true },
+    { id: 'dl16', when: '2026-10-02', title: 'Post-race debrief', detail: 'Feedback, finance, sponsor reports, 2027 recommendations.', critical: true }
   ],
 
-  meetings: [
+  chairMeetingNotes: [
     {
-      id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'In-person / Hybrid',
-      focus: 'Kick-off & Structure',
-      agenda: [
-        'Formal confirmation of Chair & OC roles',
-        'Review of previous edition learnings',
-        'Draft budget & prize structure',
-        'Route & date confirmation',
-        'Sponsorship strategy & target list',
-        'Registration platform decision',
-        'Immediate action items & owners'
+      meetingId: 1, date: '2026-08-13', title: 'Kick-off — Chair briefing notes',
+      notes: [
+        'Open by confirming your formal appointment with MNCS and thanking the room.',
+        'State the non-negotiables: safety/medical cover, clear route approvals, registration open by 18 Aug.',
+        'Ask each lead to own one workstream: Technical, Medical, Logistics, Marketing, Sponsorship, Finance, Volunteers, Digital.',
+        'Agree a single source of truth: this Control Room + one shared OC WhatsApp group.',
+        'Decision needed today: registration platform (Netlify Forms + mobile money) and indicative fees.',
+        'Assign who sends Premier Bet and bank/telecom outreach this week.',
+        'Close with action list, owners, and next meeting 20 Aug.'
       ],
-      attendees: 'Chair, MNCS reps, Technical Lead, Marketing, Finance, Medical lead'
+      decisionsNeeded: [
+        'Registration go-live date and fee structure',
+        'Prize pool ceiling vs sponsorship targets',
+        'Who owns sponsor pipeline day-to-day'
+      ]
     },
     {
-      id: 2, date: '2026-08-20', time: '14:00–15:30', type: 'Virtual or Hybrid',
-      focus: 'Registration & Marketing Launch',
-      agenda: [
-        'Registration system live status',
-        'Marketing calendar & first campaign assets',
-        'Sponsor outreach progress report',
-        'Volunteer recruitment plan',
-        'Medical & safety preliminary plan',
-        'App / website first version review'
+      meetingId: 2, date: '2026-08-20', title: 'Registration & marketing — Chair notes',
+      notes: [
+        'Confirm registration is live or blocked — if blocked, name the blocker and deadline.',
+        'Review first 48–72h marketing push: social, radio, MNCS channels.',
+        'Check sponsor outreach started; demand one status per priority target.',
+        'Medical Lead still TBC? Escalate today — medical cannot slip past 25 Aug.',
+        'Volunteer plan: schools, clubs, corporate volunteers — who is recruiting?',
+        'Ask Digital to demo form + payment instructions on a phone.'
       ],
-      attendees: 'Full OC + digital/tech lead'
+      decisionsNeeded: [
+        'Any fee waiver / community free slots',
+        'Theme/tagline final wording for all assets'
+      ]
     },
     {
-      id: 3, date: '2026-08-27', time: '14:00–16:00', type: 'In-person',
-      focus: 'Sponsorship Deep Dive',
-      agenda: [
-        'Sponsor pipeline & signed letters of intent',
-        'Benefits packages finalisation',
-        'Prize money confirmation vs budget',
-        'Course & logistics detailed plan',
-        'Timing system & chip supplier',
-        'Risk register review'
+      meetingId: 3, date: '2026-08-27', title: 'Sponsorship deep dive — Chair notes',
+      notes: [
+        'Walk the pipeline: who was contacted, who replied, who is cold.',
+        'Protect prize money: do not announce figures you cannot fund.',
+        'Push for LOIs by 5 Sep soft deadline; prepare Plan B (lower prizes / more in-kind).',
+        'Technical: timing supplier and route clarity before September.',
+        'Risk register: weather, medical gaps, low registration, sponsor drop-out.'
       ],
-      attendees: 'Chair, Finance, Marketing, Technical, MNCS'
+      decisionsNeeded: [
+        'Minimum viable prize pool if sponsorship is short',
+        'Whether to extend soft deadline or cut costs'
+      ]
     },
     {
-      id: 4, date: '2026-09-03', time: '14:00–15:30', type: 'Hybrid',
-      focus: 'Operations Mid-Point',
-      agenda: [
-        'Registration numbers & marketing performance',
-        'Final course map & police/traffic plan',
-        'Medical deployment plan',
-        'Water stations & logistics',
-        'Bibs, medals, T-shirts production status',
-        'Packet pickup plan'
+      meetingId: 4, date: '2026-09-03', title: 'Operations mid-point — Chair notes',
+      notes: [
+        'Registration numbers vs target — marketing boost if behind.',
+        'Police/traffic and course map must be on track for 5 Sep approvals.',
+        'Medical deployment plan should exist in draft; lock by 5 Sep.',
+        'Production orders (medals, bibs, shirts) — confirm lead times.',
+        'Packet pickup location and staffing plan.'
       ],
-      attendees: 'Full OC'
+      decisionsNeeded: [
+        'Packet pickup venue and hours',
+        'Any course changes requiring re-approval'
+      ]
     },
     {
-      id: 5, date: '2026-09-10', time: '14:00–16:00', type: 'In-person',
-      focus: 'Race Week Readiness',
-      agenda: [
-        'Final participant projections',
-        'Volunteer roster & briefing schedule',
-        'Communication plan (SMS/App/Radio)',
-        'Contingency scenarios (weather, medical)',
-        'Media & live coverage plan',
-        'Sponsor activation on race day'
+      meetingId: 5, date: '2026-09-10', title: 'Race week readiness — Chair notes',
+      notes: [
+        'Treat this as go / no-go on readiness, not final numbers.',
+        'Volunteer roster and briefing dates must be real, not aspirational.',
+        'Contingencies: heat, storms, road incidents, ambulance failure.',
+        'Media plan: who talks to press; who owns live updates.',
+        'Sponsor activation: who hosts each partner on the day.'
       ],
-      attendees: 'Full OC + key suppliers'
+      decisionsNeeded: [
+        'Weather contingency trigger (who decides, when)',
+        'Spokesperson for media on race day'
+      ]
     },
     {
-      id: 6, date: '2026-09-17', time: '14:00–15:30', type: 'Hybrid',
-      focus: 'Final Logistics Lock',
-      agenda: [
-        'Course marking schedule',
-        'Equipment & water delivery timeline',
-        'Security & traffic final sign-off',
-        'Elite athlete support (if any)',
-        'Packet pickup logistics',
-        'App push notifications test'
+      meetingId: 6, date: '2026-09-17', title: 'Final logistics lock — Chair notes',
+      notes: [
+        'No new major ideas — only close open loops.',
+        'Course marking schedule and materials confirmed.',
+        'Water delivery and station staffing locked.',
+        'Security/traffic sign-off status.',
+        'Test any app notifications or results path once.'
       ],
-      attendees: 'Technical, Logistics, Medical, Chair'
+      decisionsNeeded: [
+        'Any last supplier substitutions',
+        'Confirm packet pickup is fully staffed'
+      ]
     },
     {
-      id: 7, date: '2026-09-24', time: '10:00–12:00', type: 'On-site / Stadium',
-      focus: 'Pre-Race Briefing',
-      agenda: [
-        'Final numbers & start lists',
-        'Marshal & volunteer final briefing',
-        'Medical team briefing',
-        'Media & results process',
-        'Race-day roles confirmation',
-        'Emergency contacts & radios'
+      meetingId: 7, date: '2026-09-24', title: 'Pre-race briefing — Chair notes',
+      notes: [
+        'On-site: calm, clear, short. People need roles, not long speeches.',
+        'Hand out printed run sheets and emergency contact lists.',
+        'Medical and marshal briefings — confirm radios work.',
+        'Start lists and seed/elite process clear to Technical.',
+        'Remind everyone: safety first; Chair/Race Control can stop or delay.'
       ],
-      attendees: 'All key operational leads + lead volunteers'
+      decisionsNeeded: [
+        'Final go for published start times',
+        'Any last-minute course or medical changes'
+      ]
     },
     {
-      id: 8, date: '2026-10-02', time: '14:00–16:00', type: 'In-person / Hybrid',
-      focus: 'Post-Race Debrief',
-      agenda: [
-        'What went well / what to improve',
-        'Financial reconciliation',
-        'Participant & sponsor feedback summary',
-        'Results verification & records',
-        'Recommendations for 2027',
-        'Thank-you communications'
+      meetingId: 8, date: '2026-10-02', title: 'Debrief — Chair notes',
+      notes: [
+        'Start with thanks; keep the tone constructive.',
+        'Capture what to keep, what to fix, what to drop for 2027.',
+        'Finance: reconciliation timeline and sponsor reports.',
+        'Participant feedback themes — one page summary.',
+        'Handover pack for MNCS and next year’s chair if different.'
       ],
-      attendees: 'Full OC + MNCS'
+      decisionsNeeded: [
+        'Recommended date window for 2027',
+        'Which sponsors to prioritise for renewal'
+      ]
     }
   ],
 
@@ -170,6 +203,17 @@ window.BT42_DATA = {
     { id: 'D06', cat: 'Post-Race', task: 'Sponsor report & thank-you letters', owner: 'Marketing / Chair', due: '05 Oct', status: 'todo' },
     { id: 'D07', cat: 'Post-Race', task: 'Financial reconciliation complete', owner: 'Finance', due: '10 Oct', status: 'todo' },
     { id: 'D08', cat: 'Post-Race', task: 'Full debrief report for MNCS & 2027 handover', owner: 'Chair', due: '15 Oct', status: 'todo' }
+  ],
+
+  meetings: [
+    { id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Kick-off & Structure', agenda: ['Formal confirmation of Chair & OC roles', 'Review of previous edition learnings', 'Draft budget & prize structure', 'Route & date confirmation', 'Sponsorship strategy & target list', 'Registration platform decision', 'Immediate action items & owners'], attendees: 'Chair, MNCS reps, Technical Lead, Marketing, Finance, Medical lead' },
+    { id: 2, date: '2026-08-20', time: '14:00–15:30', type: 'Virtual or Hybrid', focus: 'Registration & Marketing Launch', agenda: ['Registration system live status', 'Marketing calendar & first campaign assets', 'Sponsor outreach progress report', 'Volunteer recruitment plan', 'Medical & safety preliminary plan', 'App / website first version review'], attendees: 'Full OC + digital/tech lead' },
+    { id: 3, date: '2026-08-27', time: '14:00–16:00', type: 'In-person', focus: 'Sponsorship Deep Dive', agenda: ['Sponsor pipeline & signed letters of intent', 'Benefits packages finalisation', 'Prize money confirmation vs budget', 'Course & logistics detailed plan', 'Timing system & chip supplier', 'Risk register review'], attendees: 'Chair, Finance, Marketing, Technical, MNCS' },
+    { id: 4, date: '2026-09-03', time: '14:00–15:30', type: 'Hybrid', focus: 'Operations Mid-Point', agenda: ['Registration numbers & marketing performance', 'Final course map & police/traffic plan', 'Medical deployment plan', 'Water stations & logistics', 'Bibs, medals, T-shirts production status', 'Packet pickup plan'], attendees: 'Full OC' },
+    { id: 5, date: '2026-09-10', time: '14:00–16:00', type: 'In-person', focus: 'Race Week Readiness', agenda: ['Final participant projections', 'Volunteer roster & briefing schedule', 'Communication plan (SMS/App/Radio)', 'Contingency scenarios (weather, medical)', 'Media & live coverage plan', 'Sponsor activation on race day'], attendees: 'Full OC + key suppliers' },
+    { id: 6, date: '2026-09-17', time: '14:00–15:30', type: 'Hybrid', focus: 'Final Logistics Lock', agenda: ['Course marking schedule', 'Equipment & water delivery timeline', 'Security & traffic final sign-off', 'Elite athlete support (if any)', 'Packet pickup logistics', 'App push notifications test'], attendees: 'Technical, Logistics, Medical, Chair' },
+    { id: 7, date: '2026-09-24', time: '10:00–12:00', type: 'On-site / Stadium', focus: 'Pre-Race Briefing', agenda: ['Final numbers & start lists', 'Marshal & volunteer final briefing', 'Medical team briefing', 'Media & results process', 'Race-day roles confirmation', 'Emergency contacts & radios'], attendees: 'All key operational leads + lead volunteers' },
+    { id: 8, date: '2026-10-02', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Post-Race Debrief', agenda: ['What went well / what to improve', 'Financial reconciliation', 'Participant & sponsor feedback summary', 'Results verification & records', 'Recommendations for 2027', 'Thank-you communications'], attendees: 'Full OC + MNCS' }
   ],
 
   sponsors: [

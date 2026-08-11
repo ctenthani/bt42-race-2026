@@ -17,7 +17,7 @@
 <body>
   <!-- App Shell -->
   <div id="app">
-    <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="OC Control Room">⚙️ OC</button>
+    <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="Chair Control Room only">🔒 Chair</button>
     <!-- Header -->
     <header class="header" id="header">
       <div class="header-inner">
@@ -35,7 +35,7 @@
           <a href="#course" data-page="course">Course</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
           <a href="#info" data-page="info">Info</a>
-          <a href="#control" data-page="control" class="nav-control">Control</a>
+          <a href="#control" data-page="control" class="nav-control" style="opacity:0.5;font-size:0.85em">Chair</a>
         </nav>
       </div>
     </header>
@@ -435,27 +435,29 @@
       <section id="page-control" class="page">
         <div class="page-header">
           <div class="container">
-            <h1>Control Room</h1>
-            <p>OC dashboard · Interactive planner · Live metrics</p>
+            <h1>Chair Control Room</h1>
+            <p>Chair-only · Editable metrics · Deadlines · Meeting notes</p>
           </div>
         </div>
 
         <div class="container section">
           <!-- PIN Gate -->
           <div id="control-gate" class="control-gate">
-            <h2>OC Access</h2>
-            <p>Enter the Control Room PIN to view the interactive planner, metrics and tools.</p>
+            <h2>Chair access only</h2>
+            <p>This area is restricted to the Chair. Enter your PIN to open the control room, edit metrics, and use meeting notes.</p>
             <form id="control-pin-form">
               <input type="password" id="control-pin" placeholder="PIN" autocomplete="off" />
               <button type="submit" class="btn btn-primary btn-block">Enter Control Room</button>
             </form>
-            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Default PIN: <code>bt42oc</code> — change after first use if needed.</p>
+            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Default Chair PIN: <code>bt42oc</code> — change in <code>js/control.js</code> and do not share outside Chair leadership.</p>
           </div>
 
           <!-- Control Room content -->
           <div id="control-room" class="control-room hidden">
             <div class="ctrl-tabs">
               <button class="ctrl-tab active" data-panel="dash">Dashboard</button>
+              <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
+              <button class="ctrl-tab" data-panel="chair">Chair notes</button>
               <button class="ctrl-tab" data-panel="checklist">Checklist</button>
               <button class="ctrl-tab" data-panel="meetings">Meetings</button>
               <button class="ctrl-tab" data-panel="sponsors">Sponsors</button>
@@ -470,8 +472,20 @@
               <div id="ctrl-metrics" class="metrics-grid"></div>
               <div class="progress-wrap"><div id="ctrl-progress-bar" class="progress-bar"></div></div>
               <div id="ctrl-next-meeting" class="next-meeting-box"></div>
+              <div id="ctrl-dash-edit"></div>
               <h3 class="ctrl-section-title">Success Targets</h3>
               <div id="ctrl-targets"></div>
+            </div>
+
+            <div id="panel-deadlines" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Chair deadlines — when everything should be done</h3>
+              <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:1rem">Tap status to update. Red flag = critical path. Overdue items highlight automatically.</p>
+              <div id="ctrl-deadlines"></div>
+            </div>
+
+            <div id="panel-chair" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Chair meeting notes</h3>
+              <div id="ctrl-chair-notes"></div>
             </div>
 
             <!-- Checklist -->

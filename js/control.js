@@ -1,10 +1,13 @@
 /* BT42.195 km Race 2026 — Control Room logic */
 
 (function () {
-  const PIN = 'bt42oc'; // Simple gate — change after first login if desired
+  const PIN = 'bt42oc'; // CHAIR ONLY — do not share
   const STORAGE_KEY = 'bt42_checklist_status';
   const SPONSOR_KEY = 'bt42_sponsor_status';
   const NOTES_KEY = 'bt42_control_notes';
+  const DASH_KEY = 'bt42_dashboard_metrics';
+  const DEADLINE_KEY = 'bt42_deadline_status';
+  const CHAIR_NOTES_KEY = 'bt42_chair_meeting_notes_edits';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
 
@@ -35,7 +38,7 @@
     if (input && input.value.trim().toLowerCase() === PIN) {
       unlock();
     } else {
-      alert('Incorrect PIN. Contact the Chair.');
+      alert('Incorrect PIN. Chair access only.');
       if (input) input.value = '';
     }
   }
@@ -62,6 +65,27 @@
   }
 
   // ---------- Metrics ----------
+  function loadDashboard() {
+    const defaults = Object.assign({}, window.BT42_DATA.dashboardDefaults || {});
+    try {
+      const saved = JSON.parse(localStorage.getItem(DASH_KEY) || '{}');
+      return Object.assign(defaults, saved);
+    } catch { return defaults; }
+  }
+
+  function saveDashboard(obj) {
+    localStorage.setItem(DASH_KEY, JSON.stringify(obj));
+  }
+
+  function loadDeadlineStatuses() {
+    try { return JSON.parse(localStorage.getItem(DEADLINE_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveDeadlineStatuses(map) {
+    localStorage.setItem(DEADLINE_KEY, JSON.stringify(map));
+  }
+
   function computeMetrics() {
     const data = window.BT42_DATA;
     const statuses = loadStatuses();
@@ -84,11 +108,21 @@
     const race = new Date(data.raceDate);
     const daysLeft = Math.max(0, Math.ceil((race - now) / (1000 * 60 * 60 * 24)));
 
-    return { done, total, pct, contacted, signed, sponsorTotal: data.sponsors.length, daysLeft };
+    const dash = loadDashboard();
+    const dlMap = loadDeadlineStatuses();
+    const deadlines = data.deadlines || [];
+    let dlDone = 0;
+    deadlines.forEach(d => { if ((dlMap[d.id] || 'todo') === 'done') dlDone++; });
+
+    return {
+      done, total, pct, contacted, signed,
+      sponsorTotal: data.sponsors.length, daysLeft, dash, dlDone, dlTotal: deadlines.length
+    };
   }
 
   function renderDashboard() {
     const m = computeMetrics();
+    const d = m.dash;
     const el = $('#ctrl-metrics');
     if (!el) return;
     el.innerHTML = `
@@ -107,22 +141,73 @@
         <div class="metric-sub">${m.signed} signed · ${m.sponsorTotal} total</div>
       </div>
       <div class="metric-card">
-        <div class="metric-value" id="reg-count-display">—</div>
-        <div class="metric-label">Registrations</div>
-        <div class="metric-sub">Update manually or from Netlify Forms</div>
+        <div class="metric-value">${m.dlDone}/${m.dlTotal}</div>
+        <div class="metric-label">Deadlines Done</div>
       </div>
     `;
 
-    // Progress bar
     const bar = $('#ctrl-progress-bar');
     if (bar) bar.style.width = m.pct + '%';
 
-    // Next meeting
     const next = window.BT42_DATA.meetings.find(mt => new Date(mt.date) >= new Date(new Date().toDateString()));
     const nextEl = $('#ctrl-next-meeting');
     if (nextEl && next) {
       nextEl.innerHTML = `<strong>Next OC Meeting:</strong> ${formatDate(next.date)} · ${next.time}<br><em>${next.focus}</em>`;
     }
+
+    // Editable Chair metrics form
+    const edit = $('#ctrl-dash-edit');
+    if (edit) {
+      edit.innerHTML = `
+        <h3 class="ctrl-section-title">Chair-editable metrics</h3>
+        <p class="form-note" style="margin-bottom:0.75rem">Only you (Chair) should edit these. Values save on this device.</p>
+        <div class="dash-edit-grid">
+          <label>Registrations actual <input type="number" id="dash-reg-actual" value="${d.registrationsActual}" min="0" /></label>
+          <label>Registrations target <input type="number" id="dash-reg-target" value="${d.registrationsTarget}" min="0" /></label>
+          <label>Marathon actual <input type="number" id="dash-mar-actual" value="${d.marathonActual}" min="0" /></label>
+          <label>Marathon target <input type="number" id="dash-mar-target" value="${d.marathonTarget}" min="0" /></label>
+          <label>Sponsorship actual (MK) <input type="number" id="dash-spon-actual" value="${d.sponsorshipActualMk}" min="0" /></label>
+          <label>Sponsorship target (MK) <input type="number" id="dash-spon-target" value="${d.sponsorshipTargetMk}" min="0" /></label>
+          <label class="full">Safety status <input type="text" id="dash-safety" value="${escapeHtml(d.safetyStatus)}" /></label>
+          <label class="full">Media notes <input type="text" id="dash-media" value="${escapeHtml(d.mediaNotes)}" /></label>
+        </div>
+        <button type="button" class="btn btn-primary" id="dash-save-btn" style="margin-top:0.75rem">Save metrics</button>
+        <p id="dash-save-msg" style="font-size:0.8rem;color:var(--accent);margin-top:0.5rem;display:none">Saved.</p>
+        <div class="metric-card" style="margin-top:1rem;text-align:left">
+          <div><strong>Regs:</strong> ${d.registrationsActual} / ${d.registrationsTarget}
+            (Marathon ${d.marathonActual} / ${d.marathonTarget})</div>
+          <div><strong>Sponsorship:</strong> ${formatMoney(d.sponsorshipActualMk)} / ${formatMoney(d.sponsorshipTargetMk)}</div>
+          <div><strong>Safety:</strong> ${escapeHtml(d.safetyStatus)}</div>
+        </div>`;
+      const saveBtn = $('#dash-save-btn');
+      if (saveBtn) {
+        saveBtn.onclick = () => {
+          const next = {
+            registrationsActual: Number($('#dash-reg-actual').value) || 0,
+            registrationsTarget: Number($('#dash-reg-target').value) || 0,
+            marathonActual: Number($('#dash-mar-actual').value) || 0,
+            marathonTarget: Number($('#dash-mar-target').value) || 0,
+            sponsorshipActualMk: Number($('#dash-spon-actual').value) || 0,
+            sponsorshipTargetMk: Number($('#dash-spon-target').value) || 0,
+            safetyStatus: $('#dash-safety').value || '',
+            mediaNotes: $('#dash-media').value || '',
+            satisfactionTarget: d.satisfactionTarget
+          };
+          saveDashboard(next);
+          const msg = $('#dash-save-msg');
+          if (msg) { msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 1500); }
+          renderDashboard();
+        };
+      }
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   function formatDate(iso) {
@@ -349,6 +434,73 @@
     });
   }
 
+  function renderDeadlines() {
+    const container = $('#ctrl-deadlines');
+    if (!container) return;
+    const map = loadDeadlineStatuses();
+    const today = new Date(new Date().toDateString());
+    let html = '';
+    (window.BT42_DATA.deadlines || []).forEach(d => {
+      const st = map[d.id] || 'todo';
+      const when = new Date(d.when + 'T12:00:00');
+      const overdue = st !== 'done' && when < today;
+      html += `
+        <div class="ctrl-task ${st}${overdue ? ' blocked' : ''}${d.critical ? ' critical-dl' : ''}" data-id="${d.id}">
+          <button class="status-btn deadline-btn" data-id="${d.id}" title="Mark deadline status">${statusIcon(st)}</button>
+          <div class="task-body">
+            <div class="task-title">${d.critical ? '🔴 ' : ''}${d.title}</div>
+            <div class="task-meta">${formatDate(d.when)}${overdue ? ' · OVERDUE' : ''} — ${d.detail}</div>
+          </div>
+        </div>`;
+    });
+    container.innerHTML = html;
+    container.querySelectorAll('.deadline-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const map = loadDeadlineStatuses();
+        const order = ['todo', 'doing', 'done', 'blocked'];
+        const current = map[btn.dataset.id] || 'todo';
+        map[btn.dataset.id] = order[(order.indexOf(current) + 1) % order.length];
+        saveDeadlineStatuses(map);
+        renderDeadlines();
+        renderDashboard();
+      });
+    });
+  }
+
+  function renderChairNotes() {
+    const container = $('#ctrl-chair-notes');
+    if (!container) return;
+    const edits = (() => { try { return JSON.parse(localStorage.getItem(CHAIR_NOTES_KEY) || '{}'); } catch { return {}; } })();
+    let html = '<p class="form-note" style="margin-bottom:1rem">Prepared for you as Chair. Add your own notes per meeting — saved on this device only.</p>';
+    (window.BT42_DATA.chairMeetingNotes || []).forEach(n => {
+      const extra = edits[n.meetingId] || '';
+      html += `
+        <details class="ctrl-meeting">
+          <summary>
+            <span class="m-num">M${n.meetingId}</span>
+            <span class="m-date">${formatDate(n.date)}</span>
+            <span class="m-focus">${n.title}</span>
+          </summary>
+          <div class="m-body">
+            <p><strong>Chair talking points</strong></p>
+            <ul>${n.notes.map(x => `<li>${x}</li>`).join('')}</ul>
+            <p><strong>Decisions needed</strong></p>
+            <ul>${n.decisionsNeeded.map(x => `<li>${x}</li>`).join('')}</ul>
+            <label style="display:block;margin-top:0.75rem;font-weight:600;font-size:0.85rem">Your notes for this meeting</label>
+            <textarea class="chair-note-edit" data-mid="${n.meetingId}" rows="3" style="width:100%;margin-top:0.35rem;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-family:inherit">${escapeHtml(extra)}</textarea>
+          </div>
+        </details>`;
+    });
+    container.innerHTML = html;
+    container.querySelectorAll('.chair-note-edit').forEach(ta => {
+      ta.addEventListener('input', () => {
+        const edits = (() => { try { return JSON.parse(localStorage.getItem(CHAIR_NOTES_KEY) || '{}'); } catch { return {}; } })();
+        edits[ta.dataset.mid] = ta.value;
+        localStorage.setItem(CHAIR_NOTES_KEY, JSON.stringify(edits));
+      });
+    });
+  }
+
   function renderAll() {
     renderDashboard();
     renderChecklist();
@@ -358,6 +510,8 @@
     renderRunsheet();
     renderRoles();
     renderTargets();
+    renderDeadlines();
+    renderChairNotes();
     renderNotes();
     initControlTabs();
   }

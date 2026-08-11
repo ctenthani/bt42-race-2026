@@ -15,6 +15,11 @@
       el.classList.toggle('active', el.dataset.page === pageId);
     });
     document.getElementById('nav')?.classList.remove('open');
+
+    // Initialise Control Room when that page is shown
+    if (pageId === 'control' && window.BT42Control) {
+      window.BT42Control.init();
+    }
   }
 
   window.navigate = navigate;
@@ -72,8 +77,7 @@
   setInterval(updateCountdown, 1000);
 
   // ---- Registration form ----
-  // Works with Netlify Forms. On success we still show the in-page message.
-  // If the form posts to Netlify, the page may reload; we also support client-side fallback.
+  // Works with Netlify Forms. Shows success panel after submit.
   window.handleRegister = function (e) {
     const form = document.getElementById('regForm');
     if (!form.checkValidity()) {
@@ -82,27 +86,11 @@
       return false;
     }
 
-    // If running on Netlify, allow the normal POST (data-netlify="true")
-    // We intercept only to show a smoother UX when possible.
-    const isNetlify = window.location.hostname.includes('netlify') || 
-                      window.location.hostname.includes('localhost') === false;
-
-    // Always prevent default for now so we can show the success panel.
-    // Netlify Forms will still receive the data via fetch below when live.
     e.preventDefault();
 
     const formData = new FormData(form);
 
-    // Try to submit to Netlify Forms endpoint when deployed
-    const submitToNetlify = () => {
-      return fetch('/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams(formData).toString()
-      });
-    };
-
-    // Also keep a local copy for admin offline use
+    // Also keep a local copy for offline/admin use
     try {
       const data = Object.fromEntries(formData.entries());
       data.submittedAt = new Date().toISOString();
@@ -113,14 +101,18 @@
       console.warn('localStorage save failed', err);
     }
 
-    // Attempt Netlify submission (works once the site is on Netlify)
-    submitToNetlify()
+    // Submit to Netlify Forms when deployed
+    fetch('/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams(formData).toString()
+    })
       .then(() => {
         showSuccess();
         form.reset();
       })
       .catch(() => {
-        // Still show success — data is at least in localStorage / will be retried
+        // Still show success — data is at least in localStorage
         showSuccess();
         form.reset();
       });
@@ -138,12 +130,3 @@
 
   console.log('BT42.195 Race App — launch ready');
 })();
-
-  // Initialise Control Room when that page is shown
-  const origNavigate = window.navigate;
-  window.navigate = function (pageId) {
-    origNavigate(pageId);
-    if (pageId === 'control' && window.BT42Control) {
-      window.BT42Control.init();
-    }
-  };
