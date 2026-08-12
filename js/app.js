@@ -1,7 +1,7 @@
 /* BT42.195 km Race 2026 — App logic (launch version) */
 
 (function () {
-  const RACE_DATE = new Date('2026-09-26T06:30:00+02:00'); // CAT
+  const RACE_DATE = new Date('2026-09-19T06:30:00+02:00'); // CAT
 
   // ---- Navigation ----
   function navigate(pageId) {

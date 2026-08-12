@@ -434,6 +434,38 @@
     });
   }
 
+
+  function renderParticipants() {
+    const container = $('#ctrl-participants');
+    if (!container) return;
+    let rows = [];
+    try {
+      rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+    } catch { rows = []; }
+
+    if (!rows.length) {
+      container.innerHTML = `<p style="color:var(--text-muted)">No local registrations on this device yet. After Netlify deploy, open <strong>Forms → bt42-registration</strong> for the full list. Submissions from this browser also appear here.</p>`;
+      return;
+    }
+
+    let html = `<p style="font-size:0.85rem;margin-bottom:0.75rem"><strong>${rows.length}</strong> local submission(s) on this device</p>
+      <div class="sponsor-table-wrap"><table class="ctrl-table">
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Gender</th><th>Submitted</th></tr></thead><tbody>`;
+    rows.forEach((r, i) => {
+      const when = r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '—';
+      html += `<tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(r.fullName || '')}</td>
+        <td>${escapeHtml(r.phone || '')}</td>
+        <td>${escapeHtml(r.distance || '')}</td>
+        <td>${escapeHtml(r.gender || '')}</td>
+        <td><small>${when}</small></td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+  }
+
   function renderDeadlines() {
     const container = $('#ctrl-deadlines');
     if (!container) return;
@@ -510,6 +542,7 @@
     renderRunsheet();
     renderRoles();
     renderTargets();
+    renderParticipants();
     renderDeadlines();
     renderChairNotes();
     renderNotes();
