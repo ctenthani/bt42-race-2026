@@ -11,6 +11,8 @@
   const DASH_KEY = 'bt42_dashboard_metrics';
   const DEADLINE_KEY = 'bt42_deadline_status';
   const CHAIR_NOTES_KEY = 'bt42_chair_meeting_notes_edits';
+  const BUDGET_KEY = 'bt42_budget_edits';
+  const ROLES_KEY = 'bt42_roles_edits';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -381,41 +383,109 @@
     });
   }
 
-  // ---------- Budget ----------
+  // ---------- Budget (tentative; Chair-editable) ----------
+  function loadBudget() {
+    const base = JSON.parse(JSON.stringify(window.BT42_DATA.budget));
+    try {
+      const saved = JSON.parse(localStorage.getItem(BUDGET_KEY) || 'null');
+      if (saved && saved.expenditure && saved.income) return saved;
+    } catch {}
+    return base;
+  }
+
+  function saveBudget(obj) {
+    localStorage.setItem(BUDGET_KEY, JSON.stringify(obj));
+  }
+
   function renderBudget() {
     const container = $('#ctrl-budget');
     if (!container) return;
-    const exp = window.BT42_DATA.budget.expenditure;
-    const inc = window.BT42_DATA.budget.income;
-    const totalExp = exp.reduce((s, r) => s + r.est, 0);
-    const totalInc = inc.reduce((s, r) => s + r.target, 0);
+    const budget = loadBudget();
+    const exp = budget.expenditure;
+    const inc = budget.income;
+    const totalExp = exp.reduce((s, r) => s + (Number(r.est) || 0), 0);
+    const totalInc = inc.reduce((s, r) => s + (Number(r.target) || 0), 0);
+    const editable = isChair;
 
-    let html = `<div class="budget-grid">
+    let html = `<div class="budget-badge-row"><span class="tentative-badge">Tentative</span>${editable ? '<span class="edit-hint">Chair can edit amounts below</span>' : '<span class="edit-hint">View only — ask Chair to update figures</span>'}</div>
+    <div class="budget-grid">
       <div>
         <h4>Estimated Expenditure</h4>
         <table class="ctrl-table">
-          <thead><tr><th>Category</th><th>Item</th><th class="num">Estimate</th></tr></thead>
+          <thead><tr><th>Category</th><th>Item</th><th class="num">Estimate (MK)</th></tr></thead>
           <tbody>`;
-    exp.forEach(r => {
-      html += `<tr><td>${r.cat}</td><td>${r.item}</td><td class="num">${formatMoney(r.est)}</td></tr>`;
+    exp.forEach((r, i) => {
+      if (editable) {
+        html += `<tr>
+          <td>${escapeHtml(r.cat)}</td>
+          <td>${escapeHtml(r.item)}</td>
+          <td class="num"><input type="number" class="budget-input exp-input" data-i="${i}" value="${Number(r.est) || 0}" min="0" step="10000" /></td>
+        </tr>`;
+      } else {
+        html += `<tr><td>${escapeHtml(r.cat)}</td><td>${escapeHtml(r.item)}</td><td class="num">${formatMoney(r.est)}</td></tr>`;
+      }
     });
-    html += `<tr class="total-row"><td colspan="2"><strong>Total</strong></td><td class="num"><strong>${formatMoney(totalExp)}</strong></td></tr>
+    html += `<tr class="total-row"><td colspan="2"><strong>Total (tentative)</strong></td><td class="num"><strong id="budget-exp-total">${formatMoney(totalExp)}</strong></td></tr>
         </tbody></table>
       </div>
       <div>
         <h4>Income Targets</h4>
         <table class="ctrl-table">
-          <thead><tr><th>Source</th><th class="num">Target</th></tr></thead>
+          <thead><tr><th>Source</th><th class="num">Target (MK)</th></tr></thead>
           <tbody>`;
-    inc.forEach(r => {
-      html += `<tr><td>${r.item}</td><td class="num">${formatMoney(r.target)}</td></tr>`;
+    inc.forEach((r, i) => {
+      if (editable) {
+        html += `<tr>
+          <td>${escapeHtml(r.item)}</td>
+          <td class="num"><input type="number" class="budget-input inc-input" data-i="${i}" value="${Number(r.target) || 0}" min="0" step="10000" /></td>
+        </tr>`;
+      } else {
+        html += `<tr><td>${escapeHtml(r.item)}</td><td class="num">${formatMoney(r.target)}</td></tr>`;
+      }
     });
-    html += `<tr class="total-row"><td><strong>Total Target</strong></td><td class="num"><strong>${formatMoney(totalInc)}</strong></td></tr>
+    html += `<tr class="total-row"><td><strong>Total target (tentative)</strong></td><td class="num"><strong id="budget-inc-total">${formatMoney(totalInc)}</strong></td></tr>
         </tbody></table>
-        <p class="budget-note">Surplus target: <strong>${formatMoney(totalInc - totalExp)}</strong>. Update with real quotes as they arrive.</p>
+        <p class="budget-note">Surplus target: <strong id="budget-surplus">${formatMoney(totalInc - totalExp)}</strong>. Figures remain tentative until confirmed.</p>
       </div>
     </div>`;
+    if (editable) {
+      html += `<button type="button" class="btn btn-primary" id="budget-save-btn" style="margin-top:0.75rem">Save budget edits</button>
+        <button type="button" class="btn btn-ghost" id="budget-reset-btn" style="margin-top:0.75rem;margin-left:0.5rem">Reset to defaults</button>
+        <p id="budget-save-msg" style="font-size:0.8rem;color:var(--accent);margin-top:0.5rem;display:none">Budget saved on this device.</p>`;
+    }
     container.innerHTML = html;
+
+    if (editable) {
+      const recalc = () => {
+        const b = loadBudget();
+        container.querySelectorAll('.exp-input').forEach(inp => {
+          b.expenditure[Number(inp.dataset.i)].est = Number(inp.value) || 0;
+        });
+        container.querySelectorAll('.inc-input').forEach(inp => {
+          b.income[Number(inp.dataset.i)].target = Number(inp.value) || 0;
+        });
+        const te = b.expenditure.reduce((s, r) => s + (Number(r.est) || 0), 0);
+        const ti = b.income.reduce((s, r) => s + (Number(r.target) || 0), 0);
+        const elE = $('#budget-exp-total'); if (elE) elE.textContent = formatMoney(te);
+        const elI = $('#budget-inc-total'); if (elI) elI.textContent = formatMoney(ti);
+        const elS = $('#budget-surplus'); if (elS) elS.textContent = formatMoney(ti - te);
+        return b;
+      };
+      container.querySelectorAll('.budget-input').forEach(inp => {
+        inp.addEventListener('input', recalc);
+      });
+      const saveBtn = $('#budget-save-btn');
+      if (saveBtn) saveBtn.onclick = () => {
+        saveBudget(recalc());
+        const msg = $('#budget-save-msg');
+        if (msg) { msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 1800); }
+      };
+      const resetBtn = $('#budget-reset-btn');
+      if (resetBtn) resetBtn.onclick = () => {
+        localStorage.removeItem(BUDGET_KEY);
+        renderBudget();
+      };
+    }
   }
 
   // ---------- Run sheet ----------
@@ -434,21 +504,54 @@
     container.innerHTML = html;
   }
 
-  // ---------- Roles ----------
+  // ---------- Roles (Chair can assign names) ----------
+  function loadRoles() {
+    const base = window.BT42_DATA.roles.map(r => Object.assign({}, r));
+    try {
+      const saved = JSON.parse(localStorage.getItem(ROLES_KEY) || 'null');
+      if (Array.isArray(saved) && saved.length) {
+        return base.map((r, i) => Object.assign({}, r, saved[i] || {}));
+      }
+    } catch {}
+    return base;
+  }
+
+  function saveRoles(arr) {
+    localStorage.setItem(ROLES_KEY, JSON.stringify(arr));
+  }
+
   function renderRoles() {
     const container = $('#ctrl-roles');
     if (!container) return;
-    let html = `<table class="ctrl-table">
-      <thead><tr><th>Role</th><th>Name</th><th>Responsibilities</th></tr></thead><tbody>`;
-    window.BT42_DATA.roles.forEach(r => {
-      html += `<tr>
-        <td><strong>${r.role}</strong></td>
-        <td>${r.name || '<em>TBC</em>'}</td>
-        <td>${r.responsibilities}</td>
-      </tr>`;
+    const roles = loadRoles();
+    const editable = isChair;
+    let html = `<p class="form-note" style="margin-bottom:0.75rem">${editable ? 'Chair can assign names to each role. Saved on this device.' : 'Role names are maintained by the Chair.'}</p>`;
+    roles.forEach((r, i) => {
+      html += `<div class="role-card">
+        <div class="role-title">${escapeHtml(r.role)}</div>
+        <div class="role-name">${editable
+          ? `<input type="text" class="role-name-input" data-i="${i}" value="${escapeHtml(r.name || '')}" placeholder="Name TBD" />`
+          : escapeHtml(r.name || 'TBD')}</div>
+        <div class="role-resp">${escapeHtml(r.responsibilities)}</div>
+      </div>`;
     });
-    html += '</tbody></table>';
+    if (editable) {
+      html += `<button type="button" class="btn btn-primary" id="roles-save-btn" style="margin-top:0.75rem">Save role assignments</button>
+        <p id="roles-save-msg" style="font-size:0.8rem;color:var(--accent);margin-top:0.5rem;display:none">Saved.</p>`;
+    }
     container.innerHTML = html;
+    if (editable) {
+      const btn = $('#roles-save-btn');
+      if (btn) btn.onclick = () => {
+        const next = loadRoles();
+        container.querySelectorAll('.role-name-input').forEach(inp => {
+          next[Number(inp.dataset.i)].name = inp.value.trim();
+        });
+        saveRoles(next);
+        const msg = $('#roles-save-msg');
+        if (msg) { msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 1500); }
+      };
+    }
   }
 
   // ---------- Success metrics ----------

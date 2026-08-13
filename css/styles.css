@@ -1231,3 +1231,46 @@ img { max-width: 100%; display: block; }
   color: var(--text-muted);
 }
 .btn-logout:hover { border-color: var(--primary); color: var(--primary); }
+
+
+.budget-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.tentative-badge {
+  display: inline-block;
+  background: #FCF3CF;
+  color: #7D6608;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+}
+.edit-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.budget-input {
+  width: 100%;
+  max-width: 140px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-align: right;
+}
+.role-name-input {
+  width: 100%;
+  max-width: 280px;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.95rem;
+}

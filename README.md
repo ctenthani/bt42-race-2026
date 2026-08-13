@@ -28,7 +28,6 @@ Interactive version of the full project planner:
 - **Notes** — local scratch pad
 
 **Access:** Click **⚙️ OC** (bottom-right) or go to `#control`.  
-**Default PIN:** `bt42oc` (change in `js/control.js` if desired).
 
 ---
 
@@ -67,7 +66,6 @@ Site settings → Domain management.
 ```bash
 python3 -m http.server 8080
 # Open http://localhost:8080
-# Control Room: http://localhost:8080/#control  (PIN: bt42oc)
 ```
 
 ---
