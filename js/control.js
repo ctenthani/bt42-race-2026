@@ -1,7 +1,10 @@
 /* BT42.195 km Race 2026 — Control Room logic */
 
 (function () {
-  const PIN = 'bt42oc'; // CHAIR ONLY — do not share
+  // Committee PIN = shared planner. Chair PIN = shared planner + Chair notes.
+  const COMMITTEE_PIN = 'bt42oc';
+  const CHAIR_PIN = 'bt42chair';
+
   const STORAGE_KEY = 'bt42_checklist_status';
   const SPONSOR_KEY = 'bt42_sponsor_status';
   const NOTES_KEY = 'bt42_control_notes';
@@ -10,6 +13,7 @@
   const CHAIR_NOTES_KEY = 'bt42_chair_meeting_notes_edits';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
+  let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
@@ -22,25 +26,73 @@
     if (room) room.classList.add('hidden');
   }
 
-  function unlock() {
+  function applyRoleUI() {
+    // Chair notes tab & panel: chair only
+    $$('.ctrl-tab[data-panel="chair"], #panel-chair').forEach(el => {
+      if (isChair) el.classList.remove('chair-only-hidden');
+      else el.classList.add('chair-only-hidden');
+    });
+    // Chair-editable metrics block
+    const dashEdit = $('#ctrl-dash-edit');
+    if (dashEdit) {
+      if (isChair) dashEdit.classList.remove('chair-only-hidden');
+      else dashEdit.classList.add('chair-only-hidden');
+    }
+    const badge = $('#ctrl-role-badge');
+    if (badge) {
+      badge.textContent = isChair ? 'Signed in as Chair' : 'Signed in as Committee';
+      badge.className = isChair ? 'role-badge chair' : 'role-badge committee';
+    }
+    // If non-chair is on chair panel, switch to dashboard
+    if (!isChair) {
+      const chairPanel = $('#panel-chair');
+      if (chairPanel && chairPanel.classList.contains('active')) {
+        $$('.ctrl-tab').forEach(t => t.classList.remove('active'));
+        $$('.ctrl-panel').forEach(p => p.classList.remove('active'));
+        const dashTab = $('.ctrl-tab[data-panel="dash"]');
+        const dashPanel = $('#panel-dash');
+        if (dashTab) dashTab.classList.add('active');
+        if (dashPanel) dashPanel.classList.add('active');
+      }
+    }
+  }
+
+  function unlock(role) {
     unlocked = true;
+    isChair = role === 'chair';
     sessionStorage.setItem('bt42_control_unlocked', '1');
+    sessionStorage.setItem('bt42_control_role', isChair ? 'chair' : 'committee');
     const gate = $('#control-gate');
     const room = $('#control-room');
     if (gate) gate.classList.add('hidden');
     if (room) room.classList.remove('hidden');
     renderAll();
+    applyRoleUI();
   }
 
   function tryUnlock(e) {
     e.preventDefault();
     const input = $('#control-pin');
-    if (input && input.value.trim().toLowerCase() === PIN) {
-      unlock();
+    if (!input) return;
+    const val = input.value.trim().toLowerCase();
+    if (val === CHAIR_PIN) {
+      unlock('chair');
+    } else if (val === COMMITTEE_PIN) {
+      unlock('committee');
     } else {
-      alert('Incorrect PIN. Chair access only.');
-      if (input) input.value = '';
+      alert('Incorrect password. Use the committee password, or the Chair password for Chair-only notes.');
+      input.value = '';
     }
+  }
+
+  function logoutControl() {
+    sessionStorage.removeItem('bt42_control_unlocked');
+    sessionStorage.removeItem('bt42_control_role');
+    unlocked = false;
+    isChair = false;
+    showGate();
+    const input = $('#control-pin');
+    if (input) input.value = '';
   }
 
   // ---------- Status persistence ----------
@@ -544,24 +596,31 @@
     renderTargets();
     renderParticipants();
     renderDeadlines();
-    renderChairNotes();
+    if (isChair) renderChairNotes();
     renderNotes();
     initControlTabs();
+    applyRoleUI();
   }
 
   // ---------- Public API for main app ----------
   window.BT42Control = {
     init() {
       const form = $('#control-pin-form');
-      if (form) form.addEventListener('submit', tryUnlock);
+      if (form) {
+        form.removeEventListener('submit', tryUnlock);
+        form.addEventListener('submit', tryUnlock);
+      }
+      const logoutBtn = $('#ctrl-logout');
+      if (logoutBtn) logoutBtn.onclick = logoutControl;
 
       if (unlocked) {
-        unlock();
+        unlock(isChair ? 'chair' : 'committee');
       } else {
         showGate();
       }
     },
     unlock,
+    logout: logoutControl,
     renderAll
   };
 })();

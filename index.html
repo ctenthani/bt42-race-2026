@@ -17,7 +17,7 @@
 <body>
   <!-- App Shell -->
   <div id="app">
-    <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="Chair Control Room only">🔒 Chair</button>
+    <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="Committee Control Room">📋 Control</button>
     <!-- Header -->
     <header class="header" id="header">
       <div class="header-inner">
@@ -35,7 +35,7 @@
           <a href="#course" data-page="course">Course</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
           <a href="#info" data-page="info">Info</a>
-          <a href="#control" data-page="control" class="nav-control" style="opacity:0.5;font-size:0.85em">Chair</a>
+          <a href="#control" data-page="control" class="nav-control">Control</a>
         </nav>
       </div>
     </header>
@@ -435,25 +435,34 @@
       <section id="page-control" class="page">
         <div class="page-header">
           <div class="container">
-            <h1>Chair Control Room</h1>
-            <p>Chair-only · Editable metrics · Deadlines · Meeting notes</p>
+            <h1>Committee Control Room</h1>
+            <p>Shared planner for the OC · Chair notes private to the Chair</p>
           </div>
         </div>
 
         <div class="container section">
           <!-- PIN Gate -->
           <div id="control-gate" class="control-gate">
-            <h2>Chair access only</h2>
-            <p>This area is restricted to the Chair. Enter your PIN to open the control room, edit metrics, and use meeting notes.</p>
+            <h2>Committee Control Room</h2>
+            <p>Enter the <strong>committee password</strong> to open the shared planner (checklist, deadlines, sponsors, participants, budget, race day).</p>
+            <p style="font-size:0.9rem;color:var(--text-muted)">Chair password unlocks the same planner <em>plus</em> private Chair meeting notes and editable metrics.</p>
             <form id="control-pin-form">
-              <input type="password" id="control-pin" placeholder="PIN" autocomplete="off" />
+              <input type="password" id="control-pin" placeholder="Password" autocomplete="off" />
               <button type="submit" class="btn btn-primary btn-block">Enter Control Room</button>
             </form>
-            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Default Chair PIN: <code>bt42oc</code> — change in <code>js/control.js</code> and do not share outside Chair leadership.</p>
+            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.75;text-align:left">
+              Committee: <code>bt42oc</code><br>
+              Chair only: <code>bt42chair</code><br>
+              Change both in <code>js/control.js</code> before sharing widely.
+            </p>
           </div>
 
           <!-- Control Room content -->
           <div id="control-room" class="control-room hidden">
+            <div class="ctrl-toolbar">
+              <span id="ctrl-role-badge" class="role-badge committee">Signed in</span>
+              <button type="button" id="ctrl-logout" class="btn-logout">Log out</button>
+            </div>
             <div class="ctrl-tabs">
               <button class="ctrl-tab active" data-panel="dash">Dashboard</button>
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
