@@ -120,3 +120,26 @@ Payment verification remains **Chair only** on the server.
    - Create a free bin at https://jsonbin.io
    - Set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` in Netlify env
    - Redeploy — sync will use JSONBin automatically
+
+
+### Recommended: JSONBin (works when Blobs is not configured)
+
+1. Create account at https://jsonbin.io  
+2. Create a bin with content `{}`  
+3. Copy Bin ID and API Master Key  
+4. Netlify → Environment variables:
+   - `JSONBIN_BIN_ID` = your bin id  
+   - `JSONBIN_API_KEY` = your master key  
+5. Also keep `OC_SYNC_TOKEN` set  
+6. **Trigger deploy**  
+7. On site: Control → Save token → **Push** / **Pull**
+
+### Alternative: Netlify Blobs with manual credentials
+
+If you prefer Blobs only:
+
+1. Site settings → general → copy **Site ID** → `NETLIFY_SITE_ID`  
+2. User settings → Applications → Personal access tokens → create token → `NETLIFY_AUTH_TOKEN`  
+3. Redeploy  
+
+The function passes `siteID` + `token` into `getStore()` automatically when those env vars exist.

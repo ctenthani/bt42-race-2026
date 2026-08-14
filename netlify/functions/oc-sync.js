@@ -1,6 +1,6 @@
 /**
  * Shared OC data sync
- * Primary: Netlify Blobs | Fallback: JSONBin.io (JSONBIN_BIN_ID + JSONBIN_API_KEY)
+ * Tries Netlify Blobs (with explicit siteID/token), then JSONBin.io fallback.
  */
 
 const STORE_NAME = 'bt42-oc-sync';
@@ -54,14 +54,53 @@ function assertAuth(event) {
     };
   }
   if (token !== expected) {
-    return { ok: false, response: json(401, { ok: false, error: 'Unauthorized — check OC_SYNC_TOKEN on this device' }) };
+    return {
+      ok: false,
+      response: json(401, { ok: false, error: 'Unauthorized — check OC_SYNC_TOKEN on this device' })
+    };
   }
   return { ok: true };
 }
 
+function blobStoreOptions() {
+  const siteID =
+    process.env.NETLIFY_SITE_ID ||
+    process.env.SITE_ID ||
+    process.env.BLOBS_SITE_ID ||
+    '';
+  const token =
+    process.env.NETLIFY_BLOBS_TOKEN ||
+    process.env.NETLIFY_AUTH_TOKEN ||
+    process.env.BLOBS_TOKEN ||
+    '';
+
+  const opts = { name: STORE_NAME, consistency: 'strong' };
+  // Supply manual credentials when auto context is missing (common on some deploys)
+  if (siteID && token) {
+    opts.siteID = siteID;
+    opts.token = token;
+  }
+  return { opts, siteID: !!siteID, token: !!token };
+}
+
 async function blobsRead() {
   const { getStore } = require('@netlify/blobs');
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+  const { opts, siteID, token } = blobStoreOptions();
+  if (!siteID || !token) {
+    // Still try default context first
+    try {
+      const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+      const raw = await store.get(STATE_KEY, { type: 'json' });
+      if (!raw || typeof raw !== 'object') return emptyState();
+      return Object.assign(emptyState(), raw);
+    } catch (e) {
+      throw new Error(
+        (e && e.message ? e.message : String(e)) +
+          ' — Set NETLIFY_SITE_ID and NETLIFY_AUTH_TOKEN (or NETLIFY_BLOBS_TOKEN) in Netlify env, or use JSONBin fallback.'
+      );
+    }
+  }
+  const store = getStore(opts);
   const raw = await store.get(STATE_KEY, { type: 'json' });
   if (!raw || typeof raw !== 'object') return emptyState();
   return Object.assign(emptyState(), raw);
@@ -69,7 +108,20 @@ async function blobsRead() {
 
 async function blobsWrite(state) {
   const { getStore } = require('@netlify/blobs');
-  const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+  const { opts, siteID, token } = blobStoreOptions();
+  if (!siteID || !token) {
+    try {
+      const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+      await store.setJSON(STATE_KEY, state);
+      return;
+    } catch (e) {
+      throw new Error(
+        (e && e.message ? e.message : String(e)) +
+          ' — Set NETLIFY_SITE_ID and NETLIFY_AUTH_TOKEN in Netlify env, or use JSONBin fallback.'
+      );
+    }
+  }
+  const store = getStore(opts);
   await store.setJSON(STATE_KEY, state);
 }
 
@@ -106,12 +158,8 @@ async function jsonbinWrite(state) {
 }
 
 async function readState() {
+  // Prefer JSONBin when configured — most reliable on all plans
   const errors = [];
-  try {
-    return { state: await blobsRead(), backend: 'blobs' };
-  } catch (e) {
-    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
-  }
   if (jsonbinConfigured()) {
     try {
       return { state: await jsonbinRead(), backend: 'jsonbin' };
@@ -119,17 +167,19 @@ async function readState() {
       errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
     }
   }
-  throw new Error(errors.join(' | ') || 'No storage backend available');
+  try {
+    return { state: await blobsRead(), backend: 'blobs' };
+  } catch (e) {
+    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  }
+  throw new Error(
+    errors.join(' | ') ||
+      'No storage backend. Easiest fix: create a free bin at jsonbin.io and set JSONBIN_BIN_ID + JSONBIN_API_KEY on Netlify.'
+  );
 }
 
 async function writeState(state) {
   const errors = [];
-  try {
-    await blobsWrite(state);
-    return 'blobs';
-  } catch (e) {
-    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
-  }
   if (jsonbinConfigured()) {
     try {
       await jsonbinWrite(state);
@@ -138,7 +188,16 @@ async function writeState(state) {
       errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
     }
   }
-  throw new Error(errors.join(' | ') || 'No storage backend available');
+  try {
+    await blobsWrite(state);
+    return 'blobs';
+  } catch (e) {
+    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  }
+  throw new Error(
+    errors.join(' | ') ||
+      'No storage backend. Set JSONBIN_BIN_ID + JSONBIN_API_KEY (recommended) or NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN for Blobs.'
+  );
 }
 
 function mergeState(current, body, role) {
@@ -236,7 +295,7 @@ exports.handler = async (event) => {
       error: 'Storage unavailable',
       detail,
       hint:
-        'Redeploy with build command npm install. Set OC_SYNC_TOKEN. If Blobs still fails, add JSONBIN_BIN_ID and JSONBIN_API_KEY from jsonbin.io.'
+        'Recommended: set JSONBIN_BIN_ID + JSONBIN_API_KEY (free at jsonbin.io). Or set NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN for Blobs.'
     });
   }
 };
