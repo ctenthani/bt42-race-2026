@@ -203,17 +203,36 @@ async function writeState(state) {
 function mergeState(current, body, role) {
   const next = Object.assign({}, current);
   if (Array.isArray(body.registrations)) {
-    const keyOf = (r) =>
-      String(r.phone || '').replace(/\s+/g, '').toLowerCase() +
-      '|' +
-      String(r.fullName || '').trim().toLowerCase();
-    const map = new Map();
-    (current.registrations || []).forEach((r) => map.set(keyOf(r), r));
-    body.registrations.forEach((r) => {
-      const k = keyOf(r);
-      map.set(k, Object.assign({}, map.get(k) || {}, r));
-    });
-    next.registrations = Array.from(map.values());
+    if (body.replaceRegistrations || body.registrations.length === 0) {
+      // Full replace (clear all or explicit replace) — Chair should send replaceRegistrations: true
+      next.registrations = body.registrations;
+    } else {
+      const keyOf = (r) =>
+        String(r.phone || '').replace(/\s+/g, '').toLowerCase() +
+        '|' +
+        String(r.fullName || '').trim().toLowerCase();
+      const map = new Map();
+      (current.registrations || []).forEach((r) => map.set(keyOf(r), r));
+      body.registrations.forEach((r) => {
+        const k = keyOf(r);
+        map.set(k, Object.assign({}, map.get(k) || {}, r));
+      });
+      next.registrations = Array.from(map.values());
+    }
+  }
+  if (body.replacePayments && body.payments && typeof body.payments === 'object') {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can replace payments');
+      e.status = 403;
+      throw e;
+    }
+    next.payments = body.payments;
+  }
+  if (body.replaceBibs && body.bibs && typeof body.bibs === 'object') {
+    next.bibs = body.bibs;
+  }
+  if (body.replaceFinishes && body.finishes && typeof body.finishes === 'object') {
+    next.finishes = body.finishes;
   }
   if (body.payments && typeof body.payments === 'object') {
     if (role !== 'chair') {

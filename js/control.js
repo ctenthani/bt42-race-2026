@@ -938,9 +938,12 @@
     const verified = rows.filter((r, i) => (pays[participantKey(r, i)] || {}).status === 'verified').length;
     const finished = rows.filter((r, i) => (finishes[participantKey(r, i)] || {}).status === 'finished').length;
 
-    html += `<p style="font-size:0.85rem;margin:0.75rem 0"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
+    html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;margin:0.75rem 0">
+        <p style="font-size:0.85rem;margin:0"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
+        ${isChair ? '<button type="button" class="btn-mini" id="clear-all-entries" style="border-color:#C0392B;color:#C0392B">Clear all entries</button>' : ''}
+      </div>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th></tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th>${isChair ? '<th></th>' : ''}</tr></thead><tbody>`;
 
     rows.forEach((r, i) => {
       const key = participantKey(r, i);
@@ -980,12 +983,76 @@
           <button type="button" class="btn-mini pay-cert" data-i="${i}" data-type="participation" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Entry cert</button>
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
         </td>
+        ${isChair ? '<td class="actions-cell"><button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button></td>' : ''}
       </tr>`;
     });
     html += '</tbody></table></div>';
     container.innerHTML = html;
     wireSigUploads();
     renderSigPreviews();
+
+
+    const clearAllBtn = $('#clear-all-entries');
+    if (clearAllBtn) {
+      clearAllBtn.onclick = async () => {
+        if (!isChair) { alert('Only the Chair can clear entries.'); return; }
+        if (!confirm('Delete ALL race entries on this device and push empty list to shared sync? This cannot be undone.')) return;
+        localStorage.setItem('bt42_registrations', '[]');
+        savePayments({});
+        saveBibs({});
+        saveFinishes({});
+        if (getSyncToken()) {
+          const r = await pushSharedState({
+            registrations: [],
+            replaceRegistrations: true,
+            payments: {},
+            replacePayments: true,
+            bibs: {},
+            replaceBibs: true,
+            finishes: {},
+            replaceFinishes: true
+          });
+          if (!r.ok) alert('Local entries cleared, but sync push failed: ' + r.error);
+          else alert('All entries cleared and synced.');
+        } else {
+          alert('All local entries cleared. Set sync token and Push if other devices should clear too.');
+        }
+        renderParticipants();
+        renderDashboard();
+      };
+    }
+
+    container.querySelectorAll('.entry-delete').forEach(btn => {
+      btn.onclick = async () => {
+        if (!isChair) { alert('Only the Chair can delete entries.'); return; }
+        const i = Number(btn.dataset.i);
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+        const r = list[i];
+        if (!r) return;
+        if (!confirm('Delete entry for ' + (r.fullName || 'this athlete') + '?')) return;
+        const key = participantKey(r, i);
+        const next = list.filter((_, idx) => idx !== i);
+        localStorage.setItem('bt42_registrations', JSON.stringify(next));
+        const pays = loadPayments(); delete pays[key]; savePayments(pays);
+        const bibsMap = loadBibs(); delete bibsMap[key]; saveBibs(bibsMap);
+        const fins = loadFinishes(); delete fins[key]; saveFinishes(fins);
+        if (getSyncToken()) {
+          await pushSharedState({
+            registrations: next,
+            replaceRegistrations: true,
+            payments: pays,
+            replacePayments: true,
+            bibs: bibsMap,
+            replaceBibs: true,
+            finishes: fins,
+            replaceFinishes: true
+          }).catch(() => {});
+        }
+        renderParticipants();
+        renderDashboard();
+      };
+    });
 
     container.querySelectorAll('.bib-assign').forEach(btn => {
       btn.onclick = () => {
