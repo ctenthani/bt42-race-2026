@@ -742,7 +742,7 @@
 
     let html = `<div class="notice" style="margin-bottom:1rem">
       <strong>Payment · Finish · Certificates</strong><br>
-      Pay channels: TNM Mpamba <code>500204</code> / NBM <code>1802283</code>.
+      Mpamba: dial <code>*444#</code> → <strong>4</strong> → code <code>500204</code> (amount for race appears). Bank: NBM <code>1802283</code>.
       Webhook design is in <code>docs/MPAMBA_WEBHOOK.md</code> and <code>netlify/functions/mpamba-webhook.js</code>.
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>'}
     </div>
@@ -958,7 +958,7 @@
       </div>`;
     }
 
-    const logoUrl = (location.origin && location.origin !== 'null' ? location.origin : '') + '/assets/mncs-logo.svg';
+    const logoUrl = (location.origin && location.origin !== 'null' ? location.origin : '') + '/assets/mncs-logo.png';
 
     const w = window.open('', '_blank', 'width=960,height=720');
     if (!w) {

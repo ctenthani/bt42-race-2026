@@ -8,7 +8,11 @@ This site is static on Netlify. Live auto-verification needs a small serverless 
 ## Recommended flow
 
 1. Runner registers on the website → Netlify Forms + local Control Room row.
-2. Runner pays via **TNM Mpamba code 500204** using **mobile number as reference**.
+2. Runner pays via TNM Mpamba USSD:
+   - Dial **\*444#**
+   - Select **4**
+   - Enter business code **500204**
+   - Amount for the chosen race distance is shown — confirm and pay.
 3. TNM (or payment aggregator) sends a **webhook POST** to:
    `https://YOUR-SITE.netlify.app/.netlify/functions/mpamba-webhook`
 4. Function validates shared secret, matches `msisdn` / reference to a registration, marks payment **verified**.
