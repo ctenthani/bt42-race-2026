@@ -138,20 +138,34 @@
       console.warn('localStorage save failed', err);
     }
 
-    // Submit to Netlify Forms when deployed
-    fetch('/', {
+    // 1) Shared backend (JSONBin/Blobs) so all OC devices see the entry
+    // 2) Netlify Forms backup (when deployed)
+    const shared = fetch('/.netlify/functions/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    }).then(async (res) => {
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j.ok) {
+        console.warn('Shared register failed', j);
+        return { ok: false, error: (j && (j.detail || j.error)) || res.status };
+      }
+      return { ok: true, backend: j.backend };
+    }).catch((e) => ({ ok: false, error: String(e) }));
+
+    const forms = fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams(formData).toString()
-    })
-      .then(() => {
-        showSuccess(data);
-        form.reset();
-      })
-      .catch(() => {
-        showSuccess(data);
-        form.reset();
-      });
+    }).catch(() => null);
+
+    Promise.all([shared, forms]).then(([sharedResult]) => {
+      showSuccess(data);
+      form.reset();
+      if (sharedResult && !sharedResult.ok) {
+        console.warn('Registration saved on this device only. Shared list error:', sharedResult.error);
+      }
+    });
 
     return false;
   };

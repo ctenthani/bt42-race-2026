@@ -157,9 +157,19 @@ async function jsonbinWrite(state) {
   if (!res.ok) throw new Error('JSONBin write failed: ' + res.status + ' ' + (await res.text()));
 }
 
+function blobsCredentialsReady() {
+  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || process.env.BLOBS_SITE_ID || '';
+  const token =
+    process.env.NETLIFY_BLOBS_TOKEN ||
+    process.env.NETLIFY_AUTH_TOKEN ||
+    process.env.BLOBS_TOKEN ||
+    '';
+  return !!(siteID && token);
+}
+
 async function readState() {
-  // Prefer JSONBin when configured — most reliable on all plans
   const errors = [];
+  // Prefer JSONBin when configured
   if (jsonbinConfigured()) {
     try {
       return { state: await jsonbinRead(), backend: 'jsonbin' };
@@ -167,14 +177,21 @@ async function readState() {
       errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
     }
   }
-  try {
-    return { state: await blobsRead(), backend: 'blobs' };
-  } catch (e) {
-    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  // Only attempt Blobs when siteID + token are set (avoids noisy auto-context errors)
+  if (blobsCredentialsReady()) {
+    try {
+      return { state: await blobsRead(), backend: 'blobs' };
+    } catch (e) {
+      errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+    }
+  } else {
+    errors.push(
+      'blobs: skipped (set NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN, or use JSONBin)'
+    );
   }
   throw new Error(
-    errors.join(' | ') ||
-      'No storage backend. Easiest fix: create a free bin at jsonbin.io and set JSONBIN_BIN_ID + JSONBIN_API_KEY on Netlify.'
+    errors.join(' | ') +
+      ' — Recommended: set JSONBIN_BIN_ID and JSONBIN_API_KEY on Netlify (free at jsonbin.io), then redeploy.'
   );
 }
 
@@ -188,15 +205,19 @@ async function writeState(state) {
       errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
     }
   }
-  try {
-    await blobsWrite(state);
-    return 'blobs';
-  } catch (e) {
-    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  if (blobsCredentialsReady()) {
+    try {
+      await blobsWrite(state);
+      return 'blobs';
+    } catch (e) {
+      errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+    }
+  } else {
+    errors.push('blobs: skipped (credentials not set)');
   }
   throw new Error(
-    errors.join(' | ') ||
-      'No storage backend. Set JSONBIN_BIN_ID + JSONBIN_API_KEY (recommended) or NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN for Blobs.'
+    errors.join(' | ') +
+      ' — Set JSONBIN_BIN_ID + JSONBIN_API_KEY (recommended) or NETLIFY_SITE_ID + NETLIFY_AUTH_TOKEN, then redeploy.'
   );
 }
 

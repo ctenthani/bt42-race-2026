@@ -928,7 +928,7 @@
     </div>` : ''}`;
 
     if (!rows.length) {
-      html += `<p style="color:var(--text-muted);margin-top:1rem">No local registrations yet. Use Netlify Forms for the master list; test entries on this browser appear here.</p>`;
+      html += `<p style="color:var(--text-muted);margin-top:1rem">No registrations in the shared list yet. After JSONBin is configured, entries from any phone appear here — click Pull. Local-only test entries also show until cleared.</p>`;
       container.innerHTML = html;
       wireSigUploads();
       renderSigPreviews();
