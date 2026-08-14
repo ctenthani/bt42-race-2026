@@ -180,7 +180,9 @@
             </div>
           </div>
           <div class="notice">
-            <strong>Note:</strong> Exact start times, fees, and prize amounts will be confirmed after the first Organising Committee meeting and published here. Early registration is encouraged.
+            <strong>Entry fees (MWK):</strong> Marathon 15,000 · 10 km 8,000 · 5 km 5,000.
+              Pay via TNM Mpamba: dial <code>*444#</code> → <strong>4</strong> → code <code>500204</code> (amount for your race is confirmed on your phone).
+              Bank: NBM <code>1802283</code>. Exact start times and prizes remain subject to OC confirmation.
           </div>
         </div>
       </section>
@@ -240,6 +242,7 @@
                   <option value="5">5 km Fun Run</option>
                 </select>
                 <p id="marathon-age-hint" class="form-note" style="display:none;color:#C0392B;margin-top:0.35rem"></p>
+                <p id="fee-preview" class="form-note" style="display:none;margin-top:0.35rem"></p>
               </div>
               <div class="form-group">
                 <label for="emergency">Emergency Contact Name & Phone *</label>
@@ -287,20 +290,7 @@
           <div id="regSuccess" class="success-msg hidden">
             <h3>Registration received</h3>
             <p><strong>Next step: Complete payment</strong></p>
-            <div class="pay-box">
-              <p><strong>Option 1 — TNM Mpamba</strong></p>
-              <ol style="margin:0.4rem 0 0.8rem 1.2rem;padding:0">
-                <li>Dial <code class="pay-code">*444#</code></li>
-                <li>Press <strong>4</strong></li>
-                <li>Enter code <code class="pay-code">500204</code></li>
-                <li>The amount for your chosen race appears — confirm and complete payment</li>
-              </ol>
-              <p><strong>Option 2 — National Bank of Malawi</strong><br>
-              Account number: <code class="pay-code">1802283</code><br>
-              Reference: your full name + mobile number</p>
-            </div>
-            <p>Once payment is confirmed by the organisers you will receive final confirmation and bib details closer to race day.</p>
-            <p style="font-size:0.85rem;margin-top:1rem;opacity:0.85">Keep your mobile money SMS or bank deposit slip as proof of payment.</p>
+            <div id="regSuccessDetail"></div>
             <button class="btn btn-outline" onclick="document.getElementById('regSuccess').classList.add('hidden')">Close</button>
           </div>
         </div>
@@ -525,9 +515,11 @@
             <div id="panel-participants" class="ctrl-panel">
               <h3 class="ctrl-section-title">Participants · Payment · Certificates</h3>
               <div class="notice" style="margin-bottom:1rem">
-                <strong>Entries:</strong> Netlify Forms (<code>bt42-registration</code>) is the master list after deploy; this view shows local/browser copies and verification status.<br>
-                <strong>Pay to verify:</strong> TNM Mpamba <code>500204</code> or NBM <code>1802283</code>. Mark Verified, then open Certificate (MNCS — Jim Kalua, Ivy Chinangwa).
+                <strong>Shared with all committee members:</strong> full participant list and payment/finish status.<br>
+                <strong>Chair only:</strong> Verify / Reject payment, e-signatures.<br>
+                Master list after deploy: Netlify Forms → <code>bt42-registration</code>. Pay: Mpamba <code>*444#</code> → 4 → <code>500204</code> or NBM <code>1802283</code>.
               </div>
+              <div id="ctrl-sync-bar"></div>
               <div id="ctrl-participants"></div>
             </div>
 

@@ -1404,3 +1404,65 @@ img { max-width: 100%; display: block; }
   object-fit: contain;
 }
 .sig-prev.empty { color: var(--text-muted, #888); }
+
+.mpamba-confirm-card {
+  background: #2C3E50;
+  color: #ECF0F1;
+  border-radius: 12px;
+  padding: 1.1rem 1.2rem;
+  margin: 0.75rem 0;
+  text-align: left;
+}
+.mpamba-confirm-title {
+  font-weight: 700;
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+  color: #fff;
+}
+.mpamba-steps {
+  margin: 0.4rem 0 0.8rem 1.1rem;
+  padding: 0;
+  line-height: 1.55;
+}
+.mpamba-steps code {
+  background: #1A252F;
+  color: #F9E79F;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+.mpamba-sms-preview {
+  background: #1A252F;
+  border-radius: 10px;
+  margin-top: 0.5rem;
+  padding: 0.85rem 1rem;
+}
+.sms-label { font-size: 0.78rem; opacity: 0.8; margin: 0 0 0.4rem; }
+.sms-body { margin: 0; font-size: 0.95rem; line-height: 1.45; text-align: center; }
+.post-pay-info { text-align: left; margin-top: 1rem; font-size: 0.9rem; }
+.post-pay-info ul { margin: 0.35rem 0 0 1.1rem; padding: 0; }
+
+
+.sync-bar {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border, #ddd);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.85rem;
+}
+.sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+.sync-actions input {
+  flex: 1;
+  min-width: 140px;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.85rem;
+}

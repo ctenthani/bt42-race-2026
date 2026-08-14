@@ -80,6 +80,18 @@
   // Works with Netlify Forms. Shows success panel after submit.
   const RACE_DAY_ISO = '2026-09-19'; // age calculated on race day
 
+  // Entry fees (MWK) — shown after race selection; must match Mpamba merchant setup for 500204
+  const ENTRY_FEES = {
+    '42.195': 15000,
+    '10': 8000,
+    '5': 5000
+  };
+  const FEE_LABELS = {
+    '42.195': '42.195 km Marathon',
+    '10': '10 km Race',
+    '5': '5 km Fun Run'
+  };
+
   function ageOnRaceDay(dobStr) {
     if (!dobStr) return null;
     const dob = new Date(dobStr + 'T12:00:00');
@@ -114,10 +126,11 @@
     }
 
     // Also keep a local copy for offline/admin use
+    let data = Object.fromEntries(formData.entries());
+    data.submittedAt = new Date().toISOString();
+    data.ageOnRaceDay = age;
+    data.feeMwk = ENTRY_FEES[distance] || null;
     try {
-      const data = Object.fromEntries(formData.entries());
-      data.submittedAt = new Date().toISOString();
-      data.ageOnRaceDay = age;
       const existing = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
       existing.push(data);
       localStorage.setItem('bt42_registrations', JSON.stringify(existing));
@@ -132,23 +145,84 @@
       body: new URLSearchParams(formData).toString()
     })
       .then(() => {
-        showSuccess();
+        showSuccess(data);
         form.reset();
       })
       .catch(() => {
-        showSuccess();
+        showSuccess(data);
         form.reset();
       });
 
     return false;
   };
 
-  function showSuccess() {
+  let lastReg = null;
+
+  function formatMwk(n) {
+    return Number(n).toLocaleString('en-MW') + ' MWK';
+  }
+
+  function showSuccess(reg) {
+    lastReg = reg || lastReg;
     const el = document.getElementById('regSuccess');
-    if (el) {
-      el.classList.remove('hidden');
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (!el) return;
+
+    const name = (lastReg && lastReg.fullName) || 'Athlete';
+    const distance = (lastReg && lastReg.distance) || '';
+    const fee = ENTRY_FEES[distance] || null;
+    const distLabel = FEE_LABELS[distance] || distance || 'your race';
+    const phone = (lastReg && lastReg.phone) || '';
+
+    const feeLine = fee
+      ? formatMwk(fee)
+      : 'the amount shown for your race';
+
+    const detail = document.getElementById('regSuccessDetail');
+    if (detail) {
+      detail.innerHTML = `
+        <p>Thank you, <strong>${escapeHtml(name)}</strong>. Your registration for the <strong>${escapeHtml(distLabel)}</strong> has been received.</p>
+
+        <div class="mpamba-confirm-card">
+          <p class="mpamba-confirm-title">Pay now with TNM Mpamba</p>
+          <ol class="mpamba-steps">
+            <li>Dial <code>*444#</code></li>
+            <li>Select <strong>4</strong></li>
+            <li>Enter business code <code>500204</code></li>
+            <li>Confirm amount <strong>${feeLine}</strong> for ${escapeHtml(distLabel)}</li>
+          </ol>
+          <div class="mpamba-sms-preview">
+            <p class="sms-label">You should then get a confirmation like this:</p>
+            <p class="sms-body">
+              ${escapeHtml(name)} please confirm payment of
+              <strong>${fee ? formatMwk(fee) : '… MWK'}</strong> to
+              <strong>BT42.195 KM RACE / MNCS</strong>.
+              Enter PIN to confirm or Press Cancel to Reject
+            </p>
+          </div>
+          <p class="form-note" style="margin-top:0.75rem">Alternative: National Bank of Malawi account <code>1802283</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
+        </div>
+
+        <div class="post-pay-info">
+          <p><strong>After payment</strong></p>
+          <ul>
+            <li>Keep the Mpamba SMS / bank slip as proof.</li>
+            <li>Organisers verify payment, then assign your <strong>bib number</strong>.</li>
+            <li>Bib details and packet-pickup info are sent to your phone/email once verified (closer to race week).</li>
+            <li>Certificates: entry cert after payment verification; completion cert after you finish — emailed if you provided an email and email sending is configured on the server.</li>
+          </ul>
+        </div>`;
     }
+
+    el.classList.remove('hidden');
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
   }
 
   // Live hint when marathon selected
@@ -174,7 +248,20 @@
       hint.style.display = 'none';
     }
   }
-  if (distSel) distSel.addEventListener('change', checkMarathonAgeHint);
+  function updateFeePreview() {
+    const el = document.getElementById('fee-preview');
+    if (!el || !distSel) return;
+    const d = distSel.value;
+    if (d && ENTRY_FEES[d] != null) {
+      el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay via Mpamba <code>*444#</code> → 4 → <code>500204</code>';
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+  if (distSel) {
+    distSel.addEventListener('change', () => { checkMarathonAgeHint(); updateFeePreview(); });
+  }
   if (dobInput) dobInput.addEventListener('change', checkMarathonAgeHint);
 
   console.log('BT42.195 Race App — launch ready');

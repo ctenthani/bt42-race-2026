@@ -17,6 +17,9 @@
   const PAYMENT_KEY = 'bt42_payment_status';
   const SIGS_KEY = 'bt42_esignatures';
   const FINISH_KEY = 'bt42_finish_status';
+  const BIB_KEY = 'bt42_bib_numbers';
+  const SYNC_TOKEN_KEY = 'bt42_oc_sync_token';
+  const SYNC_META_KEY = 'bt42_oc_sync_meta';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -715,6 +718,25 @@
     localStorage.setItem(FINISH_KEY, JSON.stringify(map));
   }
 
+  function loadBibs() {
+    try { return JSON.parse(localStorage.getItem(BIB_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveBibs(map) {
+    localStorage.setItem(BIB_KEY, JSON.stringify(map));
+  }
+
+  function nextBibForDistance(distance, bibs) {
+    const used = Object.values(bibs).map(b => Number(b.number)).filter(n => !isNaN(n));
+    let start = 1001;
+    if (distance === '10') start = 2001;
+    if (distance === '5') start = 3001;
+    let n = start;
+    while (used.includes(n)) n++;
+    return n;
+  }
+
   function participantKey(r, i) {
     const phone = (r.phone || '').replace(/\s+/g, '');
     const name = (r.fullName || '').trim().toLowerCase();
@@ -728,6 +750,151 @@
     return d || '—';
   }
 
+
+  // ---------- Shared backend sync (Netlify function + Blobs) ----------
+  function getSyncToken() {
+    try { return localStorage.getItem(SYNC_TOKEN_KEY) || ''; } catch { return ''; }
+  }
+
+  function setSyncToken(t) {
+    localStorage.setItem(SYNC_TOKEN_KEY, (t || '').trim());
+  }
+
+  function syncEndpoint() {
+    return '/.netlify/functions/oc-sync';
+  }
+
+  async function pullSharedState() {
+    const token = getSyncToken();
+    if (!token) return { ok: false, error: 'No sync token' };
+    const res = await fetch(syncEndpoint(), {
+      method: 'GET',
+      headers: {
+        'x-oc-token': token,
+        'x-oc-role': isChair ? 'chair' : 'committee'
+      }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: (data && data.error) || ('HTTP ' + res.status) };
+    }
+    const s = data.state || {};
+    if (Array.isArray(s.registrations) && s.registrations.length) {
+      // Merge with local
+      try {
+        const local = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+        const keyOf = (r) => String(r.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(r.fullName || '').trim().toLowerCase();
+        const map = new Map();
+        local.forEach(r => map.set(keyOf(r), r));
+        s.registrations.forEach(r => {
+          const k = keyOf(r);
+          map.set(k, Object.assign({}, map.get(k) || {}, r));
+        });
+        localStorage.setItem('bt42_registrations', JSON.stringify(Array.from(map.values())));
+      } catch (e) {}
+    }
+    if (s.payments) localStorage.setItem(PAYMENT_KEY, JSON.stringify(s.payments));
+    if (s.bibs) localStorage.setItem(BIB_KEY, JSON.stringify(s.bibs));
+    if (s.finishes) localStorage.setItem(FINISH_KEY, JSON.stringify(s.finishes));
+    if (s.attendance) localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
+    if (isChair && s.signatures && !s.signatures._presentOnly) {
+      localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
+    }
+    localStorage.setItem(SYNC_META_KEY, JSON.stringify({
+      lastPull: new Date().toISOString(),
+      updatedAt: s.updatedAt || null,
+      updatedBy: s.updatedBy || null
+    }));
+    return { ok: true, state: s };
+  }
+
+  async function pushSharedState(partial) {
+    const token = getSyncToken();
+    if (!token) return { ok: false, error: 'No sync token' };
+    const res = await fetch(syncEndpoint(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-oc-token': token,
+        'x-oc-role': isChair ? 'chair' : 'committee'
+      },
+      body: JSON.stringify(partial || {})
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) {
+      return { ok: false, error: (data && data.error) || ('HTTP ' + res.status) };
+    }
+    localStorage.setItem(SYNC_META_KEY, JSON.stringify({
+      lastPush: new Date().toISOString(),
+      updatedAt: data.state && data.state.updatedAt,
+      updatedBy: data.state && data.state.updatedBy
+    }));
+    return { ok: true, state: data.state };
+  }
+
+  async function pushAllLocal() {
+    const payload = {
+      registrations: JSON.parse(localStorage.getItem('bt42_registrations') || '[]'),
+      bibs: loadBibs(),
+      finishes: loadFinishes(),
+      attendance: loadAttendance()
+    };
+    if (isChair) {
+      payload.payments = loadPayments();
+      payload.signatures = loadSigs();
+    }
+    return pushSharedState(payload);
+  }
+
+  function renderSyncBar() {
+    const el = $('#ctrl-sync-bar');
+    if (!el) return;
+    let meta = {};
+    try { meta = JSON.parse(localStorage.getItem(SYNC_META_KEY) || '{}'); } catch {}
+    const tokenSet = !!getSyncToken();
+    el.innerHTML = `
+      <div class="sync-bar">
+        <strong>Shared sync</strong>
+        <span class="pay-status ${tokenSet ? 'pay-ok' : 'pay-wait'}">${tokenSet ? 'Token set' : 'No token'}</span>
+        ${meta.updatedAt ? '<small>Server: ' + new Date(meta.updatedAt).toLocaleString() + (meta.updatedBy ? ' · ' + meta.updatedBy : '') + '</small>' : ''}
+        <div class="sync-actions">
+          <input type="password" id="sync-token-input" placeholder="OC_SYNC_TOKEN" value="" autocomplete="off" />
+          <button type="button" class="btn-mini" id="sync-save-token">Save token</button>
+          <button type="button" class="btn-mini" id="sync-pull">Pull</button>
+          <button type="button" class="btn-mini" id="sync-push">Push</button>
+        </div>
+        <p id="sync-msg" class="form-note" style="margin:0.35rem 0 0"></p>
+      </div>`;
+    const msg = (t, ok) => {
+      const m = $('#sync-msg');
+      if (m) { m.textContent = t; m.style.color = ok ? 'var(--accent, #1E8449)' : '#C0392B'; }
+    };
+    const saveBtn = $('#sync-save-token');
+    if (saveBtn) saveBtn.onclick = () => {
+      const v = ($('#sync-token-input') || {}).value || '';
+      setSyncToken(v);
+      renderSyncBar();
+      msg(v.trim() ? 'Token saved on this device.' : 'Token cleared.', !!v.trim());
+    };
+    const pullBtn = $('#sync-pull');
+    if (pullBtn) pullBtn.onclick = async () => {
+      msg('Pulling…', true);
+      const r = await pullSharedState();
+      if (r.ok) {
+        renderAll();
+        msg('Pulled shared data.', true);
+      } else msg('Pull failed: ' + r.error, false);
+    };
+    const pushBtn = $('#sync-push');
+    if (pushBtn) pushBtn.onclick = async () => {
+      msg('Pushing…', true);
+      const r = await pushAllLocal();
+      if (r.ok) msg('Pushed to shared store.', true);
+      else msg('Push failed: ' + r.error, false);
+    };
+  }
+
+
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
@@ -737,26 +904,28 @@
     } catch { rows = []; }
     const pays = loadPayments();
     const finishes = loadFinishes();
+    const bibs = loadBibs();
     const sigs = loadSigs();
     const sigReady = !!(sigs.kalua && sigs.chinangwa && sigs.tenthani);
 
     let html = `<div class="notice" style="margin-bottom:1rem">
-      <strong>Payment · Finish · Certificates</strong><br>
-      Mpamba: dial <code>*444#</code> → <strong>4</strong> → code <code>500204</code> (amount for race appears). Bank: NBM <code>1802283</code>.
-      Webhook design is in <code>docs/MPAMBA_WEBHOOK.md</code> and <code>netlify/functions/mpamba-webhook.js</code>.
-      ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>'}
+      <strong>Participant list</strong> — visible to all committee members.<br>
+      <strong>Payment verification (Verify / Reject)</strong> — <em>Chair only</em>.
+      ${isChair ? '' : '<br><span class="pay-status pay-wait">You are signed in as Committee: payment status is view-only.</span>'}
+      <br>Mpamba: <code>*444#</code> → <strong>4</strong> → <code>500204</code> · NBM <code>1802283</code>.
+      ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
-    <div class="sig-upload-box">
-      <h4 style="margin:0 0 0.5rem">Electronic signatures (Chair)</h4>
+    ${isChair ? `<div class="sig-upload-box">
+      <h4 style="margin:0 0 0.5rem">Electronic signatures (Chair only)</h4>
       <p class="form-note" style="margin-bottom:0.5rem">Upload clear PNG/JPG signature images for each official. Stored on this device only until a server store is connected.</p>
       <div class="sig-upload-grid">
-        <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
-        <label>Ivy Chinangwa (Acting CEO, MNCS)<input type="file" accept="image/*" data-sig="chinangwa" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
-        <label>Chifundo Tenthani (OC Chair)<input type="file" accept="image/*" data-sig="tenthani" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
+        <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" /></label>
+        <label>Ivy Chinangwa (Acting CEO, MNCS)<input type="file" accept="image/*" data-sig="chinangwa" class="sig-file" /></label>
+        <label>Chifundo Tenthani (OC Chair)<input type="file" accept="image/*" data-sig="tenthani" class="sig-file" /></label>
       </div>
       <div class="sig-previews" id="sig-previews"></div>
-    </div>`;
+    </div>` : ''}`;
 
     if (!rows.length) {
       html += `<p style="color:var(--text-muted);margin-top:1rem">No local registrations yet. Use Netlify Forms for the master list; test entries on this browser appear here.</p>`;
@@ -771,7 +940,7 @@
 
     html += `<p style="font-size:0.85rem;margin:0.75rem 0"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Finish</th><th>Certificates</th></tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th></tr></thead><tbody>`;
 
     rows.forEach((r, i) => {
       const key = participantKey(r, i);
@@ -791,8 +960,13 @@
         <td>
           <span class="pay-status ${stClass}">${stLabel}</span>
           <div class="actions-cell">
-            <button type="button" class="btn-mini pay-verify" data-key="${escapeHtml(key)}">Verify</button>
-            <button type="button" class="btn-mini pay-reject" data-key="${escapeHtml(key)}">Reject</button>
+            ${isChair ? '<button type="button" class="btn-mini pay-verify" data-key="' + escapeHtml(key) + '">Verify</button><button type="button" class="btn-mini pay-reject" data-key="' + escapeHtml(key) + '">Reject</button>' : '<small class="form-note">Chair verifies</small>'}
+          </div>
+        </td>
+        <td>
+          ${bibs[key] && bibs[key].number ? '<strong>#' + bibs[key].number + '</strong>' : '<span class="pay-status pay-wait">No bib</span>'}
+          <div class="actions-cell">
+            <button type="button" class="btn-mini bib-assign" data-key="${escapeHtml(key)}" data-i="${i}" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Assign bib</button>
           </div>
         </td>
         <td>
@@ -813,20 +987,63 @@
     wireSigUploads();
     renderSigPreviews();
 
+    container.querySelectorAll('.bib-assign').forEach(btn => {
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i);
+        const r = rows[i];
+        if (!r) return;
+        const map = loadBibs();
+        const suggested = (map[btn.dataset.key] && map[btn.dataset.key].number) || nextBibForDistance(r.distance, map);
+        const num = prompt('Bib number for ' + (r.fullName || 'athlete') + ':', String(suggested));
+        if (!num) return;
+        map[btn.dataset.key] = {
+          number: String(num).trim(),
+          assignedAt: new Date().toISOString(),
+          distance: r.distance,
+          name: r.fullName,
+          phone: r.phone,
+          email: r.email || ''
+        };
+        saveBibs(map);
+        if (getSyncToken()) pushSharedState({ bibs: map }).catch(() => {});
+        try {
+          fetch('/.netlify/functions/send-certificate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'bib_assigned',
+              fullName: r.fullName,
+              email: r.email || '',
+              phone: r.phone || '',
+              distance: distanceLabel(r.distance),
+              raceDate: '2026-09-19',
+              bib: String(num).trim()
+            })
+          }).catch(function () {});
+        } catch (e) {}
+        renderParticipants();
+        alert('Bib #' + String(num).trim() + ' assigned. Email is sent only if Netlify email keys are configured and the athlete provided an email.');
+      };
+    });
+
     container.querySelectorAll('.pay-verify').forEach(btn => {
       btn.onclick = () => {
+        if (!isChair) { alert('Only the Chair can verify payments.'); return; }
         const map = loadPayments();
         const note = prompt('Optional note (Mpamba/bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
-        map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: isChair ? 'Chair' : 'Committee' };
+        map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: 'Chair' };
         savePayments(map);
+        if (getSyncToken()) pushSharedState({ payments: map }).catch(() => {});
         renderParticipants();
       };
     });
     container.querySelectorAll('.pay-reject').forEach(btn => {
       btn.onclick = () => {
+        if (!isChair) { alert('Only the Chair can reject payments.'); return; }
         const map = loadPayments();
         map[btn.dataset.key] = { status: 'rejected', note: prompt('Reason (optional):', '') || '', verifiedAt: new Date().toISOString() };
         savePayments(map);
+        if (getSyncToken()) pushSharedState({ payments: map }).catch(() => {});
         renderParticipants();
       };
     });
@@ -836,6 +1053,7 @@
         const time = prompt('Official finish time (optional, e.g. 3:42:15):', (map[btn.dataset.key] || {}).time || '') || '';
         map[btn.dataset.key] = { status: 'finished', time, finishedAt: new Date().toISOString() };
         saveFinishes(map);
+        if (getSyncToken()) pushSharedState({ finishes: map }).catch(() => {});
         const r = rows[Number(btn.dataset.i)];
         // Auto-open completion certificate and queue outbound email hook
         if (r) {
@@ -1117,6 +1335,7 @@
     renderRunsheet();
     renderRoles();
     renderTargets();
+    renderSyncBar();
     renderParticipants();
     renderAttendance();
     renderDeadlines();
@@ -1124,6 +1343,16 @@
     renderNotes();
     initControlTabs();
     applyRoleUI();
+    // Auto-pull if token present
+    if (getSyncToken()) {
+      pullSharedState().then(r => {
+        if (r.ok) {
+          renderParticipants();
+          renderAttendance();
+          renderDashboard();
+        }
+      }).catch(() => {});
+    }
   }
 
   // ---------- Public API for main app ----------

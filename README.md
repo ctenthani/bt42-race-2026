@@ -96,3 +96,7 @@ It is **not** strong security. Do not put highly sensitive personal data or fina
 
 **Chair:** Chifundo Tenthani  
 **Event:** BT42.195 km Race · 19 September 2026
+
+## Netlify environment variables
+
+See [docs/NETLIFY_ENV.md](docs/NETLIFY_ENV.md) for EMAIL_API_KEY, EMAIL_FROM, and MPAMBA_WEBHOOK_SECRET.
