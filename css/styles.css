@@ -1274,3 +1274,18 @@ img { max-width: 100%; display: block; }
   font-family: inherit;
   font-size: 0.95rem;
 }
+
+
+.meet-link-banner {
+  background: #E8F6F3;
+  border: 1px solid #1ABC9C;
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+.meet-link-banner a {
+  color: #0E6655;
+  font-weight: 600;
+  word-break: break-all;
+}

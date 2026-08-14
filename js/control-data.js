@@ -4,6 +4,7 @@ window.BT42_DATA = {
   raceDate: '2026-09-19T06:30:00+02:00',
   eventName: 'BT42.195 km Race 2026',
   chair: 'Chifundo Tenthani',
+  meetLink: 'https://meet.google.com/ixu-kyfn-pvc',
   chairOnlyNote: 'Chair-only Control Room. Do not share the PIN outside Organising Committee leadership.',
 
   dashboardDefaults: {
@@ -272,6 +273,7 @@ window.BT42_DATA = {
 
   roles: [
     { role: 'Chair of Organising Committee', name: 'Chifundo Tenthani', responsibilities: 'Overall leadership, MNCS liaison, sponsor high-level, final decisions' },
+    { role: 'Vice Chairperson', name: '', responsibilities: 'Support the Chair; stand in when Chair is unavailable; coordinate cross-workstreams and follow-up on actions' },
     { role: 'Technical / Course Lead', name: '', responsibilities: 'Route, timing, course marking, results' },
     { role: 'Medical Lead', name: '', responsibilities: 'Ambulances, first aid, medical protocol' },
     { role: 'Logistics & Supplies', name: '', responsibilities: 'Water, medals, T-shirts, transport, equipment' },

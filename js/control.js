@@ -326,7 +326,12 @@
   function renderMeetings() {
     const container = $('#ctrl-meetings');
     if (!container) return;
-    let html = '';
+    const meetLink = window.BT42_DATA.meetLink || 'https://meet.google.com/ixu-kyfn-pvc';
+    let html = `
+      <div class="meet-link-banner">
+        <strong>Google Meet (all OC meetings)</strong><br>
+        <a href="${meetLink}" target="_blank" rel="noopener">${meetLink}</a>
+      </div>`;
     window.BT42_DATA.meetings.forEach(m => {
       const past = new Date(m.date) < new Date(new Date().toDateString());
       html += `
@@ -338,7 +343,9 @@
           </summary>
           <div class="m-body">
             <p><strong>Time:</strong> ${m.time} · <strong>Type:</strong> ${m.type}</p>
+            <p><strong>Google Meet:</strong> <a href="${meetLink}" target="_blank" rel="noopener">${meetLink}</a></p>
             <p><strong>Attendees:</strong> ${m.attendees}</p>
+            <p><strong>Agenda</strong></p>
             <ol>${m.agenda.map(a => `<li>${a}</li>`).join('')}</ol>
           </div>
         </details>`;
