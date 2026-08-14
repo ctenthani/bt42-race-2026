@@ -776,7 +776,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      return { ok: false, error: (data && data.error) || ('HTTP ' + res.status) };
+      return { ok: false, error: (data && (data.detail || data.error)) || ('HTTP ' + res.status) };
     }
     const s = data.state || {};
     if (Array.isArray(s.registrations) && s.registrations.length) {
@@ -822,7 +822,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      return { ok: false, error: (data && data.error) || ('HTTP ' + res.status) };
+      return { ok: false, error: (data && (data.detail || data.error)) || ('HTTP ' + res.status) };
     }
     localStorage.setItem(SYNC_META_KEY, JSON.stringify({
       lastPush: new Date().toISOString(),

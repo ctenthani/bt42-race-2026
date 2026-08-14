@@ -110,3 +110,13 @@ API:
 - `POST /.netlify/functions/oc-sync` — merge updates (`x-oc-role: chair` required to change payments)
 
 Payment verification remains **Chair only** on the server.
+
+### Fix: “Blob store unavailable”
+
+1. Confirm `package.json` includes `@netlify/blobs` and build command is `npm install`.
+2. Redeploy the site after pushing.
+3. Confirm `OC_SYNC_TOKEN` is set, then trigger deploy again.
+4. Optional **JSONBin fallback** (if Blobs still fails on your plan):
+   - Create a free bin at https://jsonbin.io
+   - Set `JSONBIN_BIN_ID` and `JSONBIN_API_KEY` in Netlify env
+   - Redeploy — sync will use JSONBin automatically

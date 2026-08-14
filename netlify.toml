@@ -1,16 +1,21 @@
 # BT42.195 km Race 2026 — Netlify configuration
 
 [build]
+  command = "npm install"
   publish = "."
-  # No build command needed — pure static site
 
-# SPA-style routing (hash routes still work; this covers direct links)
+# Do not SPA-redirect API/functions
+[[redirects]]
+  from = "/.netlify/functions/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+  force = false
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Security & performance headers
 [[headers]]
   for = "/*"
   [headers.values]
@@ -30,3 +35,4 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"

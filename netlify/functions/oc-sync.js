@@ -1,21 +1,7 @@
 /**
- * Shared OC data sync — Netlify Blobs
- *
- * GET  /.netlify/functions/oc-sync
- *   Headers: x-oc-token: <OC_SYNC_TOKEN>
- *   Returns full shared state
- *
- * POST /.netlify/functions/oc-sync
- *   Headers: x-oc-token, x-oc-role: chair|committee
- *   Body: partial state to merge
- *   - payments: chair only
- *   - registrations, bibs, finishes: chair or committee
- *   - signatures: chair only
- *
- * Env: OC_SYNC_TOKEN (required in production)
+ * Shared OC data sync
+ * Primary: Netlify Blobs | Fallback: JSONBin.io (JSONBIN_BIN_ID + JSONBIN_API_KEY)
  */
-
-const { getStore } = require('@netlify/blobs');
 
 const STORE_NAME = 'bt42-oc-sync';
 const STATE_KEY = 'state';
@@ -40,12 +26,8 @@ function corsHeaders() {
   };
 }
 
-function unauthorized() {
-  return {
-    statusCode: 401,
-    headers: corsHeaders(),
-    body: JSON.stringify({ ok: false, error: 'Unauthorized' })
-  };
+function json(status, body) {
+  return { statusCode: status, headers: corsHeaders(), body: JSON.stringify(body) };
 }
 
 function getToken(event) {
@@ -59,14 +41,149 @@ function getRole(event) {
   return r === 'chair' ? 'chair' : 'committee';
 }
 
-async function readState(store) {
-  try {
-    const raw = await store.get(STATE_KEY, { type: 'json' });
-    if (!raw || typeof raw !== 'object') return emptyState();
-    return Object.assign(emptyState(), raw);
-  } catch {
-    return emptyState();
+function assertAuth(event) {
+  const expected = process.env.OC_SYNC_TOKEN || '';
+  const token = getToken(event);
+  if (!expected) {
+    return {
+      ok: false,
+      response: json(503, {
+        ok: false,
+        error: 'OC_SYNC_TOKEN is not set in Netlify environment variables. Add it, then redeploy.'
+      })
+    };
   }
+  if (token !== expected) {
+    return { ok: false, response: json(401, { ok: false, error: 'Unauthorized — check OC_SYNC_TOKEN on this device' }) };
+  }
+  return { ok: true };
+}
+
+async function blobsRead() {
+  const { getStore } = require('@netlify/blobs');
+  const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+  const raw = await store.get(STATE_KEY, { type: 'json' });
+  if (!raw || typeof raw !== 'object') return emptyState();
+  return Object.assign(emptyState(), raw);
+}
+
+async function blobsWrite(state) {
+  const { getStore } = require('@netlify/blobs');
+  const store = getStore({ name: STORE_NAME, consistency: 'strong' });
+  await store.setJSON(STATE_KEY, state);
+}
+
+function jsonbinConfigured() {
+  return !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY);
+}
+
+async function jsonbinRead() {
+  const id = process.env.JSONBIN_BIN_ID;
+  const key = process.env.JSONBIN_API_KEY;
+  const res = await fetch('https://api.jsonbin.io/v3/b/' + id + '/latest', {
+    headers: { 'X-Master-Key': key }
+  });
+  if (!res.ok) throw new Error('JSONBin read failed: ' + res.status + ' ' + (await res.text()));
+  const data = await res.json();
+  const record = data.record || data;
+  if (!record || typeof record !== 'object') return emptyState();
+  return Object.assign(emptyState(), record);
+}
+
+async function jsonbinWrite(state) {
+  const id = process.env.JSONBIN_BIN_ID;
+  const key = process.env.JSONBIN_API_KEY;
+  const res = await fetch('https://api.jsonbin.io/v3/b/' + id, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': key,
+      'X-Bin-Versioning': 'false'
+    },
+    body: JSON.stringify(state)
+  });
+  if (!res.ok) throw new Error('JSONBin write failed: ' + res.status + ' ' + (await res.text()));
+}
+
+async function readState() {
+  const errors = [];
+  try {
+    return { state: await blobsRead(), backend: 'blobs' };
+  } catch (e) {
+    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (jsonbinConfigured()) {
+    try {
+      return { state: await jsonbinRead(), backend: 'jsonbin' };
+    } catch (e) {
+      errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
+    }
+  }
+  throw new Error(errors.join(' | ') || 'No storage backend available');
+}
+
+async function writeState(state) {
+  const errors = [];
+  try {
+    await blobsWrite(state);
+    return 'blobs';
+  } catch (e) {
+    errors.push('blobs: ' + (e && e.message ? e.message : String(e)));
+  }
+  if (jsonbinConfigured()) {
+    try {
+      await jsonbinWrite(state);
+      return 'jsonbin';
+    } catch (e) {
+      errors.push('jsonbin: ' + (e && e.message ? e.message : String(e)));
+    }
+  }
+  throw new Error(errors.join(' | ') || 'No storage backend available');
+}
+
+function mergeState(current, body, role) {
+  const next = Object.assign({}, current);
+  if (Array.isArray(body.registrations)) {
+    const keyOf = (r) =>
+      String(r.phone || '').replace(/\s+/g, '').toLowerCase() +
+      '|' +
+      String(r.fullName || '').trim().toLowerCase();
+    const map = new Map();
+    (current.registrations || []).forEach((r) => map.set(keyOf(r), r));
+    body.registrations.forEach((r) => {
+      const k = keyOf(r);
+      map.set(k, Object.assign({}, map.get(k) || {}, r));
+    });
+    next.registrations = Array.from(map.values());
+  }
+  if (body.payments && typeof body.payments === 'object') {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can update payments');
+      e.status = 403;
+      throw e;
+    }
+    next.payments = Object.assign({}, current.payments || {}, body.payments);
+  }
+  if (body.bibs && typeof body.bibs === 'object') {
+    next.bibs = Object.assign({}, current.bibs || {}, body.bibs);
+  }
+  if (body.finishes && typeof body.finishes === 'object') {
+    next.finishes = Object.assign({}, current.finishes || {}, body.finishes);
+  }
+  if (body.attendance && typeof body.attendance === 'object') {
+    next.attendance = Object.assign({}, current.attendance || {}, body.attendance);
+  }
+  if (body.signatures && typeof body.signatures === 'object') {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can update signatures');
+      e.status = 403;
+      throw e;
+    }
+    next.signatures = Object.assign({}, current.signatures || {}, body.signatures);
+  }
+  next.updatedAt = new Date().toISOString();
+  next.updatedBy = role;
+  return next;
 }
 
 exports.handler = async (event) => {
@@ -74,143 +191,52 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: corsHeaders(), body: '' };
   }
 
-  const expected = process.env.OC_SYNC_TOKEN || '';
-  // Allow empty token only in non-production for local tests
-  const token = getToken(event);
-  if (expected && token !== expected) {
-    return unauthorized();
-  }
-  if (!expected && process.env.CONTEXT === 'production') {
-    return {
-      statusCode: 503,
-      headers: corsHeaders(),
-      body: JSON.stringify({
-        ok: false,
-        error: 'OC_SYNC_TOKEN not configured on Netlify'
-      })
-    };
-  }
+  const auth = assertAuth(event);
+  if (!auth.ok) return auth.response;
 
-  let store;
+  const role = getRole(event);
+
   try {
-    store = getStore(STORE_NAME);
+    if (event.httpMethod === 'GET') {
+      const { state, backend } = await readState();
+      if (role !== 'chair' && state.signatures) {
+        state.signatures = {
+          kalua: !!state.signatures.kalua,
+          chinangwa: !!state.signatures.chinangwa,
+          tenthani: !!state.signatures.tenthani,
+          _presentOnly: true
+        };
+      }
+      return json(200, { ok: true, backend, state });
+    }
+
+    if (event.httpMethod === 'POST') {
+      let body;
+      try {
+        body = JSON.parse(event.body || '{}');
+      } catch {
+        return json(400, { ok: false, error: 'Invalid JSON' });
+      }
+      const { state: current } = await readState();
+      let next;
+      try {
+        next = mergeState(current, body, role);
+      } catch (e) {
+        return json(e.status || 400, { ok: false, error: e.message });
+      }
+      const backend = await writeState(next);
+      return json(200, { ok: true, backend, state: next });
+    }
+
+    return json(405, { ok: false, error: 'Method Not Allowed' });
   } catch (err) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders(),
-      body: JSON.stringify({
-        ok: false,
-        error: 'Blob store unavailable',
-        detail: String(err && err.message ? err.message : err)
-      })
-    };
+    const detail = err && err.message ? err.message : String(err);
+    return json(500, {
+      ok: false,
+      error: 'Storage unavailable',
+      detail,
+      hint:
+        'Redeploy with build command npm install. Set OC_SYNC_TOKEN. If Blobs still fails, add JSONBIN_BIN_ID and JSONBIN_API_KEY from jsonbin.io.'
+    });
   }
-
-  if (event.httpMethod === 'GET') {
-    const state = await readState(store);
-    // Never return signature image blobs to committee — strip if not chair
-    const role = getRole(event);
-    if (role !== 'chair' && state.signatures) {
-      state.signatures = {
-        kalua: !!state.signatures.kalua,
-        chinangwa: !!state.signatures.chinangwa,
-        tenthani: !!state.signatures.tenthani,
-        _presentOnly: true
-      };
-    }
-    return {
-      statusCode: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify({ ok: true, state })
-    };
-  }
-
-  if (event.httpMethod === 'POST') {
-    const role = getRole(event);
-    let body;
-    try {
-      body = JSON.parse(event.body || '{}');
-    } catch {
-      return {
-        statusCode: 400,
-        headers: corsHeaders(),
-        body: JSON.stringify({ ok: false, error: 'Invalid JSON' })
-      };
-    }
-
-    const current = await readState(store);
-    const next = Object.assign({}, current);
-
-    // Registrations: merge by phone+name key (append new)
-    if (Array.isArray(body.registrations)) {
-      const keyOf = (r) =>
-        String(r.phone || '')
-          .replace(/\s+/g, '')
-          .toLowerCase() +
-        '|' +
-        String(r.fullName || '')
-          .trim()
-          .toLowerCase();
-      const map = new Map();
-      (current.registrations || []).forEach((r) => map.set(keyOf(r), r));
-      body.registrations.forEach((r) => {
-        const k = keyOf(r);
-        if (!map.has(k)) map.set(k, r);
-        else map.set(k, Object.assign({}, map.get(k), r));
-      });
-      next.registrations = Array.from(map.values());
-    }
-
-    // Payments: Chair only
-    if (body.payments && typeof body.payments === 'object') {
-      if (role !== 'chair') {
-        return {
-          statusCode: 403,
-          headers: corsHeaders(),
-          body: JSON.stringify({ ok: false, error: 'Only Chair can update payments' })
-        };
-      }
-      next.payments = Object.assign({}, current.payments || {}, body.payments);
-    }
-
-    // Bibs & finishes: committee + chair
-    if (body.bibs && typeof body.bibs === 'object') {
-      next.bibs = Object.assign({}, current.bibs || {}, body.bibs);
-    }
-    if (body.finishes && typeof body.finishes === 'object') {
-      next.finishes = Object.assign({}, current.finishes || {}, body.finishes);
-    }
-    if (body.attendance && typeof body.attendance === 'object') {
-      next.attendance = Object.assign({}, current.attendance || {}, body.attendance);
-    }
-
-    // Signatures: Chair only
-    if (body.signatures && typeof body.signatures === 'object') {
-      if (role !== 'chair') {
-        return {
-          statusCode: 403,
-          headers: corsHeaders(),
-          body: JSON.stringify({ ok: false, error: 'Only Chair can update signatures' })
-        };
-      }
-      next.signatures = Object.assign({}, current.signatures || {}, body.signatures);
-    }
-
-    next.updatedAt = new Date().toISOString();
-    next.updatedBy = role;
-
-    await store.setJSON(STATE_KEY, next);
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders(),
-      body: JSON.stringify({ ok: true, state: next })
-    };
-  }
-
-  return {
-    statusCode: 405,
-    headers: corsHeaders(),
-    body: JSON.stringify({ ok: false, error: 'Method Not Allowed' })
-  };
 };
