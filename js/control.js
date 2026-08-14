@@ -15,6 +15,8 @@
   const ROLES_KEY = 'bt42_roles_edits';
   const ATTEND_KEY = 'bt42_meeting_attendance';
   const PAYMENT_KEY = 'bt42_payment_status';
+  const SIGS_KEY = 'bt42_esignatures';
+  const FINISH_KEY = 'bt42_finish_status';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -695,6 +697,24 @@
     localStorage.setItem(PAYMENT_KEY, JSON.stringify(map));
   }
 
+  function loadSigs() {
+    try { return JSON.parse(localStorage.getItem(SIGS_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveSigs(map) {
+    localStorage.setItem(SIGS_KEY, JSON.stringify(map));
+  }
+
+  function loadFinishes() {
+    try { return JSON.parse(localStorage.getItem(FINISH_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveFinishes(map) {
+    localStorage.setItem(FINISH_KEY, JSON.stringify(map));
+  }
+
   function participantKey(r, i) {
     const phone = (r.phone || '').replace(/\s+/g, '');
     const name = (r.fullName || '').trim().toLowerCase();
@@ -716,60 +736,88 @@
       rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
     } catch { rows = []; }
     const pays = loadPayments();
+    const finishes = loadFinishes();
+    const sigs = loadSigs();
+    const sigReady = !!(sigs.kalua && sigs.chinangwa && sigs.tenthani);
 
     let html = `<div class="notice" style="margin-bottom:1rem">
-      <strong>Payment verification workflow</strong><br>
-      1) Runner pays via <strong>TNM Mpamba code 500204</strong> or <strong>NBM account 1802283</strong>.<br>
-      2) OC checks mobile money / bank statement against name or phone reference.<br>
-      3) Mark <strong>Verified</strong> here — then generate the participant certificate.<br>
-      <em>Fully automatic bank APIs are not available on this static site; verification is OC-confirmed against the payment channels above.</em>
+      <strong>Payment · Finish · Certificates</strong><br>
+      Pay channels: TNM Mpamba <code>500204</code> / NBM <code>1802283</code>.
+      Webhook design is in <code>docs/MPAMBA_WEBHOOK.md</code> and <code>netlify/functions/mpamba-webhook.js</code>.
+      ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>'}
+    </div>
+
+    <div class="sig-upload-box">
+      <h4 style="margin:0 0 0.5rem">Electronic signatures (Chair)</h4>
+      <p class="form-note" style="margin-bottom:0.5rem">Upload clear PNG/JPG signature images for each official. Stored on this device only until a server store is connected.</p>
+      <div class="sig-upload-grid">
+        <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
+        <label>Ivy Chinangwa (Acting CEO, MNCS)<input type="file" accept="image/*" data-sig="chinangwa" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
+        <label>Chifundo Tenthani (OC Chair)<input type="file" accept="image/*" data-sig="tenthani" class="sig-file" ${isChair ? '' : 'disabled'} /></label>
+      </div>
+      <div class="sig-previews" id="sig-previews"></div>
     </div>`;
 
     if (!rows.length) {
-      html += `<p style="color:var(--text-muted)">No local registrations on this device yet. After Netlify deploy, also check <strong>Forms → bt42-registration</strong>. You can still import by registering a test entry on this browser.</p>`;
+      html += `<p style="color:var(--text-muted);margin-top:1rem">No local registrations yet. Use Netlify Forms for the master list; test entries on this browser appear here.</p>`;
       container.innerHTML = html;
+      wireSigUploads();
+      renderSigPreviews();
       return;
     }
 
     const verified = rows.filter((r, i) => (pays[participantKey(r, i)] || {}).status === 'verified').length;
-    const pending = rows.length - verified;
+    const finished = rows.filter((r, i) => (finishes[participantKey(r, i)] || {}).status === 'finished').length;
 
-    html += `<p style="font-size:0.85rem;margin-bottom:0.75rem"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> payment verified · <strong>${pending}</strong> pending</p>
+    html += `<p style="font-size:0.85rem;margin:0.75rem 0"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Actions</th></tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Finish</th><th>Certificates</th></tr></thead><tbody>`;
 
     rows.forEach((r, i) => {
       const key = participantKey(r, i);
       const pay = pays[key] || { status: 'pending' };
+      const fin = finishes[key] || { status: 'not_started' };
       const st = pay.status || 'pending';
+      const fst = fin.status || 'not_started';
       const stLabel = st === 'verified' ? 'Verified' : (st === 'rejected' ? 'Rejected' : 'Pending');
       const stClass = st === 'verified' ? 'pay-ok' : (st === 'rejected' ? 'pay-no' : 'pay-wait');
+      const fLabel = fst === 'finished' ? 'Finished' : (fst === 'dns' ? 'DNS' : (fst === 'dnf' ? 'DNF' : '—'));
+      const fClass = fst === 'finished' ? 'pay-ok' : (fst === 'dnf' || fst === 'dns' ? 'pay-no' : 'pay-wait');
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.fullName || '')}</strong></td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : ''}</td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
-        <td><span class="pay-status ${stClass}">${stLabel}</span>${pay.note ? '<br><small>' + escapeHtml(pay.note) + '</small>' : ''}</td>
+        <td>
+          <span class="pay-status ${stClass}">${stLabel}</span>
+          <div class="actions-cell">
+            <button type="button" class="btn-mini pay-verify" data-key="${escapeHtml(key)}">Verify</button>
+            <button type="button" class="btn-mini pay-reject" data-key="${escapeHtml(key)}">Reject</button>
+          </div>
+        </td>
+        <td>
+          <span class="pay-status ${fClass}">${fLabel}</span>
+          <div class="actions-cell">
+            <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}">Finish</button>
+            <button type="button" class="btn-mini fin-dnf" data-key="${escapeHtml(key)}">DNF</button>
+          </div>
+        </td>
         <td class="actions-cell">
-          <button type="button" class="btn-mini pay-verify" data-key="${escapeHtml(key)}" data-i="${i}">Verify</button>
-          <button type="button" class="btn-mini pay-reject" data-key="${escapeHtml(key)}">Reject</button>
-          <button type="button" class="btn-mini pay-cert" data-i="${i}" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Certificate</button>
+          <button type="button" class="btn-mini pay-cert" data-i="${i}" data-type="participation" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Entry cert</button>
+          <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
         </td>
       </tr>`;
     });
     html += '</tbody></table></div>';
     container.innerHTML = html;
+    wireSigUploads();
+    renderSigPreviews();
 
     container.querySelectorAll('.pay-verify').forEach(btn => {
       btn.onclick = () => {
         const map = loadPayments();
-        const note = prompt('Optional note (e.g. Mpamba ref / bank deposit time):', (map[btn.dataset.key] || {}).note || '') || '';
-        map[btn.dataset.key] = {
-          status: 'verified',
-          note: note,
-          verifiedAt: new Date().toISOString(),
-          verifiedBy: isChair ? 'Chair' : 'Committee'
-        };
+        const note = prompt('Optional note (Mpamba/bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
+        map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: isChair ? 'Chair' : 'Committee' };
         savePayments(map);
         renderParticipants();
       };
@@ -777,33 +825,142 @@
     container.querySelectorAll('.pay-reject').forEach(btn => {
       btn.onclick = () => {
         const map = loadPayments();
-        map[btn.dataset.key] = {
-          status: 'rejected',
-          note: prompt('Reason (optional):', '') || '',
-          verifiedAt: new Date().toISOString()
-        };
+        map[btn.dataset.key] = { status: 'rejected', note: prompt('Reason (optional):', '') || '', verifiedAt: new Date().toISOString() };
         savePayments(map);
         renderParticipants();
       };
     });
-    container.querySelectorAll('.pay-cert').forEach(btn => {
+    container.querySelectorAll('.fin-ok').forEach(btn => {
       btn.onclick = () => {
-        const i = Number(btn.dataset.i);
-        const r = rows[i];
-        if (!r) return;
-        openCertificate(r);
+        const map = loadFinishes();
+        const time = prompt('Official finish time (optional, e.g. 3:42:15):', (map[btn.dataset.key] || {}).time || '') || '';
+        map[btn.dataset.key] = { status: 'finished', time, finishedAt: new Date().toISOString() };
+        saveFinishes(map);
+        const r = rows[Number(btn.dataset.i)];
+        // Auto-open completion certificate and queue outbound email hook
+        if (r) {
+          openCertificate(r, 'completion');
+          queueCompletionEmail(r, time);
+        }
+        renderParticipants();
+      };
+    });
+    container.querySelectorAll('.fin-dnf').forEach(btn => {
+      btn.onclick = () => {
+        const map = loadFinishes();
+        map[btn.dataset.key] = { status: 'dnf', finishedAt: new Date().toISOString() };
+        saveFinishes(map);
+        renderParticipants();
+      };
+    });
+    container.querySelectorAll('.pay-cert, .fin-cert').forEach(btn => {
+      btn.onclick = () => {
+        const r = rows[Number(btn.dataset.i)];
+        if (r) openCertificate(r, btn.dataset.type || 'participation');
       };
     });
   }
 
-  function openCertificate(r) {
+  function wireSigUploads() {
+    $$('.sig-file').forEach(input => {
+      input.onchange = () => {
+        if (!isChair) { alert('Only the Chair can upload e-signatures.'); return; }
+        const file = input.files && input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const map = loadSigs();
+          map[input.dataset.sig] = reader.result;
+          map[input.dataset.sig + '_updated'] = new Date().toISOString();
+          saveSigs(map);
+          renderSigPreviews();
+        };
+        reader.readAsDataURL(file);
+      };
+    });
+  }
+
+  function renderSigPreviews() {
+    const box = $('#sig-previews');
+    if (!box) return;
+    const s = loadSigs();
+    const labels = { kalua: 'Jim Kalua', chinangwa: 'Ivy Chinangwa', tenthani: 'Chifundo Tenthani' };
+    box.innerHTML = Object.keys(labels).map(k => {
+      if (!s[k]) return `<div class="sig-prev empty">${labels[k]}: not uploaded</div>`;
+      return `<div class="sig-prev"><img src="${s[k]}" alt="${labels[k]}" /><span>${labels[k]}</span></div>`;
+    }).join('');
+  }
+
+  function queueCompletionEmail(r, finishTime) {
+    // Design-time auto-send: posts to Netlify function when deployed with email provider configured
+    const payload = {
+      type: 'completion_certificate',
+      fullName: r.fullName,
+      email: r.email || '',
+      phone: r.phone || '',
+      distance: distanceLabel(r.distance),
+      finishTime: finishTime || '',
+      raceDate: '2026-09-19'
+    };
+    try {
+      fetch('/.netlify/functions/send-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).then(res => {
+        if (!res.ok) console.warn('Certificate email function not active yet', res.status);
+      }).catch(() => {
+        console.info('Auto-email pending: deploy send-certificate function + email API key.');
+      });
+    } catch (e) {
+      console.info('Auto-email hook skipped', e);
+    }
+  }
+
+  function openCertificate(r, certType) {
+    certType = certType || 'participation';
+    const isCompletion = certType === 'completion';
     const distance = distanceLabel(r.distance);
     const name = r.fullName || 'Participant';
     const phone = r.phone || '';
-    const certId = 'BT42-' + (phone.replace(/\D/g, '').slice(-8) || Date.now().toString(36).toUpperCase());
+    const email = r.email || '';
+    const finishes = loadFinishes();
+    const key = participantKey(r, 0);
+    // Prefer match by phone/name across list
+    let fin = {};
+    try {
+      const rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+      const idx = rows.findIndex(x => (x.fullName || '') === (r.fullName || '') && (x.phone || '') === (r.phone || ''));
+      fin = loadFinishes()[participantKey(r, idx >= 0 ? idx : 0)] || {};
+    } catch { fin = {}; }
+    const finishTime = fin.time || '';
+    const certId = (isCompletion ? 'BT42-FIN-' : 'BT42-ENT-') + (phone.replace(/\D/g, '').slice(-8) || Date.now().toString(36).toUpperCase());
     const issued = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const sigs = loadSigs();
+    const title = isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION';
+    const bodyText = isCompletion
+      ? `has successfully <strong>completed</strong> the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195 km Race 2026${finishTime ? ' in a time of <strong>' + finishTime.replace(/</g, '') + '</strong>' : ''}, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`
+      : `is a registered participant in the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195 km Race 2026, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`;
 
-    const w = window.open('', '_blank', 'width=900,height=1200');
+    function sigBlock(dataUrl, personName, personTitle) {
+      if (dataUrl) {
+        return `<div class="sig">
+          <div class="sig-img-wrap"><img src="${dataUrl}" alt="Signature of ${personName}" /></div>
+          <div class="sig-line"></div>
+          <div class="sig-name">${personName}</div>
+          <div class="sig-title">${personTitle}</div>
+        </div>`;
+      }
+      return `<div class="sig">
+        <div class="sig-line" style="margin-top:3rem"></div>
+        <div class="sig-name">${personName}</div>
+        <div class="sig-title">${personTitle}<br><em style="font-size:10px;color:#999">(e-signature pending)</em></div>
+      </div>`;
+    }
+
+    const logoUrl = (location.origin && location.origin !== 'null' ? location.origin : '') + '/assets/mncs-logo.svg';
+
+    const w = window.open('', '_blank', 'width=960,height=720');
     if (!w) {
       alert('Please allow pop-ups to view the certificate.');
       return;
@@ -812,36 +969,38 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Certificate — ${name.replace(/</g, '')}</title>
+<title>${title} — ${name.replace(/</g, '')}</title>
 <style>
-  @page { size: A4 landscape; margin: 12mm; }
+  @page { size: A4 landscape; margin: 10mm; }
   * { box-sizing: border-box; }
-  body { font-family: Georgia, 'Times New Roman', serif; margin: 0; background: #eee; color: #1a1a1a; }
+  body { font-family: Georgia, 'Times New Roman', serif; margin: 0; background: #e8e8e8; color: #1a1a1a; }
   .sheet {
-    width: 297mm; min-height: 210mm; margin: 12px auto; background: #fff;
-    border: 10px solid #1B4F72; padding: 18mm 16mm; position: relative;
+    width: 297mm; min-height: 210mm; margin: 10px auto; background: #fff;
+    border: 10px solid #1B4F72; padding: 12mm 14mm; position: relative;
   }
-  .sheet::before {
-    content: ''; position: absolute; inset: 6px; border: 2px solid #D4AC0D; pointer-events: none;
-  }
-  .hdr { text-align: center; margin-bottom: 1.2rem; }
-  .org { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #1B4F72; font-weight: 700; }
-  .event { font-size: 22px; margin: 0.4rem 0 0; color: #154360; }
-  .sub { font-size: 13px; color: #555; margin-top: 0.25rem; }
-  h1 { text-align: center; font-size: 28px; letter-spacing: 0.08em; margin: 1.2rem 0 0.4rem; color: #7D6608; }
-  .intro { text-align: center; font-size: 14px; margin: 0.5rem 0; }
-  .pname { text-align: center; font-size: 32px; font-weight: 700; margin: 0.6rem 0; border-bottom: 1px solid #ccc; display: inline-block; padding: 0 1.5rem 0.25rem; }
+  .sheet::before { content: ''; position: absolute; inset: 5px; border: 2px solid #D4AC0D; pointer-events: none; }
+  .hdr { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.6rem; }
+  .hdr img { width: 72px; height: 72px; }
+  .hdr-text { text-align: left; }
+  .org { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #1B4F72; font-weight: 700; }
+  .event { font-size: 20px; margin: 0.2rem 0 0; color: #154360; font-weight: 700; }
+  .sub { font-size: 12px; color: #555; }
+  h1 { text-align: center; font-size: 26px; letter-spacing: 0.08em; margin: 0.8rem 0 0.3rem; color: #7D6608; }
+  .intro { text-align: center; font-size: 14px; margin: 0.35rem 0; }
   .pname-wrap { text-align: center; }
-  .detail { text-align: center; font-size: 15px; margin: 0.75rem auto 1.2rem; max-width: 80%; line-height: 1.5; }
-  .sigs { display: flex; justify-content: space-around; gap: 1.5rem; margin-top: 2rem; text-align: center; }
-  .sig { flex: 1; max-width: 220px; }
-  .sig-line { border-top: 1px solid #333; margin: 2.5rem 0.5rem 0.35rem; }
-  .sig-name { font-weight: 700; font-size: 13px; }
-  .sig-title { font-size: 11px; color: #444; }
-  .foot { text-align: center; margin-top: 1.5rem; font-size: 11px; color: #666; }
-  .actions { text-align: center; margin: 12px; }
-  .actions button { padding: 0.6rem 1.2rem; font-size: 14px; cursor: pointer; margin: 0 0.25rem; }
-  @media print { body { background: #fff; } .actions { display: none; } .sheet { margin: 0; border-width: 8px; } }
+  .pname { text-align: center; font-size: 30px; font-weight: 700; margin: 0.4rem 0; border-bottom: 1px solid #ccc; display: inline-block; padding: 0 1.5rem 0.2rem; }
+  .detail { text-align: center; font-size: 14px; margin: 0.6rem auto 0.8rem; max-width: 85%; line-height: 1.45; }
+  .sigs { display: flex; justify-content: space-around; gap: 1rem; margin-top: 1rem; text-align: center; }
+  .sig { flex: 1; max-width: 230px; }
+  .sig-img-wrap { height: 48px; display: flex; align-items: flex-end; justify-content: center; }
+  .sig-img-wrap img { max-height: 48px; max-width: 160px; object-fit: contain; }
+  .sig-line { border-top: 1px solid #333; margin: 0.25rem 0.5rem 0.3rem; }
+  .sig-name { font-weight: 700; font-size: 12px; }
+  .sig-title { font-size: 10px; color: #444; line-height: 1.3; }
+  .foot { text-align: center; margin-top: 0.8rem; font-size: 10px; color: #666; }
+  .actions { text-align: center; margin: 10px; }
+  .actions button { padding: 0.55rem 1.1rem; font-size: 14px; cursor: pointer; margin: 0 0.25rem; }
+  @media print { body { background: #fff; } .actions { display: none; } .sheet { margin: 0; box-shadow: none; } }
 </style>
 </head>
 <body>
@@ -851,47 +1010,35 @@
   </div>
   <div class="sheet">
     <div class="hdr">
-      <div class="org">Malawi National Council of Sports</div>
-      <div class="event">BT42.195 km Race 2026</div>
-      <div class="sub">Blantyre · Saturday, 19 September 2026</div>
+      <img src="${logoUrl}" alt="MNCS" onerror="this.style.display='none'" />
+      <div class="hdr-text">
+        <div class="org">Malawi National Council of Sports</div>
+        <div class="event">BT42.195 km Race 2026</div>
+        <div class="sub">Blantyre · Saturday, 19 September 2026</div>
+      </div>
     </div>
-    <h1>CERTIFICATE OF PARTICIPATION</h1>
+    <h1>${title}</h1>
     <p class="intro">This is to certify that</p>
     <div class="pname-wrap"><div class="pname">${name.replace(/</g, '')}</div></div>
-    <p class="detail">
-      is a registered participant in the <strong>${distance.replace(/</g, '')}</strong>
-      of the BT42.195 km Race 2026, organised under the auspices of the
-      <strong>Malawi National Council of Sports</strong>.
-    </p>
-    <p class="detail" style="font-size:13px;color:#555">
+    <p class="detail">${bodyText}</p>
+    <p class="detail" style="font-size:12px;color:#555">
       Certificate ID: ${certId} · Issued: ${issued}
       ${phone ? ' · Tel: ' + phone.replace(/</g, '') : ''}
+      ${email ? ' · ' + email.replace(/</g, '') : ''}
     </p>
     <div class="sigs">
-      <div class="sig">
-        <div class="sig-line"></div>
-        <div class="sig-name">Jim Kalua</div>
-        <div class="sig-title">Chairman of the Council<br>Malawi National Council of Sports</div>
-      </div>
-      <div class="sig">
-        <div class="sig-line"></div>
-        <div class="sig-name">Ivy Chinangwa</div>
-        <div class="sig-title">Acting Chief Executive Officer<br>Malawi National Council of Sports</div>
-      </div>
-      <div class="sig">
-        <div class="sig-line"></div>
-        <div class="sig-name">Chifundo Tenthani</div>
-        <div class="sig-title">Chair, Organising Committee<br>BT42.195 km Race 2026</div>
-      </div>
+      ${sigBlock(sigs.kalua, 'Jim Kalua', 'Chairman of the Council<br>Malawi National Council of Sports')}
+      ${sigBlock(sigs.chinangwa, 'Ivy Chinangwa', 'Acting Chief Executive Officer<br>Malawi National Council of Sports')}
+      ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195 km Race 2026')}
     </div>
-    <p class="foot">Official certificate of the BT42.195 km Race 2026 · Malawi National Council of Sports</p>
+    <p class="foot">Official certificate · Malawi National Council of Sports · BT42.195 km Race 2026
+      ${isCompletion ? ' · Completion certificate issued after verified finish' : ' · Entry certificate issued after verified payment'}</p>
   </div>
 </body>
 </html>`);
     w.document.close();
   }
 
-  // Expose for optional public use
   window.BT42OpenCertificate = openCertificate;
 
   function renderDeadlines() {
