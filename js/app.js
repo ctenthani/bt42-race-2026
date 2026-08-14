@@ -78,6 +78,18 @@
 
   // ---- Registration form ----
   // Works with Netlify Forms. Shows success panel after submit.
+  const RACE_DAY_ISO = '2026-09-19'; // age calculated on race day
+
+  function ageOnRaceDay(dobStr) {
+    if (!dobStr) return null;
+    const dob = new Date(dobStr + 'T12:00:00');
+    const race = new Date(RACE_DAY_ISO + 'T12:00:00');
+    let age = race.getFullYear() - dob.getFullYear();
+    const m = race.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && race.getDate() < dob.getDate())) age--;
+    return age;
+  }
+
   window.handleRegister = function (e) {
     const form = document.getElementById('regForm');
     if (!form.checkValidity()) {
@@ -89,11 +101,23 @@
     e.preventDefault();
 
     const formData = new FormData(form);
+    const distance = (formData.get('distance') || '').toString();
+    const dob = (formData.get('dob') || '').toString();
+    const age = ageOnRaceDay(dob);
+
+    // Reject marathon if under 20 on race day
+    if (distance === '42.195') {
+      if (age === null || age < 20) {
+        alert('Marathon entries are only open to runners who will be at least 20 years old on race day (19 September 2026). Please choose the 10 km or 5 km, or update your date of birth if it was entered incorrectly.');
+        return false;
+      }
+    }
 
     // Also keep a local copy for offline/admin use
     try {
       const data = Object.fromEntries(formData.entries());
       data.submittedAt = new Date().toISOString();
+      data.ageOnRaceDay = age;
       const existing = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
       existing.push(data);
       localStorage.setItem('bt42_registrations', JSON.stringify(existing));
@@ -112,7 +136,6 @@
         form.reset();
       })
       .catch(() => {
-        // Still show success — data is at least in localStorage
         showSuccess();
         form.reset();
       });
@@ -127,6 +150,32 @@
       el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   }
+
+  // Live hint when marathon selected
+  const distSel = document.getElementById('distance');
+  const dobInput = document.getElementById('dob');
+  function checkMarathonAgeHint() {
+    const hint = document.getElementById('marathon-age-hint');
+    if (!distSel || !dobInput) return;
+    if (distSel.value === '42.195' && dobInput.value) {
+      const age = ageOnRaceDay(dobInput.value);
+      if (hint) {
+        if (age !== null && age < 20) {
+          hint.textContent = 'Not eligible for the marathon: must be 20+ on 19 Sep 2026 (you would be ' + age + ').';
+          hint.style.display = 'block';
+        } else if (age !== null) {
+          hint.textContent = 'Age on race day: ' + age + ' — eligible for the marathon.';
+          hint.style.display = 'block';
+        } else {
+          hint.style.display = 'none';
+        }
+      }
+    } else if (hint) {
+      hint.style.display = 'none';
+    }
+  }
+  if (distSel) distSel.addEventListener('change', checkMarathonAgeHint);
+  if (dobInput) dobInput.addEventListener('change', checkMarathonAgeHint);
 
   console.log('BT42.195 Race App — launch ready');
 })();

@@ -13,6 +13,8 @@
   const CHAIR_NOTES_KEY = 'bt42_chair_meeting_notes_edits';
   const BUDGET_KEY = 'bt42_budget_edits';
   const ROLES_KEY = 'bt42_roles_edits';
+  const ATTEND_KEY = 'bt42_meeting_attendance';
+  const PAYMENT_KEY = 'bt42_payment_status';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -597,6 +599,115 @@
   }
 
 
+
+  // ---------- Meeting attendance ----------
+  function loadAttendance() {
+    try { return JSON.parse(localStorage.getItem(ATTEND_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function saveAttendance(map) {
+    localStorage.setItem(ATTEND_KEY, JSON.stringify(map));
+  }
+
+  function getRoleNames() {
+    // Prefer saved role names; fall back to data defaults
+    const roles = (typeof loadRoles === 'function') ? loadRoles() : (window.BT42_DATA.roles || []);
+    return roles
+      .map(r => ({ role: r.role, name: (r.name || '').trim() }))
+      .filter(r => r.name);
+  }
+
+  function renderAttendance() {
+    const container = $('#ctrl-attendance');
+    if (!container) return;
+    const attendance = loadAttendance();
+    const people = getRoleNames();
+    const meetings = window.BT42_DATA.meetings || [];
+
+    if (!people.length) {
+      container.innerHTML = `<p class="form-note">Assign names under <strong>Roles</strong> first, then return here to mark attendance.</p>`;
+      return;
+    }
+
+    let html = `<div class="attendance-wrap">`;
+    meetings.forEach(m => {
+      const key = 'm' + m.id;
+      const set = attendance[key] || {};
+      const presentCount = people.filter(p => set[p.name]).length;
+      html += `
+        <details class="ctrl-meeting attendance-card" ${m.id <= 2 ? 'open' : ''}>
+          <summary>
+            <span class="m-num">#${m.id}</span>
+            <span class="m-date">${formatDate(m.date)}</span>
+            <span class="m-focus">${m.focus}</span>
+            <span class="attend-count">${presentCount}/${people.length} present</span>
+          </summary>
+          <div class="m-body">
+            <div class="attend-list">`;
+      people.forEach(p => {
+        const checked = set[p.name] ? 'checked' : '';
+        const id = `att-${m.id}-${p.name.replace(/\\W+/g, '_')}`;
+        html += `
+              <label class="attend-item">
+                <input type="checkbox" data-meeting="${key}" data-name="${escapeHtml(p.name)}" ${checked} />
+                <span><strong>${escapeHtml(p.name)}</strong> <small>${escapeHtml(p.role)}</small></span>
+              </label>`;
+      });
+      html += `
+            </div>
+            <label style="display:block;margin-top:0.75rem;font-size:0.85rem;font-weight:600">Notes for this meeting</label>
+            <textarea class="attend-notes" data-meeting="${key}" rows="2" style="width:100%;margin-top:0.35rem;padding:0.6rem;border:1px solid var(--border);border-radius:8px;font-family:inherit">${escapeHtml((attendance[key + '_notes'] || ''))}</textarea>
+          </div>
+        </details>`;
+    });
+    html += `</div>
+      <button type="button" class="btn btn-primary" id="attend-save-btn" style="margin-top:0.75rem">Save attendance</button>
+      <p id="attend-save-msg" style="font-size:0.8rem;color:var(--accent);margin-top:0.5rem;display:none">Attendance saved on this device.</p>`;
+    container.innerHTML = html;
+
+    const saveBtn = $('#attend-save-btn');
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const map = loadAttendance();
+        container.querySelectorAll('.attend-item input[type="checkbox"]').forEach(cb => {
+          const mk = cb.dataset.meeting;
+          if (!map[mk]) map[mk] = {};
+          map[mk][cb.dataset.name] = cb.checked;
+        });
+        container.querySelectorAll('.attend-notes').forEach(ta => {
+          map[ta.dataset.meeting + '_notes'] = ta.value;
+        });
+        saveAttendance(map);
+        const msg = $('#attend-save-msg');
+        if (msg) { msg.style.display = 'block'; setTimeout(() => { msg.style.display = 'none'; }, 1600); }
+        renderAttendance();
+      };
+    }
+  }
+
+  function loadPayments() {
+    try { return JSON.parse(localStorage.getItem(PAYMENT_KEY) || '{}'); }
+    catch { return {}; }
+  }
+
+  function savePayments(map) {
+    localStorage.setItem(PAYMENT_KEY, JSON.stringify(map));
+  }
+
+  function participantKey(r, i) {
+    const phone = (r.phone || '').replace(/\s+/g, '');
+    const name = (r.fullName || '').trim().toLowerCase();
+    return phone || name || ('idx-' + i);
+  }
+
+  function distanceLabel(d) {
+    if (d === '42.195' || d === '42.195 km') return '42.195 km Marathon';
+    if (d === '10') return '10 km Race';
+    if (d === '5') return '5 km Fun Run';
+    return d || '—';
+  }
+
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
@@ -604,29 +715,184 @@
     try {
       rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
     } catch { rows = []; }
+    const pays = loadPayments();
+
+    let html = `<div class="notice" style="margin-bottom:1rem">
+      <strong>Payment verification workflow</strong><br>
+      1) Runner pays via <strong>TNM Mpamba code 500204</strong> or <strong>NBM account 1802283</strong>.<br>
+      2) OC checks mobile money / bank statement against name or phone reference.<br>
+      3) Mark <strong>Verified</strong> here — then generate the participant certificate.<br>
+      <em>Fully automatic bank APIs are not available on this static site; verification is OC-confirmed against the payment channels above.</em>
+    </div>`;
 
     if (!rows.length) {
-      container.innerHTML = `<p style="color:var(--text-muted)">No local registrations on this device yet. After Netlify deploy, open <strong>Forms → bt42-registration</strong> for the full list. Submissions from this browser also appear here.</p>`;
+      html += `<p style="color:var(--text-muted)">No local registrations on this device yet. After Netlify deploy, also check <strong>Forms → bt42-registration</strong>. You can still import by registering a test entry on this browser.</p>`;
+      container.innerHTML = html;
       return;
     }
 
-    let html = `<p style="font-size:0.85rem;margin-bottom:0.75rem"><strong>${rows.length}</strong> local submission(s) on this device</p>
+    const verified = rows.filter((r, i) => (pays[participantKey(r, i)] || {}).status === 'verified').length;
+    const pending = rows.length - verified;
+
+    html += `<p style="font-size:0.85rem;margin-bottom:0.75rem"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> payment verified · <strong>${pending}</strong> pending</p>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Gender</th><th>Submitted</th></tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Actions</th></tr></thead><tbody>`;
+
     rows.forEach((r, i) => {
-      const when = r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '—';
+      const key = participantKey(r, i);
+      const pay = pays[key] || { status: 'pending' };
+      const st = pay.status || 'pending';
+      const stLabel = st === 'verified' ? 'Verified' : (st === 'rejected' ? 'Rejected' : 'Pending');
+      const stClass = st === 'verified' ? 'pay-ok' : (st === 'rejected' ? 'pay-no' : 'pay-wait');
       html += `<tr>
         <td>${i + 1}</td>
-        <td>${escapeHtml(r.fullName || '')}</td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong></td>
         <td>${escapeHtml(r.phone || '')}</td>
-        <td>${escapeHtml(r.distance || '')}</td>
-        <td>${escapeHtml(r.gender || '')}</td>
-        <td><small>${when}</small></td>
+        <td>${escapeHtml(distanceLabel(r.distance))}</td>
+        <td><span class="pay-status ${stClass}">${stLabel}</span>${pay.note ? '<br><small>' + escapeHtml(pay.note) + '</small>' : ''}</td>
+        <td class="actions-cell">
+          <button type="button" class="btn-mini pay-verify" data-key="${escapeHtml(key)}" data-i="${i}">Verify</button>
+          <button type="button" class="btn-mini pay-reject" data-key="${escapeHtml(key)}">Reject</button>
+          <button type="button" class="btn-mini pay-cert" data-i="${i}" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Certificate</button>
+        </td>
       </tr>`;
     });
     html += '</tbody></table></div>';
     container.innerHTML = html;
+
+    container.querySelectorAll('.pay-verify').forEach(btn => {
+      btn.onclick = () => {
+        const map = loadPayments();
+        const note = prompt('Optional note (e.g. Mpamba ref / bank deposit time):', (map[btn.dataset.key] || {}).note || '') || '';
+        map[btn.dataset.key] = {
+          status: 'verified',
+          note: note,
+          verifiedAt: new Date().toISOString(),
+          verifiedBy: isChair ? 'Chair' : 'Committee'
+        };
+        savePayments(map);
+        renderParticipants();
+      };
+    });
+    container.querySelectorAll('.pay-reject').forEach(btn => {
+      btn.onclick = () => {
+        const map = loadPayments();
+        map[btn.dataset.key] = {
+          status: 'rejected',
+          note: prompt('Reason (optional):', '') || '',
+          verifiedAt: new Date().toISOString()
+        };
+        savePayments(map);
+        renderParticipants();
+      };
+    });
+    container.querySelectorAll('.pay-cert').forEach(btn => {
+      btn.onclick = () => {
+        const i = Number(btn.dataset.i);
+        const r = rows[i];
+        if (!r) return;
+        openCertificate(r);
+      };
+    });
   }
+
+  function openCertificate(r) {
+    const distance = distanceLabel(r.distance);
+    const name = r.fullName || 'Participant';
+    const phone = r.phone || '';
+    const certId = 'BT42-' + (phone.replace(/\D/g, '').slice(-8) || Date.now().toString(36).toUpperCase());
+    const issued = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const w = window.open('', '_blank', 'width=900,height=1200');
+    if (!w) {
+      alert('Please allow pop-ups to view the certificate.');
+      return;
+    }
+    w.document.write(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Certificate — ${name.replace(/</g, '')}</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Georgia, 'Times New Roman', serif; margin: 0; background: #eee; color: #1a1a1a; }
+  .sheet {
+    width: 297mm; min-height: 210mm; margin: 12px auto; background: #fff;
+    border: 10px solid #1B4F72; padding: 18mm 16mm; position: relative;
+  }
+  .sheet::before {
+    content: ''; position: absolute; inset: 6px; border: 2px solid #D4AC0D; pointer-events: none;
+  }
+  .hdr { text-align: center; margin-bottom: 1.2rem; }
+  .org { font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #1B4F72; font-weight: 700; }
+  .event { font-size: 22px; margin: 0.4rem 0 0; color: #154360; }
+  .sub { font-size: 13px; color: #555; margin-top: 0.25rem; }
+  h1 { text-align: center; font-size: 28px; letter-spacing: 0.08em; margin: 1.2rem 0 0.4rem; color: #7D6608; }
+  .intro { text-align: center; font-size: 14px; margin: 0.5rem 0; }
+  .pname { text-align: center; font-size: 32px; font-weight: 700; margin: 0.6rem 0; border-bottom: 1px solid #ccc; display: inline-block; padding: 0 1.5rem 0.25rem; }
+  .pname-wrap { text-align: center; }
+  .detail { text-align: center; font-size: 15px; margin: 0.75rem auto 1.2rem; max-width: 80%; line-height: 1.5; }
+  .sigs { display: flex; justify-content: space-around; gap: 1.5rem; margin-top: 2rem; text-align: center; }
+  .sig { flex: 1; max-width: 220px; }
+  .sig-line { border-top: 1px solid #333; margin: 2.5rem 0.5rem 0.35rem; }
+  .sig-name { font-weight: 700; font-size: 13px; }
+  .sig-title { font-size: 11px; color: #444; }
+  .foot { text-align: center; margin-top: 1.5rem; font-size: 11px; color: #666; }
+  .actions { text-align: center; margin: 12px; }
+  .actions button { padding: 0.6rem 1.2rem; font-size: 14px; cursor: pointer; margin: 0 0.25rem; }
+  @media print { body { background: #fff; } .actions { display: none; } .sheet { margin: 0; border-width: 8px; } }
+</style>
+</head>
+<body>
+  <div class="actions">
+    <button onclick="window.print()">Print / Save PDF</button>
+    <button onclick="window.close()">Close</button>
+  </div>
+  <div class="sheet">
+    <div class="hdr">
+      <div class="org">Malawi National Council of Sports</div>
+      <div class="event">BT42.195 km Race 2026</div>
+      <div class="sub">Blantyre · Saturday, 19 September 2026</div>
+    </div>
+    <h1>CERTIFICATE OF PARTICIPATION</h1>
+    <p class="intro">This is to certify that</p>
+    <div class="pname-wrap"><div class="pname">${name.replace(/</g, '')}</div></div>
+    <p class="detail">
+      is a registered participant in the <strong>${distance.replace(/</g, '')}</strong>
+      of the BT42.195 km Race 2026, organised under the auspices of the
+      <strong>Malawi National Council of Sports</strong>.
+    </p>
+    <p class="detail" style="font-size:13px;color:#555">
+      Certificate ID: ${certId} · Issued: ${issued}
+      ${phone ? ' · Tel: ' + phone.replace(/</g, '') : ''}
+    </p>
+    <div class="sigs">
+      <div class="sig">
+        <div class="sig-line"></div>
+        <div class="sig-name">Jim Kalua</div>
+        <div class="sig-title">Chairman of the Council<br>Malawi National Council of Sports</div>
+      </div>
+      <div class="sig">
+        <div class="sig-line"></div>
+        <div class="sig-name">Ivy Chinangwa</div>
+        <div class="sig-title">Acting Chief Executive Officer<br>Malawi National Council of Sports</div>
+      </div>
+      <div class="sig">
+        <div class="sig-line"></div>
+        <div class="sig-name">Chifundo Tenthani</div>
+        <div class="sig-title">Chair, Organising Committee<br>BT42.195 km Race 2026</div>
+      </div>
+    </div>
+    <p class="foot">Official certificate of the BT42.195 km Race 2026 · Malawi National Council of Sports</p>
+  </div>
+</body>
+</html>`);
+    w.document.close();
+  }
+
+  // Expose for optional public use
+  window.BT42OpenCertificate = openCertificate;
 
   function renderDeadlines() {
     const container = $('#ctrl-deadlines');
@@ -705,6 +971,7 @@
     renderRoles();
     renderTargets();
     renderParticipants();
+    renderAttendance();
     renderDeadlines();
     if (isChair) renderChairNotes();
     renderNotes();

@@ -199,7 +199,8 @@
               <input type="hidden" name="form-name" value="bt42-registration" />
               <p class="hidden" style="display:none"><label>Don’t fill this out: <input name="bot-field" /></label></p>
               <h2>Entry Form</h2>
-              <p class="form-note">Complete the form below. After submission you will receive payment instructions for Airtel Money or TNM Mpamba. Your place is confirmed once payment is received.</p>
+              <p class="form-note">Complete the form below. After submission you will receive payment instructions (TNM Mpamba or National Bank of Malawi). Your place is confirmed once payment is received.</p>
+              <p class="form-note" style="margin-top:0.5rem"><strong>Age rule:</strong> Marathon (42.195 km) entrants must be <strong>at least 20 years old on race day</strong> (19 September 2026). 10 km and 5 km have no minimum age beyond parental consent where required.</p>
 
               <div class="form-group">
                 <label for="fullName">Full Name *</label>
@@ -234,10 +235,11 @@
                 <label for="distance">Distance *</label>
                 <select id="distance" name="distance" required>
                   <option value="">Choose your race</option>
-                  <option value="42.195">42.195 km Marathon</option>
+                  <option value="42.195">42.195 km Marathon (must be 20+ on race day)</option>
                   <option value="10">10 km Race</option>
                   <option value="5">5 km Fun Run</option>
                 </select>
+                <p id="marathon-age-hint" class="form-note" style="display:none;color:#C0392B;margin-top:0.35rem"></p>
               </div>
               <div class="form-group">
                 <label for="emergency">Emergency Contact Name & Phone *</label>
@@ -265,6 +267,12 @@
                 </ul>
               </div>
               <div class="sidebar-card">
+                <h3>Payment details</h3>
+                <p><strong>TNM Mpamba:</strong> code <code>500204</code></p>
+                <p><strong>National Bank of Malawi:</strong> account <code>1802283</code></p>
+                <p style="font-size:0.85rem;margin-top:0.5rem">Use your mobile number (Mpamba) or name + mobile (bank) as reference.</p>
+              </div>
+              <div class="sidebar-card">
                 <h3>Need Help?</h3>
                 <p>Contact the organising team via the channels published by MNCS closer to opening.</p>
               </div>
@@ -272,10 +280,17 @@
           </div>
           <div id="regSuccess" class="success-msg hidden">
             <h3>Registration received</h3>
-            <p><strong>Next step: Pay via mobile money</strong></p>
-            <p>Use your phone number as the payment reference. Send the entry fee via <strong>Airtel Money</strong> or <strong>TNM Mpamba</strong> to the number published on the confirmation screen / SMS.</p>
+            <p><strong>Next step: Complete payment</strong></p>
+            <div class="pay-box">
+              <p><strong>Option 1 — TNM Mpamba</strong><br>
+              Code: <code class="pay-code">500204</code><br>
+              Reference: use your mobile number</p>
+              <p><strong>Option 2 — National Bank of Malawi</strong><br>
+              Account number: <code class="pay-code">1802283</code><br>
+              Reference: your full name + mobile number</p>
+            </div>
             <p>Once payment is confirmed by the organisers you will receive final confirmation and bib details closer to race day.</p>
-            <p style="font-size:0.85rem;margin-top:1rem;opacity:0.85">Keep your mobile money SMS as proof of payment.</p>
+            <p style="font-size:0.85rem;margin-top:1rem;opacity:0.85">Keep your mobile money SMS or bank deposit slip as proof of payment.</p>
             <button class="btn btn-outline" onclick="document.getElementById('regSuccess').classList.add('hidden')">Close</button>
           </div>
         </div>
@@ -382,6 +397,7 @@
                 <li><strong>Registration opens:</strong> 18 August 2026 (target)</li>
                 <li><strong>Packet pickup / Expo:</strong> 17–18 September 2026</li>
                 <li><strong>Race Day:</strong> Saturday, 19 September 2026</li>
+                <li><strong>Marathon minimum age:</strong> 20 years old on race day</li>
               </ul>
             </details>
             <details>
@@ -466,6 +482,7 @@
               <button class="ctrl-tab" data-panel="participants">Participants</button>
               <button class="ctrl-tab" data-panel="checklist">Checklist</button>
               <button class="ctrl-tab" data-panel="meetings">Meetings</button>
+              <button class="ctrl-tab" data-panel="attendance">Attendance</button>
               <button class="ctrl-tab" data-panel="sponsors">Sponsors</button>
               <button class="ctrl-tab" data-panel="budget">Budget</button>
               <button class="ctrl-tab" data-panel="runsheet">Race Day</button>
@@ -496,12 +513,10 @@
 
             <!-- Checklist -->
             <div id="panel-participants" class="ctrl-panel">
-              <h3 class="ctrl-section-title">Participant list</h3>
+              <h3 class="ctrl-section-title">Participants · Payment · Certificates</h3>
               <div class="notice" style="margin-bottom:1rem">
-                <strong>Where entries appear:</strong><br>
-                1) <strong>Netlify Forms</strong> (live site) — Site dashboard → Forms → <code>bt42-registration</code>. That is the official list after deploy.<br>
-                2) <strong>This Control Room</strong> — copies saved on this browser when the form is submitted from this device (demo/local).<br>
-                3) Export from Netlify Forms to CSV for start lists and packet pickup.
+                <strong>Entries:</strong> Netlify Forms (<code>bt42-registration</code>) is the master list after deploy; this view shows local/browser copies and verification status.<br>
+                <strong>Pay to verify:</strong> TNM Mpamba <code>500204</code> or NBM <code>1802283</code>. Mark Verified, then open Certificate (MNCS — Jim Kalua, Ivy Chinangwa).
               </div>
               <div id="ctrl-participants"></div>
             </div>
@@ -515,6 +530,12 @@
             <div id="panel-meetings" class="ctrl-panel">
               <p class="form-note" style="margin-bottom:0.5rem">Standing Google Meet for all OC meetings: <a href="https://meet.google.com/ixu-kyfn-pvc" target="_blank" rel="noopener">https://meet.google.com/ixu-kyfn-pvc</a></p>
               <div id="ctrl-meetings"></div>
+            </div>
+
+            <div id="panel-attendance" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Meeting attendance</h3>
+              <p class="form-note" style="margin-bottom:0.75rem">Mark who attended each OC meeting. Names come from Roles (assign them first). Changes save on this device.</p>
+              <div id="ctrl-attendance"></div>
             </div>
 
             <!-- Sponsors -->
