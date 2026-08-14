@@ -779,24 +779,24 @@
       return { ok: false, error: (data && (data.detail || data.error)) || ('HTTP ' + res.status) };
     }
     const s = data.state || {};
-    if (Array.isArray(s.registrations) && s.registrations.length) {
-      // Merge with local
+    // Shared store is source of truth — replace local (do not merge, or deletes never stick)
+    if (Array.isArray(s.registrations)) {
       try {
-        const local = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
-        const keyOf = (r) => String(r.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(r.fullName || '').trim().toLowerCase();
-        const map = new Map();
-        local.forEach(r => map.set(keyOf(r), r));
-        s.registrations.forEach(r => {
-          const k = keyOf(r);
-          map.set(k, Object.assign({}, map.get(k) || {}, r));
-        });
-        localStorage.setItem('bt42_registrations', JSON.stringify(Array.from(map.values())));
+        localStorage.setItem('bt42_registrations', JSON.stringify(s.registrations));
       } catch (e) {}
     }
-    if (s.payments) localStorage.setItem(PAYMENT_KEY, JSON.stringify(s.payments));
-    if (s.bibs) localStorage.setItem(BIB_KEY, JSON.stringify(s.bibs));
-    if (s.finishes) localStorage.setItem(FINISH_KEY, JSON.stringify(s.finishes));
-    if (s.attendance) localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
+    if (s.payments && typeof s.payments === 'object') {
+      localStorage.setItem(PAYMENT_KEY, JSON.stringify(s.payments));
+    }
+    if (s.bibs && typeof s.bibs === 'object') {
+      localStorage.setItem(BIB_KEY, JSON.stringify(s.bibs));
+    }
+    if (s.finishes && typeof s.finishes === 'object') {
+      localStorage.setItem(FINISH_KEY, JSON.stringify(s.finishes));
+    }
+    if (s.attendance && typeof s.attendance === 'object') {
+      localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
+    }
     if (isChair && s.signatures && !s.signatures._presentOnly) {
       localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
     }
@@ -835,12 +835,16 @@
   async function pushAllLocal() {
     const payload = {
       registrations: JSON.parse(localStorage.getItem('bt42_registrations') || '[]'),
+      replaceRegistrations: true,
       bibs: loadBibs(),
+      replaceBibs: true,
       finishes: loadFinishes(),
+      replaceFinishes: true,
       attendance: loadAttendance()
     };
     if (isChair) {
       payload.payments = loadPayments();
+      payload.replacePayments = true;
       payload.signatures = loadSigs();
     }
     return pushSharedState(payload);
