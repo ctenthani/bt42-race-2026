@@ -4,17 +4,12 @@
   command = "npm install"
   publish = "."
 
-# Do not SPA-redirect API/functions
-[[redirects]]
-  from = "/.netlify/functions/*"
-  to = "/.netlify/functions/:splat"
-  status = 200
-  force = false
-
+# SPA fallback only — never redirect /.netlify/* (functions are handled by Netlify automatically)
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+  force = false
 
 [[headers]]
   for = "/*"

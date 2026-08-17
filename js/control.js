@@ -1040,7 +1040,8 @@
     const finished = rows.filter((r, i) => (finishes[participantKey(r, i)] || {}).status === 'finished').length;
 
     html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;margin:0.75rem 0">
-        <p style="font-size:0.85rem;margin:0"><strong>${rows.length}</strong> entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
+        <p style="font-size:0.85rem;margin:0"><strong>${rows.length}</strong> shared entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
+        <button type="button" class="btn-mini" id="sync-local-shared">Upload this phone's local entries to shared list</button>
         ${isChair ? '<button type="button" class="btn-mini" id="clear-all-entries" style="border-color:#C0392B;color:#C0392B">Clear all entries</button>' : ''}
       </div>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
@@ -1092,6 +1093,44 @@
     wireSigUploads();
     renderSigPreviews();
 
+
+
+    const syncLocalBtn = $('#sync-local-shared');
+    if (syncLocalBtn) {
+      syncLocalBtn.onclick = async () => {
+        if (!getSyncToken()) {
+          alert('Save OC_SYNC_TOKEN first, then try again.');
+          return;
+        }
+        let local = [];
+        try { local = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { local = []; }
+        if (!local.length) {
+          alert('No local entries on this device.');
+          return;
+        }
+        if (!confirm('Upload ' + local.length + ' entr(y/ies) from this device into the shared list for all OC members?')) return;
+        // Merge with shared via push replace of union
+        const rPull = await pullSharedState();
+        let shared = [];
+        try { shared = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { shared = []; }
+        const keyOf = (x) => String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
+        const map = new Map();
+        shared.forEach((x) => map.set(keyOf(x), x));
+        local.forEach((x) => map.set(keyOf(x), Object.assign({}, map.get(keyOf(x)) || {}, x)));
+        const merged = Array.from(map.values());
+        localStorage.setItem('bt42_registrations', JSON.stringify(merged));
+        const r = await livePush({
+          registrations: merged,
+          replaceRegistrations: true
+        });
+        if (r.ok) {
+          alert('Uploaded. Shared list now has ' + merged.length + ' entries. Other devices will refresh automatically.');
+          renderParticipants();
+        } else {
+          alert('Upload failed: ' + (r.error || 'unknown'));
+        }
+      };
+    }
 
     const clearAllBtn = $('#clear-all-entries');
     if (clearAllBtn) {
