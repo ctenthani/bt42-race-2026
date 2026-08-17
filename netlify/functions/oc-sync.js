@@ -193,6 +193,78 @@ async function jsonbinWrite(state) {
   );
 }
 
+
+async function fetchNetlifyFormSubmissions() {
+  const siteID = envNonEmpty('NETLIFY_SITE_ID') || envNonEmpty('SITE_ID');
+  const token = envNonEmpty('NETLIFY_AUTH_TOKEN') || envNonEmpty('NETLIFY_BLOBS_TOKEN');
+  const formId = envNonEmpty('NETLIFY_FORM_ID'); // optional explicit id
+  if (!siteID || !token) return [];
+
+  const headers = { Authorization: 'Bearer ' + token };
+
+  // List forms, find bt42-registration unless form id set
+  let fid = formId;
+  if (!fid) {
+    const fr = await fetchWithTimeout(
+      'https://api.netlify.com/api/v1/sites/' + siteID + '/forms',
+      { headers },
+      10000
+    );
+    if (!fr.ok) throw new Error('Forms list HTTP ' + fr.status);
+    const forms = await fr.json();
+    const hit = (forms || []).find(
+      (f) => f.name === 'bt42-registration' || f.name === 'registration'
+    );
+    if (!hit) return [];
+    fid = hit.id;
+  }
+
+  const sr = await fetchWithTimeout(
+    'https://api.netlify.com/api/v1/forms/' + fid + '/submissions?per_page=1000',
+    { headers },
+    15000
+  );
+  if (!sr.ok) throw new Error('Forms submissions HTTP ' + sr.status);
+  const subs = await sr.json();
+  return (subs || []).map((s) => {
+    const d = s.data || s;
+    return {
+      fullName: d.fullName || d.name || d['Full Name'] || '',
+      phone: d.phone || d.mobile || '',
+      email: d.email || '',
+      distance: d.distance || '',
+      dob: d.dob || '',
+      gender: d.gender || '',
+      emergency: d.emergency || '',
+      submittedAt: s.created_at || d.submittedAt || new Date().toISOString(),
+      source: 'netlify-forms',
+      formSubmissionId: s.id || s.number || null
+    };
+  }).filter((r) => r.fullName && r.phone);
+}
+
+function mergeRegistrationLists(primary, secondary) {
+  const keyOf = (r) =>
+    String(r.phone || '')
+      .replace(/\s+/g, '')
+      .toLowerCase() +
+    '|' +
+    String(r.fullName || '')
+      .trim()
+      .toLowerCase();
+  const map = new Map();
+  (primary || []).forEach((r) => map.set(keyOf(r), r));
+  (secondary || []).forEach((r) => {
+    const k = keyOf(r);
+    if (!map.has(k)) map.set(k, r);
+    else map.set(k, Object.assign({}, r, map.get(k))); // prefer primary fields
+  });
+  return Array.from(map.values()).sort((a, b) =>
+    String(b.submittedAt || '').localeCompare(String(a.submittedAt || ''))
+  );
+}
+
+
 async function readState() {
   const errors = [];
   // Prefer Blobs when credentials are set (more reliable than JSONBin today)
@@ -322,6 +394,30 @@ exports.handler = async (event) => {
   try {
     if (event.httpMethod === 'GET') {
       const { state, backend } = await readState();
+      let formsCount = 0;
+      let formsError = null;
+      try {
+        const fromForms = await fetchNetlifyFormSubmissions();
+        formsCount = fromForms.length;
+        if (fromForms.length) {
+          const merged = mergeRegistrationLists(state.registrations || [], fromForms);
+          // If forms added anyone, persist to Blobs so all devices share one list
+          if (merged.length !== (state.registrations || []).length) {
+            state.registrations = merged;
+            state.updatedAt = new Date().toISOString();
+            state.updatedBy = 'forms-merge';
+            try {
+              await writeState(state);
+            } catch (e) {
+              /* still return merged even if persist fails */
+            }
+          } else {
+            state.registrations = merged;
+          }
+        }
+      } catch (e) {
+        formsError = e && e.message ? e.message : String(e);
+      }
       if (role !== 'chair' && state.signatures) {
         state.signatures = {
           kalua: !!state.signatures.kalua,
@@ -330,7 +426,13 @@ exports.handler = async (event) => {
           _presentOnly: true
         };
       }
-      return json(200, { ok: true, backend, state });
+      return json(200, {
+        ok: true,
+        backend,
+        formsMerged: formsCount,
+        formsError,
+        state
+      });
     }
 
     if (event.httpMethod === 'POST') {

@@ -863,13 +863,13 @@
           <span class="pay-status ${tokenSet ? 'pay-ok' : 'pay-wait'}">${tokenSet ? 'Token set' : 'No token'}</span>
           <span id="live-sync-status" class="live-sync-status wait">…</span>
         </div>
-        <p class="form-note" style="margin:0.35rem 0">Like dartsmw: every change saves to the server; all open Control Rooms refresh automatically every few seconds.</p>
+        <p class="form-note" style="margin:0.35rem 0">Entries appear automatically from the shared list and Netlify Forms. This screen refreshes every few seconds — no manual Pull needed.</p>
         ${meta.updatedAt ? '<small>Server: ' + new Date(meta.updatedAt).toLocaleString() + (meta.updatedBy ? ' · ' + meta.updatedBy : '') + '</small>' : ''}
         <div class="sync-actions">
           <input type="password" id="sync-token-input" placeholder="OC_SYNC_TOKEN" value="" autocomplete="off" />
           <button type="button" class="btn-mini" id="sync-save-token">Save token</button>
-          <button type="button" class="btn-mini" id="sync-pull">Pull now</button>
-          <button type="button" class="btn-mini" id="sync-push">Push now</button>
+          <button type="button" class="btn-mini" id="sync-pull">Refresh now</button>
+          <button type="button" class="btn-mini" id="sync-push">Push local</button>
         </div>
         <p id="sync-msg" class="form-note" style="margin:0.35rem 0 0"></p>
       </div>`;
@@ -918,7 +918,7 @@
   let liveSyncBusy = false;
   let lastKnownUpdatedAt = null;
   let failStreak = 0;
-  const LIVE_POLL_MS = 8000;
+  const LIVE_POLL_MS = 5000;
   const LIVE_POLL_SLOW_MS = 30000;
 
   function setLiveStatus(text, ok) {
