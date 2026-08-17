@@ -147,46 +147,39 @@ function normalizeReg(body) {
 }
 
 async function readState() {
+  // Blobs only when credentials exist — do not wait on JSONBin (currently 522)
   if (blobsCredentials().ready) {
-    try {
-      return { state: await blobsRead(), backend: 'blobs' };
-    } catch (e) {
-      /* fall through */
-    }
-  }
-  if (jsonbinConfigured()) {
-    try {
-      return { state: await jsonbinRead(), backend: 'jsonbin' };
-    } catch (e) {
-      /* fall through */
-    }
+    return { state: await blobsRead(), backend: 'blobs' };
   }
   try {
     return { state: await blobsRead(), backend: 'blobs-auto' };
-  } catch (e) {
-    throw new Error('No storage backend available: ' + (e.message || e));
+  } catch (e1) {
+    if (jsonbinConfigured()) {
+      try {
+        return { state: await jsonbinRead(), backend: 'jsonbin' };
+      } catch (e2) {
+        throw new Error('No storage: blobs=' + (e1.message || e1) + ' jsonbin=' + (e2.message || e2));
+      }
+    }
+    throw new Error('No storage backend: ' + (e1.message || e1));
   }
 }
 
 async function writeState(state) {
   if (blobsCredentials().ready) {
-    try {
-      await blobsWrite(state);
-      return 'blobs';
-    } catch (e) {
-      /* fall through */
-    }
+    await blobsWrite(state);
+    return 'blobs';
   }
-  if (jsonbinConfigured()) {
-    try {
+  try {
+    await blobsWrite(state);
+    return 'blobs-auto';
+  } catch (e1) {
+    if (jsonbinConfigured()) {
       await jsonbinWrite(state);
       return 'jsonbin';
-    } catch (e) {
-      /* fall through */
     }
+    throw e1;
   }
-  await blobsWrite(state);
-  return 'blobs-auto';
 }
 
 exports.handler = async (event) => {

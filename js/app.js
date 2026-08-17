@@ -83,7 +83,7 @@
   // Entry fees (MWK) — shown after race selection; must match Mpamba merchant setup for 500204
   const ENTRY_FEES = {
     '42.195': 15000,
-    '10': 8000,
+    '10': 10000,
     '5': 5000
   };
   const FEE_LABELS = {
