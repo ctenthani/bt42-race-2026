@@ -138,34 +138,63 @@
       console.warn('localStorage save failed', err);
     }
 
-    // 1) Shared backend (JSONBin/Blobs) so all OC devices see the entry
-    // 2) Netlify Forms backup (when deployed)
-    const shared = fetch('/.netlify/functions/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    }).then(async (res) => {
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j.ok) {
-        console.warn('Shared register failed', j);
-        return { ok: false, error: (j && (j.detail || j.error)) || res.status };
-      }
-      return { ok: true, backend: j.backend };
-    }).catch((e) => ({ ok: false, error: String(e) }));
+    // Shared list is required for OC monitoring; Forms is backup only.
+    // Build a clean payload (avoid honeypot / form-name only fields)
+    const payload = {
+      fullName: data.fullName || data.name || '',
+      phone: data.phone || '',
+      email: data.email || '',
+      distance: data.distance || '',
+      dob: data.dob || '',
+      gender: data.gender || '',
+      emergency: data.emergency || '',
+      submittedAt: data.submittedAt,
+      ageOnRaceDay: data.ageOnRaceDay,
+      feeMwk: data.feeMwk
+    };
 
-    const forms = fetch('/', {
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting…';
+    }
+
+    // Netlify Forms backup (do not block on this)
+    fetch('/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams(formData).toString()
     }).catch(() => null);
 
-    Promise.all([shared, forms]).then(([sharedResult]) => {
-      showSuccess(data);
-      form.reset();
-      if (sharedResult && !sharedResult.ok) {
-        console.warn('Registration saved on this device only. Shared list error:', sharedResult.error);
-      }
-    });
+    fetch('/.netlify/functions/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(async (res) => {
+        const j = await res.json().catch(() => ({}));
+        if (!res.ok || !j.ok) {
+          throw new Error((j && (j.detail || j.error)) || ('HTTP ' + res.status));
+        }
+        showSuccess(data);
+        form.reset();
+        const fp = document.getElementById('fee-preview');
+        if (fp) fp.style.display = 'none';
+      })
+      .catch((err) => {
+        console.error('Shared register failed', err);
+        alert(
+          'Registration could not be saved to the official list. ' +
+          'Please check your internet connection and try again.\n\n' +
+          'Details: ' + (err && err.message ? err.message : String(err))
+        );
+      })
+      .finally(() => {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit registration';
+        }
+      });
 
     return false;
   };
