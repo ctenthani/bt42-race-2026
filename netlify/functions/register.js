@@ -1,11 +1,10 @@
 /**
- * Public registration endpoint — any device can submit; writes to shared store.
+ * Public registration — writes to shared store (Blobs preferred, then JSONBin)
  * POST /.netlify/functions/register
- * Body: JSON registration fields (fullName, phone, email, distance, dob, ...)
- *
- * Uses same storage as oc-sync (JSONBin preferred, then Blobs with credentials).
- * Does NOT require OC_SYNC_TOKEN (public form). Optional: REGISTRATION_ENABLED=false to close.
  */
+
+const STORE_NAME = 'bt42-oc-sync';
+const STATE_KEY = 'state';
 
 const emptyState = () => ({
   registrations: [],
@@ -31,64 +30,90 @@ function json(status, body) {
   return { statusCode: status, headers: corsHeaders(), body: JSON.stringify(body) };
 }
 
+function envNonEmpty(name) {
+  const v = process.env[name];
+  return v && String(v).trim().length > 0 ? String(v).trim() : '';
+}
+
+function blobsCredentials() {
+  const siteID =
+    envNonEmpty('NETLIFY_SITE_ID') ||
+    envNonEmpty('SITE_ID') ||
+    envNonEmpty('BLOBS_SITE_ID');
+  const token =
+    envNonEmpty('NETLIFY_BLOBS_TOKEN') ||
+    envNonEmpty('NETLIFY_AUTH_TOKEN') ||
+    envNonEmpty('BLOBS_TOKEN');
+  return { siteID, token, ready: !!(siteID && token) };
+}
+
+async function withBlobStore(fn) {
+  const { getStore } = require('@netlify/blobs');
+  const { siteID, token, ready } = blobsCredentials();
+  const store = ready
+    ? getStore({ name: STORE_NAME, siteID, token, consistency: 'strong' })
+    : getStore({ name: STORE_NAME, consistency: 'strong' });
+  return fn(store);
+}
+
+async function blobsRead() {
+  return withBlobStore(async (store) => {
+    const raw = await store.get(STATE_KEY, { type: 'json' });
+    if (!raw || typeof raw !== 'object') return emptyState();
+    return Object.assign(emptyState(), raw);
+  });
+}
+
+async function blobsWrite(state) {
+  return withBlobStore(async (store) => {
+    await store.setJSON(STATE_KEY, state);
+  });
+}
+
 function jsonbinConfigured() {
-  return !!(process.env.JSONBIN_BIN_ID && process.env.JSONBIN_API_KEY);
+  return !!(envNonEmpty('JSONBIN_BIN_ID') && envNonEmpty('JSONBIN_API_KEY'));
+}
+
+async function fetchWithTimeout(url, options, ms) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...options, signal: ctrl.signal });
+  } finally {
+    clearTimeout(t);
+  }
 }
 
 async function jsonbinRead() {
-  const id = process.env.JSONBIN_BIN_ID;
-  const key = process.env.JSONBIN_API_KEY;
-  const res = await fetch('https://api.jsonbin.io/v3/b/' + id + '/latest', {
-    headers: { 'X-Master-Key': key }
-  });
+  const id = envNonEmpty('JSONBIN_BIN_ID');
+  const key = envNonEmpty('JSONBIN_API_KEY');
+  const res = await fetchWithTimeout(
+    'https://api.jsonbin.io/v3/b/' + id + '/latest',
+    { headers: { 'X-Master-Key': key } },
+    8000
+  );
   if (!res.ok) throw new Error('JSONBin read ' + res.status);
   const data = await res.json();
   return Object.assign(emptyState(), data.record || data || {});
 }
 
 async function jsonbinWrite(state) {
-  const id = process.env.JSONBIN_BIN_ID;
-  const key = process.env.JSONBIN_API_KEY;
-  const res = await fetch('https://api.jsonbin.io/v3/b/' + id, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': key,
-      'X-Bin-Versioning': 'false'
+  const id = envNonEmpty('JSONBIN_BIN_ID');
+  const key = envNonEmpty('JSONBIN_API_KEY');
+  const res = await fetchWithTimeout(
+    'https://api.jsonbin.io/v3/b/' + id,
+    {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': key,
+        'X-Bin-Versioning': 'false'
+      },
+      body: JSON.stringify(state)
     },
-    body: JSON.stringify(state)
-  });
+    8000
+  );
   if (!res.ok) throw new Error('JSONBin write ' + res.status);
-}
-
-function blobsReady() {
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || process.env.BLOBS_SITE_ID || '';
-  const token =
-    process.env.NETLIFY_BLOBS_TOKEN ||
-    process.env.NETLIFY_AUTH_TOKEN ||
-    process.env.BLOBS_TOKEN ||
-    '';
-  return !!(siteID && token);
-}
-
-async function blobsReadWrite(mutator) {
-  const { getStore } = require('@netlify/blobs');
-  const siteID = process.env.NETLIFY_SITE_ID || process.env.SITE_ID || process.env.BLOBS_SITE_ID;
-  const token =
-    process.env.NETLIFY_BLOBS_TOKEN ||
-    process.env.NETLIFY_AUTH_TOKEN ||
-    process.env.BLOBS_TOKEN;
-  const store = getStore({
-    name: 'bt42-oc-sync',
-    consistency: 'strong',
-    siteID,
-    token
-  });
-  const raw = await store.get('state', { type: 'json' });
-  const state = Object.assign(emptyState(), raw || {});
-  const next = mutator(state);
-  await store.setJSON('state', next);
-  return next;
 }
 
 function keyOf(r) {
@@ -121,6 +146,49 @@ function normalizeReg(body) {
   };
 }
 
+async function readState() {
+  if (blobsCredentials().ready) {
+    try {
+      return { state: await blobsRead(), backend: 'blobs' };
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  if (jsonbinConfigured()) {
+    try {
+      return { state: await jsonbinRead(), backend: 'jsonbin' };
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  try {
+    return { state: await blobsRead(), backend: 'blobs-auto' };
+  } catch (e) {
+    throw new Error('No storage backend available: ' + (e.message || e));
+  }
+}
+
+async function writeState(state) {
+  if (blobsCredentials().ready) {
+    try {
+      await blobsWrite(state);
+      return 'blobs';
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  if (jsonbinConfigured()) {
+    try {
+      await jsonbinWrite(state);
+      return 'jsonbin';
+    } catch (e) {
+      /* fall through */
+    }
+  }
+  await blobsWrite(state);
+  return 'blobs-auto';
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders(), body: '' };
@@ -131,14 +199,6 @@ exports.handler = async (event) => {
 
   if (process.env.REGISTRATION_ENABLED === 'false') {
     return json(403, { ok: false, error: 'Registration is closed' });
-  }
-
-  if (!jsonbinConfigured() && !blobsReady()) {
-    return json(503, {
-      ok: false,
-      error:
-        'Shared storage not configured. Set JSONBIN_BIN_ID + JSONBIN_API_KEY on Netlify (or Blobs credentials), then redeploy.'
-    });
   }
 
   let body;
@@ -153,7 +213,6 @@ exports.handler = async (event) => {
     return json(400, { ok: false, error: 'fullName, phone and distance are required' });
   }
 
-  // Marathon age rule (server-side)
   if (reg.distance === '42.195' && reg.dob) {
     const race = new Date('2026-09-19');
     const dob = new Date(reg.dob);
@@ -170,27 +229,16 @@ exports.handler = async (event) => {
   }
 
   try {
-    const append = (state) => {
-      const list = Array.isArray(state.registrations) ? state.registrations.slice() : [];
-      const k = keyOf(reg);
-      const idx = list.findIndex((r) => keyOf(r) === k);
-      if (idx >= 0) list[idx] = Object.assign({}, list[idx], reg);
-      else list.push(reg);
-      state.registrations = list;
-      state.updatedAt = new Date().toISOString();
-      state.updatedBy = 'register';
-      return state;
-    };
-
-    let backend = 'jsonbin';
-    if (jsonbinConfigured()) {
-      const state = await jsonbinRead();
-      await jsonbinWrite(append(state));
-    } else {
-      backend = 'blobs';
-      await blobsReadWrite(append);
-    }
-
+    const { state } = await readState();
+    const list = Array.isArray(state.registrations) ? state.registrations.slice() : [];
+    const k = keyOf(reg);
+    const idx = list.findIndex((r) => keyOf(r) === k);
+    if (idx >= 0) list[idx] = Object.assign({}, list[idx], reg);
+    else list.push(reg);
+    state.registrations = list;
+    state.updatedAt = new Date().toISOString();
+    state.updatedBy = 'register';
+    const backend = await writeState(state);
     return json(200, {
       ok: true,
       backend,
