@@ -75,8 +75,35 @@
     const room = $('#control-room');
     if (gate) gate.classList.add('hidden');
     if (room) room.classList.remove('hidden');
+
+    // Auto-connect shared list on every machine (OC_SYNC_TOKEN matches committee PIN)
+    if (!getSyncToken()) {
+      setSyncToken(COMMITTEE_PIN);
+    }
+
     renderAll();
     applyRoleUI();
+
+    // Show Participants so entries are visible immediately
+    try {
+      $$('.ctrl-tab').forEach((t) => t.classList.remove('active'));
+      $$('.ctrl-panel').forEach((p) => p.classList.remove('active'));
+      const pt = $('.ctrl-tab[data-panel="participants"]');
+      const pp = $('#panel-participants');
+      if (pt) pt.classList.add('active');
+      if (pp) pp.classList.add('active');
+    } catch (e) {}
+
+    // Immediately load shared + Forms-merged registrations
+    pullSharedState().then((r) => {
+      if (r && r.ok) {
+        renderParticipants();
+        renderAttendance();
+        renderDashboard();
+        renderSyncBar();
+      }
+      startLiveSync();
+    }).catch(() => startLiveSync());
   }
 
   function tryUnlock(e) {
@@ -797,6 +824,11 @@
     if (s.attendance && typeof s.attendance === 'object') {
       localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
     }
+    if (s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
+      try {
+        localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
+      } catch (e) {}
+    }
     if (isChair && s.signatures && !s.signatures._presentOnly) {
       localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
     }
@@ -1142,6 +1174,10 @@
         saveBibs({});
         saveFinishes({});
         if (getSyncToken()) {
+          const keyOf = (x) => String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
+          let prev = [];
+          try { prev = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { prev = []; }
+          const suppressed = prev.map(keyOf).filter(Boolean);
           const r = await livePush({
             registrations: [],
             replaceRegistrations: true,
@@ -1150,7 +1186,9 @@
             bibs: {},
             replaceBibs: true,
             finishes: {},
-            replaceFinishes: true
+            replaceFinishes: true,
+            suppressedKeys: suppressed,
+            replaceSuppressed: true
           });
           if (!r.ok) alert('Local entries cleared, but sync push failed: ' + r.error);
           else alert('All entries cleared and synced.');
@@ -1178,6 +1216,7 @@
         const bibsMap = loadBibs(); delete bibsMap[key]; saveBibs(bibsMap);
         const fins = loadFinishes(); delete fins[key]; saveFinishes(fins);
         if (getSyncToken()) {
+          const delKey = String(row.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(row.fullName || '').trim().toLowerCase();
           await livePush({
             registrations: next,
             replaceRegistrations: true,
@@ -1186,7 +1225,8 @@
             bibs: bibsMap,
             replaceBibs: true,
             finishes: fins,
-            replaceFinishes: true
+            replaceFinishes: true,
+            suppressedKeys: delKey ? [delKey] : []
           }).catch(() => {});
         }
         renderParticipants();
@@ -1213,6 +1253,20 @@
         };
         saveBibs(map);
         if (getSyncToken()) livePush({ bibs: map }).catch(() => {});
+        try {
+          const rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+          const row = rows[Number(btn.getAttribute('data-i'))];
+          if (row && row.email && num) {
+            sendAthleteEmail({
+              type: 'bib',
+              to: row.email,
+              fullName: row.fullName,
+              distance: row.distance,
+              bib: num,
+              raceDate: '19 September 2026'
+            });
+          }
+        } catch (e) {}
         try {
           fetch('/.netlify/functions/send-certificate', {
             method: 'POST',
@@ -1242,6 +1296,26 @@
         savePayments(map);
         if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
         renderParticipants();
+        // Email if athlete provided email
+        try {
+          const rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+          const row = rows.find((x) => {
+            const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
+            return k === key;
+          });
+          if (row && row.email) {
+            sendAthleteEmail({
+              type: 'payment',
+              to: row.email,
+              fullName: row.fullName,
+              distance: row.distance,
+              raceDate: '19 September 2026'
+            }).then((j) => {
+              if (j && j.ok) console.log('Payment email sent');
+              else if (j && !j.skipped) console.warn('Payment email', j);
+            });
+          }
+        } catch (e) {}
       };
     });
     container.querySelectorAll('.pay-reject').forEach(btn => {
@@ -1314,6 +1388,18 @@
       if (!s[k]) return `<div class="sig-prev empty">${labels[k]}: not uploaded</div>`;
       return `<div class="sig-prev"><img src="${s[k]}" alt="${labels[k]}" /><span>${labels[k]}</span></div>`;
     }).join('');
+  }
+
+  function sendAthleteEmail(payload) {
+    if (!payload || !payload.to) return Promise.resolve({ ok: false, skipped: true });
+    return fetch('/.netlify/functions/send-certificate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(async (res) => {
+      const j = await res.json().catch(() => ({}));
+      return j;
+    }).catch((e) => ({ ok: false, error: String(e) }));
   }
 
   function queueCompletionEmail(r, finishTime) {

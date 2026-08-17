@@ -13,6 +13,7 @@ const emptyState = () => ({
   finishes: {},
   attendance: {},
   signatures: {},
+  suppressedKeys: [],
   updatedAt: null,
   updatedBy: null
 });
@@ -223,8 +224,13 @@ exports.handler = async (event) => {
 
   try {
     const { state } = await readState();
+    const sup = new Set(state.suppressedKeys || []);
     const list = Array.isArray(state.registrations) ? state.registrations.slice() : [];
     const k = keyOf(reg);
+    if (sup.has(k)) {
+      // Chair previously deleted this person — allow re-register by removing suppress
+      state.suppressedKeys = (state.suppressedKeys || []).filter((x) => x !== k);
+    }
     const idx = list.findIndex((r) => keyOf(r) === k);
     if (idx >= 0) list[idx] = Object.assign({}, list[idx], reg);
     else list.push(reg);

@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="theme-color" content="#1B4F72" />
-  <meta name="description" content="BT42.195 km Race 2026 — Full marathon, 10 km & 5 km fun runs. 19 September 2026, Blantyre." />
+  <meta name="description" content="BT42.195km Race 2026 — Full marathon, 10 km & 5 km fun runs. 19 September 2026, Blantyre." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>BT42.195 km Race 2026</title>
+  <title>BT42.195km Race 2026</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/styles.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -211,7 +211,9 @@
               <div class="form-row">
                 <div class="form-group">
                   <label for="phone">Mobile Number *</label>
-                  <input type="tel" id="phone" name="phone" required placeholder="e.g. 0999 123 456" />
+                  <input type="tel" id="phone" name="phone" required placeholder="e.g. 0888381177"
+                    pattern="^(\+?265|0)?[89]\d{8}$"
+                    title="Use a Malawi mobile: 0888381177, 888381177, 265888381177 or +265888381177" />
                 </div>
                 <div class="form-group">
                   <label for="email">Email</label>
@@ -245,8 +247,18 @@
                 <p id="fee-preview" class="form-note" style="display:none;margin-top:0.35rem"></p>
               </div>
               <div class="form-group">
-                <label for="emergency">Emergency Contact Name & Phone *</label>
-                <input type="text" id="emergency" name="emergency" required placeholder="Name + number" />
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="emergencyName">Emergency Contact Name *</label>
+                    <input type="text" id="emergencyName" name="emergencyName" required placeholder="Full name" />
+                  </div>
+                  <div class="form-group">
+                    <label for="emergencyPhone">Emergency Contact Phone *</label>
+                    <input type="tel" id="emergencyPhone" name="emergencyPhone" required placeholder="e.g. 0888381177"
+                      pattern="^(\+?265|0)?[89]\d{8}$"
+                      title="Malawi mobile: 0888… / 888… / 265… / +265…" />
+                  </div>
+                </div>
               </div>
               <div class="form-group checkbox">
                 <label>
@@ -389,7 +401,7 @@
           <div class="accordion">
             <details open>
               <summary>About the Event</summary>
-              <p>The BT42.195 km Race is an annual long-distance event organised under the Malawi National Council of Sports. It features a full marathon, 10 km, and 5 km races, attracting elite athletes and community runners from across Malawi and beyond.</p>
+              <p>The BT42.195km Race is an annual long-distance event organised under the Malawi National Council of Sports. It features a full marathon, 10 km, and 5 km races, attracting elite athletes and community runners from across Malawi and beyond.</p>
             </details>
             <details>
               <summary>Key Dates</summary>
@@ -576,9 +588,9 @@
 
     <footer class="footer">
       <div class="container">
-        <p><strong>BT42.195 km Race 2026</strong> · Blantyre, Malawi</p>
+        <p><strong>BT42.195km Race 2026</strong> · Blantyre, Malawi</p>
         <p>Organised under the Malawi National Council of Sports</p>
-        <p class="footer-note">BT42.195 km Race · 19 September 2026</p>
+        <p class="footer-note">BT42.195km Race · 19 September 2026</p>
       </div>
     </footer>
   </div>

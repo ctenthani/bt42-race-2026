@@ -1,4 +1,4 @@
-/* BT42.195 km Race 2026 — App logic (launch version) */
+/* BT42.195km Race 2026 — App logic (launch version) */
 
 (function () {
   const RACE_DATE = new Date('2026-09-19T06:30:00+02:00'); // CAT
@@ -102,6 +102,11 @@
     return age;
   }
 
+  function isValidMwPhone(raw) {
+    const d = String(raw || '').replace(/[\s-]/g, '');
+    return /^(\+?265|0)?[89]\d{8}$/.test(d);
+  }
+
   window.handleRegister = function (e) {
     const form = document.getElementById('regForm');
     if (!form.checkValidity()) {
@@ -116,6 +121,17 @@
     const distance = (formData.get('distance') || '').toString();
     const dob = (formData.get('dob') || '').toString();
     const age = ageOnRaceDay(dob);
+
+    const phoneVal = (formData.get('phone') || '').toString();
+    if (!isValidMwPhone(phoneVal)) {
+      alert('Please enter a valid Malawi mobile number (e.g. 0888381177, 888381177, 265888381177 or +265888381177).');
+      return false;
+    }
+    const emPhone = (formData.get('emergencyPhone') || '').toString();
+    if (!emPhone || !isValidMwPhone(emPhone)) {
+      alert('Please enter a valid Malawi mobile for the emergency contact.');
+      return false;
+    }
 
     // Reject marathon if under 20 on race day
     if (distance === '42.195') {
@@ -147,7 +163,8 @@
       distance: data.distance || '',
       dob: data.dob || '',
       gender: data.gender || '',
-      emergency: data.emergency || '',
+      emergencyName: data.emergencyName || '',
+      emergencyPhone: data.emergencyPhone || '',
       submittedAt: data.submittedAt,
       ageOnRaceDay: data.ageOnRaceDay,
       feeMwk: data.feeMwk
@@ -180,6 +197,19 @@
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
+        if (data.email) {
+          fetch('/.netlify/functions/send-certificate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'confirmation',
+              to: data.email,
+              fullName: data.fullName,
+              distance: data.distance,
+              raceDate: '19 September 2026'
+            })
+          }).catch(() => {});
+        }
       })
       .catch((err) => {
         console.error('Shared register failed', err);

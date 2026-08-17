@@ -13,6 +13,7 @@ const emptyState = () => ({
   finishes: {},
   attendance: {},
   signatures: {},
+  suppressedKeys: [],
   updatedAt: null,
   updatedBy: null
 });
@@ -376,6 +377,28 @@ function mergeState(current, body, role) {
     }
     next.signatures = Object.assign({}, current.signatures || {}, body.signatures);
   }
+  if (Array.isArray(body.suppressedKeys)) {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can update suppressed keys');
+      e.status = 403;
+      throw e;
+    }
+    const set = new Set([...(current.suppressedKeys || []), ...body.suppressedKeys]);
+    if (body.replaceSuppressed) {
+      next.suppressedKeys = body.suppressedKeys;
+    } else {
+      next.suppressedKeys = Array.from(set);
+    }
+  }
+  // Drop suppressed from registrations after any merge
+  if (Array.isArray(next.suppressedKeys) && next.suppressedKeys.length) {
+    const sup = new Set(next.suppressedKeys);
+    const keyOf2 = (r) =>
+      String(r.phone || '').replace(/\s+/g, '').toLowerCase() +
+      '|' +
+      String(r.fullName || '').trim().toLowerCase();
+    next.registrations = (next.registrations || []).filter((r) => !sup.has(keyOf2(r)));
+  }
   next.updatedAt = new Date().toISOString();
   next.updatedBy = role;
   return next;
@@ -400,9 +423,16 @@ exports.handler = async (event) => {
         const fromForms = await fetchNetlifyFormSubmissions();
         formsCount = fromForms.length;
         if (fromForms.length) {
-          const merged = mergeRegistrationLists(state.registrations || [], fromForms);
-          // If forms added anyone, persist to Blobs so all devices share one list
-          if (merged.length !== (state.registrations || []).length) {
+          let merged = mergeRegistrationLists(state.registrations || [], fromForms);
+          const sup = new Set(state.suppressedKeys || []);
+          if (sup.size) {
+            const keyOf2 = (r) =>
+              String(r.phone || '').replace(/\s+/g, '').toLowerCase() +
+              '|' +
+              String(r.fullName || '').trim().toLowerCase();
+            merged = merged.filter((r) => !sup.has(keyOf2(r)));
+          }
+          if (JSON.stringify(merged) !== JSON.stringify(state.registrations || [])) {
             state.registrations = merged;
             state.updatedAt = new Date().toISOString();
             state.updatedBy = 'forms-merge';
