@@ -917,7 +917,9 @@
   let liveSyncTimer = null;
   let liveSyncBusy = false;
   let lastKnownUpdatedAt = null;
+  let failStreak = 0;
   const LIVE_POLL_MS = 8000;
+  const LIVE_POLL_SLOW_MS = 30000;
 
   function setLiveStatus(text, ok) {
     const el = $('#live-sync-status');
@@ -933,6 +935,7 @@
       const r = await pullSharedState();
       if (r.ok) {
         const at = r.state && r.state.updatedAt;
+        failStreak = 0;
         if (at && at !== lastKnownUpdatedAt) {
           lastKnownUpdatedAt = at;
           renderParticipants();
@@ -943,10 +946,21 @@
         } else {
           setLiveStatus('Live · in sync', true);
         }
+        // Restore normal poll after recovery
+        if (liveSyncTimer) {
+          clearInterval(liveSyncTimer);
+          liveSyncTimer = setInterval(livePullSilent, LIVE_POLL_MS);
+        }
       } else {
-        setLiveStatus('Offline · ' + (r.error || 'pull failed'), false);
+        failStreak++;
+        setLiveStatus('Offline · ' + (r.error || 'pull failed').toString().slice(0, 80), false);
+        if (failStreak >= 2 && liveSyncTimer) {
+          clearInterval(liveSyncTimer);
+          liveSyncTimer = setInterval(livePullSilent, LIVE_POLL_SLOW_MS);
+        }
       }
     } catch (e) {
+      failStreak++;
       setLiveStatus('Offline · network', false);
     } finally {
       liveSyncBusy = false;
