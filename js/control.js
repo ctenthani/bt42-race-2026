@@ -858,14 +858,18 @@
     const tokenSet = !!getSyncToken();
     el.innerHTML = `
       <div class="sync-bar">
-        <strong>Shared sync</strong>
-        <span class="pay-status ${tokenSet ? 'pay-ok' : 'pay-wait'}">${tokenSet ? 'Token set' : 'No token'}</span>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem">
+          <strong>Live shared data</strong>
+          <span class="pay-status ${tokenSet ? 'pay-ok' : 'pay-wait'}">${tokenSet ? 'Token set' : 'No token'}</span>
+          <span id="live-sync-status" class="live-sync-status wait">…</span>
+        </div>
+        <p class="form-note" style="margin:0.35rem 0">Like dartsmw: every change saves to the server; all open Control Rooms refresh automatically every few seconds.</p>
         ${meta.updatedAt ? '<small>Server: ' + new Date(meta.updatedAt).toLocaleString() + (meta.updatedBy ? ' · ' + meta.updatedBy : '') + '</small>' : ''}
         <div class="sync-actions">
           <input type="password" id="sync-token-input" placeholder="OC_SYNC_TOKEN" value="" autocomplete="off" />
           <button type="button" class="btn-mini" id="sync-save-token">Save token</button>
-          <button type="button" class="btn-mini" id="sync-pull">Pull</button>
-          <button type="button" class="btn-mini" id="sync-push">Push</button>
+          <button type="button" class="btn-mini" id="sync-pull">Pull now</button>
+          <button type="button" class="btn-mini" id="sync-push">Push now</button>
         </div>
         <p id="sync-msg" class="form-note" style="margin:0.35rem 0 0"></p>
       </div>`;
@@ -878,24 +882,103 @@
       const v = ($('#sync-token-input') || {}).value || '';
       setSyncToken(v);
       renderSyncBar();
-      msg(v.trim() ? 'Token saved on this device.' : 'Token cleared.', !!v.trim());
+      msg(v.trim() ? 'Token saved — live sync on.' : 'Token cleared.', !!v.trim());
+      if (v.trim()) startLiveSync();
+      else stopLiveSync();
     };
     const pullBtn = $('#sync-pull');
     if (pullBtn) pullBtn.onclick = async () => {
       msg('Pulling…', true);
       const r = await pullSharedState();
       if (r.ok) {
+        if (r.state && r.state.updatedAt) lastKnownUpdatedAt = r.state.updatedAt;
         renderAll();
         msg('Pulled shared data.', true);
+        setLiveStatus('Live · in sync', true);
       } else msg('Pull failed: ' + r.error, false);
     };
     const pushBtn = $('#sync-push');
     if (pushBtn) pushBtn.onclick = async () => {
       msg('Pushing…', true);
       const r = await pushAllLocal();
-      if (r.ok) msg('Pushed to shared store.', true);
-      else msg('Push failed: ' + r.error, false);
+      if (r.ok) {
+        msg('Pushed to shared store.', true);
+        if (r.state && r.state.updatedAt) lastKnownUpdatedAt = r.state.updatedAt;
+        setLiveStatus('Live · saved', true);
+      } else msg('Push failed: ' + r.error, false);
     };
+    if (tokenSet) startLiveSync();
+    else setLiveStatus('Set sync token for live mode', false);
+  }
+
+
+
+  // ---------- Live sync (dartsmw-style): auto pull + push so all machines stay aligned ----------
+  let liveSyncTimer = null;
+  let liveSyncBusy = false;
+  let lastKnownUpdatedAt = null;
+  const LIVE_POLL_MS = 8000;
+
+  function setLiveStatus(text, ok) {
+    const el = $('#live-sync-status');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'live-sync-status ' + (ok ? 'ok' : 'wait');
+  }
+
+  async function livePullSilent() {
+    if (!getSyncToken() || liveSyncBusy) return;
+    liveSyncBusy = true;
+    try {
+      const r = await pullSharedState();
+      if (r.ok) {
+        const at = r.state && r.state.updatedAt;
+        if (at && at !== lastKnownUpdatedAt) {
+          lastKnownUpdatedAt = at;
+          renderParticipants();
+          renderAttendance();
+          renderDashboard();
+          renderSyncBar();
+          setLiveStatus('Live · updated ' + new Date(at).toLocaleTimeString(), true);
+        } else {
+          setLiveStatus('Live · in sync', true);
+        }
+      } else {
+        setLiveStatus('Offline · ' + (r.error || 'pull failed'), false);
+      }
+    } catch (e) {
+      setLiveStatus('Offline · network', false);
+    } finally {
+      liveSyncBusy = false;
+    }
+  }
+
+  function startLiveSync() {
+    stopLiveSync();
+    if (!getSyncToken()) {
+      setLiveStatus('Set sync token for live mode', false);
+      return;
+    }
+    setLiveStatus('Live · connecting…', true);
+    livePullSilent();
+    liveSyncTimer = setInterval(livePullSilent, LIVE_POLL_MS);
+  }
+
+  function stopLiveSync() {
+    if (liveSyncTimer) {
+      clearInterval(liveSyncTimer);
+      liveSyncTimer = null;
+    }
+  }
+
+  async function livePush(partial) {
+    if (!getSyncToken()) return { ok: false, error: 'No token' };
+    const r = await pushSharedState(partial);
+    if (r.ok && r.state && r.state.updatedAt) {
+      lastKnownUpdatedAt = r.state.updatedAt;
+      setLiveStatus('Live · saved ' + new Date(r.state.updatedAt).toLocaleTimeString(), true);
+    }
+    return r;
   }
 
 
@@ -1006,7 +1089,7 @@
         saveBibs({});
         saveFinishes({});
         if (getSyncToken()) {
-          const r = await pushSharedState({
+          const r = await livePush({
             registrations: [],
             replaceRegistrations: true,
             payments: {},
@@ -1042,7 +1125,7 @@
         const bibsMap = loadBibs(); delete bibsMap[key]; saveBibs(bibsMap);
         const fins = loadFinishes(); delete fins[key]; saveFinishes(fins);
         if (getSyncToken()) {
-          await pushSharedState({
+          await livePush({
             registrations: next,
             replaceRegistrations: true,
             payments: pays,
@@ -1076,7 +1159,7 @@
           email: r.email || ''
         };
         saveBibs(map);
-        if (getSyncToken()) pushSharedState({ bibs: map }).catch(() => {});
+        if (getSyncToken()) livePush({ bibs: map }).catch(() => {});
         try {
           fetch('/.netlify/functions/send-certificate', {
             method: 'POST',
@@ -1104,7 +1187,7 @@
         const note = prompt('Optional note (Mpamba/bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
         map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: 'Chair' };
         savePayments(map);
-        if (getSyncToken()) pushSharedState({ payments: map }).catch(() => {});
+        if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
         renderParticipants();
       };
     });
@@ -1114,7 +1197,7 @@
         const map = loadPayments();
         map[btn.dataset.key] = { status: 'rejected', note: prompt('Reason (optional):', '') || '', verifiedAt: new Date().toISOString() };
         savePayments(map);
-        if (getSyncToken()) pushSharedState({ payments: map }).catch(() => {});
+        if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
         renderParticipants();
       };
     });
@@ -1124,7 +1207,7 @@
         const time = prompt('Official finish time (optional, e.g. 3:42:15):', (map[btn.dataset.key] || {}).time || '') || '';
         map[btn.dataset.key] = { status: 'finished', time, finishedAt: new Date().toISOString() };
         saveFinishes(map);
-        if (getSyncToken()) pushSharedState({ finishes: map }).catch(() => {});
+        if (getSyncToken()) livePush({ finishes: map }).catch(() => {});
         const r = rows[Number(btn.dataset.i)];
         // Auto-open completion certificate and queue outbound email hook
         if (r) {
@@ -1414,6 +1497,9 @@
     renderNotes();
     initControlTabs();
     applyRoleUI();
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && getSyncToken()) livePullSilent();
+    });
     // Auto-pull if token present
     if (getSyncToken()) {
       pullSharedState().then(r => {

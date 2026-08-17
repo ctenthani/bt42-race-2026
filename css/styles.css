@@ -1466,3 +1466,18 @@ img { max-width: 100%; display: block; }
   font-family: inherit;
   font-size: 0.85rem;
 }
+
+.live-sync-status {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.live-sync-status.ok {
+  background: #d5f5e3;
+  color: #1e8449;
+}
+.live-sync-status.wait {
+  background: #fef9e7;
+  color: #b7950b;
+}
