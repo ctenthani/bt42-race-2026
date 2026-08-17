@@ -103,8 +103,14 @@
   }
 
   function isValidMwPhone(raw) {
-    const d = String(raw || '').replace(/[\s-]/g, '');
-    return /^(\+?265|0)?[89]\d{8}$/.test(d);
+    // Accept common Malawi mobiles in any usual writing:
+    // 0888381177, 888381177, 265888381177, +265888381177, with spaces/dashes
+    let d = String(raw || '').replace(/[\s\-()]/g, '');
+    if (d.startsWith('+')) d = d.slice(1);
+    if (d.startsWith('265')) d = d.slice(3);
+    if (d.startsWith('0')) d = d.slice(1);
+    // local mobile: 8 or 9 + 8 digits (9 digits total)
+    return /^[89]\d{8}$/.test(d);
   }
 
   window.handleRegister = function (e) {
