@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ ok: false, error: 'Invalid JSON' }) };
   }
   const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'BT42.195km Race <onboarding@resend.dev>';
+  const from = process.env.EMAIL_FROM || 'BT42.195km Race <entries@btrace.nsanja.app>';
   if (!apiKey) {
     return {
       statusCode: 200,

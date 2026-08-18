@@ -1340,6 +1340,9 @@
         if (r) {
           openCertificate(r, 'completion');
           queueCompletionEmail(r, time);
+          if (!(r.email || '').trim()) {
+            alert('Marked finished. No email on file for this athlete — certificate was not emailed. Print/save from the certificate window.');
+          }
         }
         renderParticipants();
       };
@@ -1403,29 +1406,44 @@
   }
 
   function queueCompletionEmail(r, finishTime) {
-    // Design-time auto-send: posts to Netlify function when deployed with email provider configured
-    const payload = {
-      type: 'completion_certificate',
-      fullName: r.fullName,
-      email: r.email || '',
-      phone: r.phone || '',
-      distance: distanceLabel(r.distance),
-      finishTime: finishTime || '',
-      raceDate: '2026-09-19'
-    };
-    try {
-      fetch('/.netlify/functions/send-certificate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      }).then(res => {
-        if (!res.ok) console.warn('Certificate email function not active yet', res.status);
-      }).catch(() => {
-        console.info('Auto-email pending: deploy send-certificate function + email API key.');
-      });
-    } catch (e) {
-      console.info('Auto-email hook skipped', e);
+    const to = (r.email || '').trim();
+    if (!to) {
+      console.info('No email on file — completion certificate not emailed for', r.fullName);
+      return;
     }
+    const dist = distanceLabel(r.distance);
+    const name = r.fullName || 'Athlete';
+    const timeLine = finishTime
+      ? '<p>Official finish time: <strong>' + String(finishTime).replace(/</g, '') + '</strong></p>'
+      : '';
+    const html = [
+      '<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1a1a1a">',
+      '<h2 style="color:#1B4F72;border-bottom:3px solid #27AE60;padding-bottom:8px">Certificate of Completion</h2>',
+      '<p>This certifies that</p>',
+      '<p style="font-size:1.35rem;font-weight:bold;margin:0.5rem 0">' + String(name).replace(/</g, '') + '</p>',
+      '<p>has successfully <strong>completed</strong> the <strong>' + String(dist).replace(/</g, '') + '</strong>',
+      ' of the <strong>BT42.195km Race 2026</strong>, organised under the auspices of the',
+      ' <strong>Malawi National Council of Sports</strong>.</p>',
+      timeLine,
+      '<p>Race day: <strong>19 September 2026</strong> · Blantyre, Malawi</p>',
+      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Ivy Chinangwa (Acting CEO, MNCS);',
+      ' Chifundo Tenthani (Chair, Organising Committee).</p>',
+      '<p style="font-size:0.85rem;color:#777">A printable certificate is also available from the Organising Committee on request.</p>',
+      '<p>— Organising Committee, BT42.195km Race</p>',
+      '</div>'
+    ].join('');
+    sendAthleteEmail({
+      type: 'certificate',
+      to: to,
+      fullName: name,
+      distance: dist,
+      subject: 'Certificate of Completion — BT42.195km Race 2026',
+      certificateHtml: html,
+      raceDate: '19 September 2026'
+    }).then((j) => {
+      if (j && j.ok) console.log('Completion certificate emailed to', to);
+      else console.warn('Completion certificate email result', j);
+    });
   }
 
   function openCertificate(r, certType) {
