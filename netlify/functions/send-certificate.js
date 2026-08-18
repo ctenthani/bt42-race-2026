@@ -23,7 +23,7 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: JSON.stringify({ ok: false, error: 'Invalid JSON' }) };
   }
   const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM || 'BT42.195km Race <entries@btrace.nsanja.app>';
+  const from = process.env.EMAIL_FROM || 'BT42.195km Race <onboarding@resend.dev>';
   if (!apiKey) {
     return {
       statusCode: 200,
@@ -64,8 +64,7 @@ exports.handler = async (event) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      // Still 200 so browser client can read body; ok:false signals failure
-      return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: false, error: data.message || 'Email provider error', detail: data }) };
+      return { statusCode: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: false, error: data.message || 'Email provider error', detail: data }) };
     }
     return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: true, provider: 'resend', id: data.id }) };
   } catch (err) {
