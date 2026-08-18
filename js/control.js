@@ -1,4 +1,4 @@
-/* BT42.195 km Race 2026 — Control Room logic */
+/* BT42.195km Race 2026 — Control Room logic */
 
 (function () {
   // Committee PIN = shared planner. Chair PIN = shared planner + Chair notes.
@@ -1114,8 +1114,8 @@
           </div>
         </td>
         <td class="actions-cell">
-          <button type="button" class="btn-mini pay-cert" data-i="${i}" data-type="participation" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Entry cert</button>
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
+          <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
         ${isChair ? '<td class="actions-cell"><button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button></td>' : ''}
       </tr>`;
@@ -1364,7 +1364,7 @@
         renderParticipants();
       };
     });
-    container.querySelectorAll('.pay-cert, .fin-cert').forEach(btn => {
+    container.querySelectorAll('.fin-cert, .part-cert').forEach(btn => {
       btn.onclick = () => {
         const r = rows[Number(btn.dataset.i)];
         if (r) openCertificate(r, btn.dataset.type || 'participation');
@@ -1517,13 +1517,13 @@
       fin = loadFinishes()[participantKey(r, idx >= 0 ? idx : 0)] || {};
     } catch { fin = {}; }
     const finishTime = fin.time || '';
-    const certId = (isCompletion ? 'BT42-FIN-' : 'BT42-ENT-') + (phone.replace(/\D/g, '').slice(-8) || Date.now().toString(36).toUpperCase());
+    const certId = (isCompletion ? 'BT42-FIN-' : 'BT42-PART-') + (phone.replace(/\D/g, '').slice(-8) || Date.now().toString(36).toUpperCase());
     const issued = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const sigs = loadSigs();
     const title = isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION';
     const bodyText = isCompletion
-      ? `has successfully <strong>completed</strong> the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195 km Race 2026${finishTime ? ' in a time of <strong>' + finishTime.replace(/</g, '') + '</strong>' : ''}, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`
-      : `is a registered participant in the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195 km Race 2026, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`;
+      ? `has successfully <strong>completed</strong> the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195km Race 2026${finishTime ? ' in a time of <strong>' + finishTime.replace(/</g, '') + '</strong>' : ''}, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`
+      : `is a registered participant in the <strong>${distance.replace(/</g, '')}</strong> of the BT42.195km Race 2026, organised under the auspices of the <strong>Malawi National Council of Sports</strong>.`;
 
     function sigBlock(dataUrl, personName, personTitle) {
       if (dataUrl) {
@@ -1596,7 +1596,7 @@
       <img src="${logoUrl}" alt="MNCS" onerror="this.style.display='none'" />
       <div class="hdr-text">
         <div class="org">Malawi National Council of Sports</div>
-        <div class="event">BT42.195 km Race 2026</div>
+        <div class="event">BT42.195km Race 2026</div>
         <div class="sub">Blantyre · Saturday, 19 September 2026</div>
       </div>
     </div>
@@ -1612,9 +1612,9 @@
     <div class="sigs">
       ${sigBlock(sigs.kalua, 'Jim Kalua', 'Chairman of the Council<br>Malawi National Council of Sports')}
       ${sigBlock(sigs.chinangwa, 'Ivy Chinangwa', 'Acting Chief Executive Officer<br>Malawi National Council of Sports')}
-      ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195 km Race 2026')}
+      ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195km Race 2026')}
     </div>
-    <p class="foot">Official certificate · Malawi National Council of Sports · BT42.195 km Race 2026
+    <p class="foot">Official certificate · Malawi National Council of Sports · BT42.195km Race 2026
       ${isCompletion ? ' · Completion certificate issued after verified finish' : ' · Entry certificate issued after verified payment'}</p>
   </div>
 </body>
