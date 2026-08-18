@@ -1253,35 +1253,19 @@
         };
         saveBibs(map);
         if (getSyncToken()) livePush({ bibs: map }).catch(() => {});
-        try {
-          const rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
-          const row = rows[Number(btn.getAttribute('data-i'))];
-          if (row && row.email && num) {
-            sendAthleteEmail({
-              type: 'bib',
-              to: row.email,
-              fullName: row.fullName,
-              distance: row.distance,
-              bib: num,
-              raceDate: '19 September 2026'
-            });
-          }
-        } catch (e) {}
-        try {
-          fetch('/.netlify/functions/send-certificate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'bib_assigned',
-              fullName: r.fullName,
-              email: r.email || '',
-              phone: r.phone || '',
-              distance: distanceLabel(r.distance),
-              raceDate: '2026-09-19',
-              bib: String(num).trim()
-            })
-          }).catch(function () {});
-        } catch (e) {}
+        if (r.email && num) {
+          sendAthleteEmail({
+            type: 'bib',
+            to: r.email,
+            fullName: r.fullName,
+            distance: distanceLabel(r.distance),
+            bib: String(num).trim(),
+            raceDate: '19 September 2026'
+          }).then((j) => {
+            if (j && j.ok) console.log('Bib email sent');
+            else console.warn('Bib email', j);
+          });
+        }
         renderParticipants();
         alert('Bib #' + String(num).trim() + ' assigned. Email is sent only if Netlify email keys are configured and the athlete provided an email.');
       };
@@ -1298,24 +1282,27 @@
         renderParticipants();
         // Email if athlete provided email
         try {
-          const rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
-          const row = rows.find((x) => {
+          const payKey = btn.dataset.key;
+          const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+          const row = list.find((x) => {
             const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
-            return k === key;
-          });
+            return k === payKey;
+          }) || rows.find((x, idx) => participantKey(x, idx) === payKey);
           if (row && row.email) {
             sendAthleteEmail({
               type: 'payment',
               to: row.email,
               fullName: row.fullName,
-              distance: row.distance,
+              distance: distanceLabel(row.distance),
               raceDate: '19 September 2026'
             }).then((j) => {
               if (j && j.ok) console.log('Payment email sent');
-              else if (j && !j.skipped) console.warn('Payment email', j);
+              else console.warn('Payment email', j);
             });
+          } else {
+            console.warn('Payment email skipped: no matching row or no email', payKey);
           }
-        } catch (e) {}
+        } catch (e) { console.warn('Payment email error', e); }
       };
     });
     container.querySelectorAll('.pay-reject').forEach(btn => {

@@ -196,7 +196,11 @@ exports.handler = async (event) => {
     };
   }
 
-  const type = body.type || 'certificate';
+  let type = body.type || 'certificate';
+  if (type === 'bib_assigned') type = 'bib';
+  if (type === 'payment_verified') type = 'payment';
+  if (type === 'participation_certificate') type = 'participation';
+  if (type === 'completion_certificate') type = 'completion';
   const to = (body.to || body.email || '').trim();
   const fullName = body.fullName || 'Athlete';
   const distance = body.distance || '';
