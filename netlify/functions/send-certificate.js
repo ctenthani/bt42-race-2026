@@ -64,7 +64,8 @@ exports.handler = async (event) => {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { statusCode: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: false, error: data.message || 'Email provider error', detail: data }) };
+      // Still 200 so browser client can read body; ok:false signals failure
+      return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: false, error: data.message || 'Email provider error', detail: data }) };
     }
     return { statusCode: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: JSON.stringify({ ok: true, provider: 'resend', id: data.id }) };
   } catch (err) {
