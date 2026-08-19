@@ -282,13 +282,40 @@
     function readProofAsDataUrl(file) {
       return new Promise((resolve) => {
         if (!file) return resolve('');
-        if (file.size > 4.5 * 1024 * 1024) {
-          alert('PoP file is too large (max about 4.5 MB). Compress the image or enter the transaction ID only.');
+        if (file.size > 6 * 1024 * 1024) {
+          alert('PoP file is too large. Use a smaller photo or enter the transaction ID only.');
           return resolve('');
         }
         const reader = new FileReader();
-        reader.onload = () => resolve(reader.result || '');
         reader.onerror = () => resolve('');
+        reader.onload = () => {
+          const dataUrl = reader.result || '';
+          if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) {
+            // PDF or other — skip embedding to avoid payload limits; ref ID is enough
+            resolve('');
+            return;
+          }
+          // Compress image for server size limits
+          try {
+            const img = new Image();
+            img.onload = () => {
+              const maxW = 1200;
+              const scale = img.width > maxW ? maxW / img.width : 1;
+              const c = document.createElement('canvas');
+              c.width = Math.max(1, Math.round(img.width * scale));
+              c.height = Math.max(1, Math.round(img.height * scale));
+              const ctx = c.getContext('2d');
+              ctx.fillStyle = '#fff';
+              ctx.fillRect(0, 0, c.width, c.height);
+              ctx.drawImage(img, 0, 0, c.width, c.height);
+              resolve(c.toDataURL('image/jpeg', 0.72));
+            };
+            img.onerror = () => resolve('');
+            img.src = dataUrl;
+          } catch (e) {
+            resolve('');
+          }
+        };
         reader.readAsDataURL(file);
       });
     }
@@ -311,7 +338,8 @@
       .then(async (res) => {
         const j = await res.json().catch(() => ({}));
         if (!res.ok || !j.ok) {
-          throw new Error((j && (j.detail || j.error)) || ('HTTP ' + res.status));
+          const bits = [j && j.error, j && j.detail, j && j.hint].filter(Boolean);
+          throw new Error(bits.join(' — ') || ('HTTP ' + res.status));
         }
         showSuccess(data);
         form.reset();
@@ -409,12 +437,13 @@
         </div>
 
         <div class="post-pay-info">
-          <p><strong>After payment</strong></p>
+          <p><strong>How payment is shared with the organisers</strong></p>
           <ul>
-            <li>Keep the bank slip / transfer proof.</li>
-            <li>Organisers verify payment, then assign your <strong>bib number</strong>.</li>
-            <li>Bib details and packet-pickup info are sent to your phone/email once verified (closer to race week).</li>
-            <li>Certificates: participation (DNF) or completion (finishers) — emailed when the organisers mark your result, if you provided an email.</li>
+            <li>You already submitted a <strong>PoP reference</strong> on this form (transaction ID). That is what the committee uses to match your payment.</li>
+            <li>Pay to account <code>782637</code> using <strong>name + mobile</strong> as the bank reference (same as on the form).</li>
+            <li>If you pay later or the reference changes, email or WhatsApp the OC with: your name, mobile, team name (if any), amount, and the new transaction ID.</li>
+            <li>Organisers verify payment in Control, then assign <strong>bib numbers</strong> and email you if an address was provided.</li>
+            <li>Certificates: participation (DNF) or completion (finishers) — emailed when results are marked.</li>
           </ul>
         </div>`;
     }

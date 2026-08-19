@@ -145,7 +145,7 @@ function normalizeReg(body) {
     feeMwk: body.feeMwk != null ? body.feeMwk : null,
     paymentRef: body.paymentRef ? String(body.paymentRef).trim() : '',
     paymentProof: (body.paymentProof && String(body.paymentProof).indexOf('data:') === 0)
-      ? String(body.paymentProof).slice(0, 1200000)
+      ? String(body.paymentProof).slice(0, 900000)
       : '',
     teamName: body.teamName ? String(body.teamName).trim() : '',
     teamId: body.teamId || '',
@@ -243,10 +243,12 @@ function buildRegistrationsFromBody(body) {
     submittedAt: body.submittedAt || new Date().toISOString(),
     ageOnRaceDay: body.ageOnRaceDay,
     paymentRef: body.paymentRef || '',
-    paymentProof: body.paymentProof || '',
     teamName: body.teamName || '',
     regType: body.regType || 'individual'
   };
+  const proofOnce = (body.paymentProof && String(body.paymentProof).indexOf('data:') === 0)
+    ? String(body.paymentProof).slice(0, 900000)
+    : '';
   const detailed = Array.isArray(body.teamMembersDetailed) ? body.teamMembersDetailed : [];
   const members = Array.isArray(body.teamMembers)
     ? body.teamMembers.map((n) => String(n || '').trim()).filter(Boolean)
@@ -268,22 +270,24 @@ function buildRegistrationsFromBody(body) {
         const mm = race.getMonth() - d0.getMonth();
         if (mm < 0 || (mm === 0 && race.getDate() < d0.getDate())) age--;
       }
-      return Object.assign({}, base, {
+      const row = Object.assign({}, base, {
         fullName: name,
         distance: distance,
         dob: dob,
         ageOnRaceDay: age,
-        feeMwk: m.feeMwk != null ? m.feeMwk : base.feeMwk,
+        feeMwk: m.feeMwk != null ? m.feeMwk : null,
         teamId: teamId,
         teamName: body.teamName || '',
         teamContactPhone: body.phone || '',
         teamContactEmail: body.email || '',
         paymentRef: body.paymentRef || '',
-        paymentProof: body.paymentProof || '',
         regType: 'team',
         teamMemberIndex: i + 1,
         teamMemberCount: rows.length
       });
+      // Attach slip image only once (first member) to avoid huge Blobs payloads
+      if (i === 0 && proofOnce) row.paymentProof = proofOnce;
+      return row;
     });
   }
   return [Object.assign({}, base, {
@@ -434,10 +438,14 @@ exports.handler = async (event) => {
         : 'Registration saved to shared list'
     });
   } catch (err) {
+    const msg = err && err.message ? err.message : String(err);
     return json(500, {
       ok: false,
       error: 'Could not save registration',
-      detail: err && err.message ? err.message : String(err)
+      detail: msg,
+      hint: /size|large|payload|body/i.test(msg)
+        ? 'Try again without uploading a slip image — use the transaction ID only'
+        : undefined
     });
   }
 };
