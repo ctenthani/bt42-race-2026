@@ -1292,7 +1292,103 @@
         const r = rows[i];
         if (!r) return;
         const map = loadBibs();
-        const suggested = (map[btn.dataset.key] && map[btn.dataset.key].number) || nextBibForDistance(r.distance, map);
+        const mates = (r.teamId ? teamMates(r, rows) : [r]).slice();
+        // Sort team by member index if present
+        mates.sort((a, b) => (Number(a.teamMemberIndex) || 0) - (Number(b.teamMemberIndex) || 0));
+
+        function keyFor(m) {
+          const idx = rows.indexOf(m);
+          return participantKey(m, idx >= 0 ? idx : 0);
+        }
+        function existingBib(m) {
+          const k = keyFor(m);
+          if (map[k] && map[k].number) return String(map[k].number);
+          // fallback match name+phone
+          let found = '';
+          Object.keys(map).forEach((k) => {
+            if (map[k] && String(map[k].phone || '') === String(m.phone || '') &&
+                String(map[k].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()) {
+              found = String(map[k].number || '');
+            }
+          });
+          return found;
+        }
+
+        if (r.teamId && mates.length > 1) {
+          // Serial assign for whole team from next free bib per distance series
+          const preview = mates.map((m) => {
+            const ex = existingBib(m);
+            return escapeHtml(m.fullName || '') + ' (' + escapeHtml(distanceLabel(m.distance)) + ')' +
+              (ex ? ' — already #' + ex : ' — new');
+          }).join('\n');
+          const startSug = nextBibForDistance(mates[0].distance || r.distance, map);
+          const startStr = prompt(
+            'Assign sequential bibs to ALL ' + mates.length + ' team members of "' + (r.teamName || 'Team') + '".\n\n' +
+            'Starting bib number (others follow in order, skipping numbers already used):',
+            String(startSug)
+          );
+          if (!startStr) return;
+          let n = parseInt(String(startStr).trim(), 10);
+          if (!n || n < 1) {
+            alert('Invalid starting bib number');
+            return;
+          }
+          const used = new Set(
+            Object.values(map).map((b) => Number(b.number)).filter((x) => !isNaN(x))
+          );
+          const assigned = [];
+          mates.forEach((m) => {
+            const k = keyFor(m);
+            let existing = existingBib(m);
+            if (existing) {
+              assigned.push({ m: m, number: existing, key: k });
+              return;
+            }
+            while (used.has(n)) n++;
+            const numStr = String(n);
+            used.add(n);
+            map[k] = {
+              number: numStr,
+              assignedAt: new Date().toISOString(),
+              distance: m.distance,
+              name: m.fullName,
+              phone: m.phone,
+              email: m.email || m.teamContactEmail || '',
+              teamId: m.teamId || r.teamId,
+              teamName: m.teamName || r.teamName || ''
+            };
+            assigned.push({ m: m, number: numStr, key: k });
+            n++;
+          });
+          saveBibs(map);
+          if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
+
+          const to = teamContactEmail(r, mates);
+          const items = assigned.map((a) =>
+            '<li>' + escapeHtml(a.m.fullName || '') + ' — ' + escapeHtml(distanceLabel(a.m.distance)) +
+            ' — bib <strong>' + escapeHtml(a.number) + '</strong></li>'
+          ).join('');
+          if (to) {
+            sendAthleteEmail({
+              type: 'bib',
+              to: to,
+              fullName: r.teamName || 'Team',
+              distance: 'team',
+              bib: assigned.map((a) => a.number).join(', '),
+              subject: 'Bib numbers — ' + (r.teamName || 'Team') + ' — BT42.195km Race 2026',
+              html: '<p>Dear ' + escapeHtml(r.teamName || 'Team') + ' contact,</p>' +
+                '<p>Bib numbers for your team:</p><ul>' + items + '</ul>' +
+                '<p>Race day: <strong>19 September 2026</strong>.</p>' +
+                '<p>— Organising Committee, BT42.195km Race</p>'
+            }).then((j) => console.log('Team bib email', j));
+          }
+          renderParticipants();
+          alert('Assigned ' + assigned.length + ' bib(s) for team "' + (r.teamName || '') + '".');
+          return;
+        }
+
+        // Individual
+        const suggested = existingBib(r) || nextBibForDistance(r.distance, map);
         const num = prompt('Bib number for ' + (r.fullName || 'athlete') + ':', String(suggested));
         if (!num) return;
         map[btn.dataset.key] = {
@@ -1304,45 +1400,9 @@
           email: r.email || ''
         };
         saveBibs(map);
-        if (getSyncToken()) livePush({ bibs: map }).catch(() => {});
-        const mates = teamMates(r, rows);
-        const to = teamContactEmail(r, mates);
-        if (to && r.teamId) {
-          const bibMap = loadBibs();
-          const roster = mates.map((m, idx) => {
-            const bk = participantKey(m, idx);
-            const b = (bibMap[bk] && bibMap[bk].number) || (m === r ? String(num).trim() : '—');
-            // better key match
-            return { m: m, b: b };
-          });
-          // Fix bib numbers properly
-          const items = mates.map((m) => {
-            let bnum = '—';
-            Object.keys(bibMap).forEach((k) => {
-              if (bibMap[k] && String(bibMap[k].phone || '') === String(m.phone || '') &&
-                  String(bibMap[k].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()) {
-                bnum = bibMap[k].number;
-              }
-            });
-            if (String(m.fullName) === String(r.fullName) && String(m.phone) === String(r.phone)) {
-              bnum = String(num).trim();
-            }
-            return '<li>' + escapeHtml(m.fullName || '') + ' — ' + escapeHtml(distanceLabel(m.distance)) +
-              ' — bib <strong>' + escapeHtml(String(bnum)) + '</strong></li>';
-          }).join('');
-          sendAthleteEmail({
-            type: 'bib',
-            to: to,
-            fullName: r.teamName || 'Team',
-            distance: 'team',
-            bib: String(num).trim(),
-            subject: 'Bib numbers — ' + (r.teamName || 'Team') + ' — BT42.195km Race 2026',
-            html: '<p>Dear ' + escapeHtml(r.teamName || 'Team') + ' contact,</p>' +
-              '<p>Bib assignment update for your team:</p><ul>' + items + '</ul>' +
-              '<p>Race day: <strong>19 September 2026</strong>.</p>' +
-              '<p>— Organising Committee, BT42.195km Race</p>'
-          }).then((j) => console.log('Team bib email', j));
-        } else if (to) {
+        if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
+        const to = (r.email || '').trim();
+        if (to) {
           sendAthleteEmail({
             type: 'bib',
             to: to,
@@ -1350,13 +1410,10 @@
             distance: distanceLabel(r.distance),
             bib: String(num).trim(),
             raceDate: '19 September 2026'
-          }).then((j) => {
-            if (j && j.ok) console.log('Bib email sent');
-            else console.warn('Bib email', j);
-          });
+          }).then((j) => console.log('Bib email', j));
         }
         renderParticipants();
-        alert('Bib #' + String(num).trim() + ' assigned. Email is sent only if Netlify email keys are configured and the athlete provided an email.');
+        alert('Bib #' + String(num).trim() + ' assigned.');
       };
     });
 
