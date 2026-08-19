@@ -117,23 +117,35 @@
     const form = document.getElementById('regForm');
     const teamMode = isTeamMode();
 
-    // Team mode: fullName not required on the individual field
-    const fullNameInput = document.getElementById('fullName');
-    if (fullNameInput) fullNameInput.required = !teamMode;
-    const distMain = document.getElementById('distance');
-    if (distMain) distMain.required = !teamMode;
-    const dobMain = document.getElementById('dob');
-    if (dobMain) dobMain.required = !teamMode;
-    const genderMain = document.getElementById('gender');
-    if (genderMain) genderMain.required = !teamMode;
+    // Mobile browsers still validate hidden required fields — disable them in team mode
+    function setIndividualFieldsForMode(team) {
+      ['fullName', 'distance', 'dob', 'gender'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.required = !team;
+        el.disabled = !!team;
+      });
+      document.querySelectorAll('.team-member-name, .team-member-distance, .team-member-dob').forEach((el) => {
+        el.required = !!team;
+        el.disabled = !team;
+      });
+    }
+    setIndividualFieldsForMode(teamMode);
 
     if (!form.checkValidity()) {
       e.preventDefault();
-      form.reportValidity();
+      try { form.reportValidity(); } catch (err) {}
+      alert('Please complete all required fields. On team entries each member needs name, race and date of birth.');
       return false;
     }
 
     e.preventDefault();
+
+    // Re-enable so FormData / later logic can read values if needed
+    ['fullName', 'distance', 'dob', 'gender'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = false;
+    });
 
     const formData = new FormData(form);
     const distance = (formData.get('distance') || '').toString();
@@ -452,19 +464,20 @@
     if (members) members.style.display = team ? '' : 'none';
     if (teamName) teamName.style.display = team ? '' : 'none';
     if (hint) hint.style.display = team ? '' : 'none';
-    // Hide shared distance / DOB / gender for team — each member has their own
-    ['distance', 'dob', 'gender'].forEach((id) => {
+    // Hide + disable shared distance / DOB / gender for team (fixes mobile validation)
+    ['fullName', 'distance', 'dob', 'gender'].forEach((id) => {
       const el = document.getElementById(id);
       if (!el) return;
-      const wrap = el.closest('.form-group') || el.closest('.form-row');
-      if (wrap && wrap.classList.contains('form-row')) {
+      const wrap = el.closest('.form-row') || el.closest('.form-group');
+      if (id === 'fullName') {
+        const g = document.getElementById('individualNameGroup');
+        if (g) g.style.display = team ? 'none' : '';
+      } else if (wrap) {
         wrap.style.display = team ? 'none' : '';
-      } else if (el.closest('.form-group')) {
-        el.closest('.form-group').style.display = team ? 'none' : '';
       }
       el.required = !team;
+      el.disabled = !!team;
     });
-    if (fullName) fullName.required = !team;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }
@@ -483,25 +496,16 @@
     row.className = 'team-member-row';
     row.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:0.65rem;margin-bottom:0.5rem;background:#fff';
     row.innerHTML = `
-      <div class="form-row" style="align-items:flex-end">
-        <div class="form-group" style="flex:2">
-          <label>Full name *</label>
-          <input type="text" class="team-member-name" required placeholder="As on ID" value="${String(p.name || '').replace(/"/g, '&quot;')}" />
-        </div>
-        <div class="form-group" style="flex:1.2">
-          <label>Distance *</label>
-          <select class="team-member-distance" required>
-            <option value="">Select</option>
-            <option value="42.195">42.195 km Marathon</option>
-            <option value="10">10 km Race</option>
-            <option value="5">5 km Fun Run</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex:1.1">
-          <label>Date of birth *</label>
-          <input type="date" class="team-member-dob" required />
-        </div>
-        <button type="button" class="btn-mini team-member-remove" title="Remove">×</button>
+      <div class="team-member-grid">
+        <input type="text" class="team-member-name" required placeholder="Full name *" value="${String(p.name || '').replace(/"/g, '&quot;')}" autocomplete="name" />
+        <select class="team-member-distance" required aria-label="Distance">
+          <option value="">Race *</option>
+          <option value="42.195">42.195 km</option>
+          <option value="10">10 km</option>
+          <option value="5">5 km</option>
+        </select>
+        <input type="date" class="team-member-dob" required aria-label="Date of birth" />
+        <button type="button" class="btn-mini team-member-remove" title="Remove member" aria-label="Remove">×</button>
       </div>
       <p class="form-note team-member-fee" style="margin:0.25rem 0 0"></p>`;
     list.appendChild(row);
