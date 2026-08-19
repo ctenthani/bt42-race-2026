@@ -733,7 +733,46 @@
   }
 
   function saveSigs(map) {
-    localStorage.setItem(SIGS_KEY, JSON.stringify(map));
+    try {
+      localStorage.setItem(SIGS_KEY, JSON.stringify(map));
+      return true;
+    } catch (e) {
+      console.warn('localStorage signature save failed', e);
+      alert('Could not save signature on this device (storage full?). Try a smaller PNG/JPG.');
+      return false;
+    }
+  }
+
+  function compressSigImage(dataUrl, maxW, quality) {
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const w = img.width || maxW;
+          const h = img.height || maxW;
+          const scale = w > maxW ? maxW / w : 1;
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.round(w * scale));
+          canvas.height = Math.max(1, Math.round(h * scale));
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          resolve(canvas.toDataURL('image/jpeg', quality || 0.72));
+        };
+        img.onerror = () => resolve(dataUrl);
+        img.src = dataUrl;
+      } catch (e) {
+        resolve(dataUrl);
+      }
+    });
+  }
+
+  async function pushSignaturesToServer(map) {
+    if (!getSyncToken() || !isChair) return { ok: false, skipped: true };
+    try {
+      return await livePush({ signatures: map });
+    } catch (e) {
+      return { ok: false, error: String(e) };
+    }
   }
 
   function loadFinishes() {
@@ -824,13 +863,18 @@
     if (s.attendance && typeof s.attendance === 'object') {
       localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
     }
-    if (s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
-      try {
-        localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
-      } catch (e) {}
-    }
-    if (isChair && s.signatures && !s.signatures._presentOnly) {
-      localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
+    if (isChair && s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
+      // Only overwrite local if server has real image data (not empty)
+      const hasReal = ['kalua', 'chamwala', 'tenthani'].some(
+        (k) => typeof s.signatures[k] === 'string' && s.signatures[k].indexOf('data:image') === 0
+      );
+      if (hasReal) {
+        try {
+          localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
+        } catch (e) {
+          console.warn('Could not store signatures from server', e);
+        }
+      }
     }
     localStorage.setItem(SYNC_META_KEY, JSON.stringify({
       lastPull: new Date().toISOString(),
@@ -1039,13 +1083,13 @@
     const finishes = loadFinishes();
     const bibs = loadBibs();
     const sigs = loadSigs();
-    const sigReady = !!(sigs.kalua && sigs.chinangwa && sigs.tenthani);
+    const sigReady = !!(sigs.kalua && sigs.chamwala && sigs.tenthani);
 
     let html = `<div class="notice" style="margin-bottom:1rem">
       <strong>Participant list</strong> — visible to all committee members.<br>
       <strong>Payment verification (Verify / Reject)</strong> — <em>Chair only</em>.
       ${isChair ? '' : '<br><span class="pay-status pay-wait">You are signed in as Committee: payment status is view-only.</span>'}
-      <br>Mpamba: <code>*444#</code> → <strong>4</strong> → <code>500204</code> · NBM <code>1802283</code>.
+      <br>Pay to bank account <code>782637</code> (reference: name + mobile).
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -1054,7 +1098,7 @@
       <p class="form-note" style="margin-bottom:0.5rem">Upload clear PNG/JPG signature images for each official. Stored on this device only until a server store is connected.</p>
       <div class="sig-upload-grid">
         <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" /></label>
-        <label>Ivy Chinangwa (Acting CEO, MNCS)<input type="file" accept="image/*" data-sig="chinangwa" class="sig-file" /></label>
+        <label>Kondwani Chamwala (President, Athletics Malawi)<input type="file" accept="image/*" data-sig="chamwala" class="sig-file" /></label>
         <label>Chifundo Tenthani (OC Chair)<input type="file" accept="image/*" data-sig="tenthani" class="sig-file" /></label>
       </div>
       <div class="sig-previews" id="sig-previews"></div>
@@ -1275,7 +1319,7 @@
       btn.onclick = () => {
         if (!isChair) { alert('Only the Chair can verify payments.'); return; }
         const map = loadPayments();
-        const note = prompt('Optional note (Mpamba/bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
+        const note = prompt('Optional note (Bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
         map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: 'Chair' };
         savePayments(map);
         if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
@@ -1284,25 +1328,36 @@
         try {
           const payKey = btn.dataset.key;
           const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
-          const row = list.find((x) => {
-            const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
-            return k === payKey;
-          }) || rows.find((x, idx) => participantKey(x, idx) === payKey);
-          if (row && row.email) {
+          let row = list.find((x, idx) => participantKey(x, idx) === payKey);
+          if (!row) {
+            row = list.find((x) => {
+              const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
+              return k === payKey;
+            });
+          }
+          if (!row) {
+            row = rows.find((x, idx) => participantKey(x, idx) === payKey);
+          }
+          const to = (row && row.email) ? String(row.email).trim() : '';
+          if (to) {
             sendAthleteEmail({
               type: 'payment',
-              to: row.email,
-              fullName: row.fullName,
-              distance: distanceLabel(row.distance),
+              to: to,
+              email: to,
+              fullName: (row && row.fullName) || '',
+              distance: distanceLabel((row && row.distance) || ''),
               raceDate: '19 September 2026'
             }).then((j) => {
-              if (j && j.ok) console.log('Payment email sent');
-              else console.warn('Payment email', j);
+              if (j && j.ok) alert('Payment verified. Confirmation email sent to ' + to);
+              else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
             });
           } else {
-            console.warn('Payment email skipped: no matching row or no email', payKey);
+            alert('Payment verified. No email on file for this athlete — confirmation not sent.');
           }
-        } catch (e) { console.warn('Payment email error', e); }
+        } catch (e) {
+          console.warn('Payment email error', e);
+          alert('Payment verified (email error: ' + (e.message || e) + ')');
+        }
       };
     });
     container.querySelectorAll('.pay-reject').forEach(btn => {
@@ -1361,17 +1416,34 @@
 
   function wireSigUploads() {
     $$('.sig-file').forEach(input => {
-      input.onchange = () => {
+      input.onchange = async () => {
         if (!isChair) { alert('Only the Chair can upload e-signatures.'); return; }
         const file = input.files && input.files[0];
         if (!file) return;
+        if (file.size > 8 * 1024 * 1024) {
+          alert('File is too large. Use a PNG/JPG under 8 MB.');
+          return;
+        }
         const reader = new FileReader();
-        reader.onload = () => {
-          const map = loadSigs();
-          map[input.dataset.sig] = reader.result;
-          map[input.dataset.sig + '_updated'] = new Date().toISOString();
-          saveSigs(map);
-          renderSigPreviews();
+        reader.onerror = () => alert('Could not read that file.');
+        reader.onload = async () => {
+          try {
+            const compressed = await compressSigImage(reader.result, 400, 0.75);
+            const map = loadSigs();
+            map[input.dataset.sig] = compressed;
+            map[input.dataset.sig + '_updated'] = new Date().toISOString();
+            const ok = saveSigs(map);
+            renderSigPreviews();
+            if (!ok) return;
+            const push = await pushSignaturesToServer(map);
+            if (push && push.ok) {
+              alert('Signature saved and synced.');
+            } else {
+              alert('Signature saved on this device. Sync to server failed — keep this browser until sync works. ' + ((push && push.error) || ''));
+            }
+          } catch (e) {
+            alert('Signature upload failed: ' + (e.message || e));
+          }
         };
         reader.readAsDataURL(file);
       };
@@ -1382,7 +1454,7 @@
     const box = $('#sig-previews');
     if (!box) return;
     const s = loadSigs();
-    const labels = { kalua: 'Jim Kalua', chinangwa: 'Ivy Chinangwa', tenthani: 'Chifundo Tenthani' };
+    const labels = { kalua: 'Jim Kalua', chamwala: 'Kondwani Chamwala', tenthani: 'Chifundo Tenthani' };
     box.innerHTML = Object.keys(labels).map(k => {
       if (!s[k]) return `<div class="sig-prev empty">${labels[k]}: not uploaded</div>`;
       return `<div class="sig-prev"><img src="${s[k]}" alt="${labels[k]}" /><span>${labels[k]}</span></div>`;
@@ -1427,7 +1499,7 @@
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       reasonLine,
       '<p>Race day: <strong>19 September 2026</strong> · Blantyre, Malawi</p>',
-      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Ivy Chinangwa (Acting CEO, MNCS);',
+      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
@@ -1467,7 +1539,7 @@
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       timeLine,
       '<p>Race day: <strong>19 September 2026</strong> · Blantyre, Malawi</p>',
-      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Ivy Chinangwa (Acting CEO, MNCS);',
+      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p style="font-size:0.85rem;color:#777">A printable certificate is also available from the Organising Committee on request.</p>',
       '<p>— Organising Committee, BT42.195km Race</p>',
@@ -1528,7 +1600,9 @@
       </div>`;
     }
 
-    const logoUrl = (location.origin && location.origin !== 'null' ? location.origin : '') + '/assets/mncs-logo.png';
+    const origin = (location.origin && location.origin !== 'null' ? location.origin : '');
+    const mncsLogo = origin + '/assets/mncs-logo.png';
+    const amLogo = origin + '/assets/am-logo.png';
 
     const w = window.open('', '_blank', 'width=960,height=720');
     if (!w) {
@@ -1580,9 +1654,10 @@
   </div>
   <div class="sheet">
     <div class="hdr">
-      <img src="${logoUrl}" alt="MNCS" onerror="this.style.display='none'" />
+      <img src="${mncsLogo}" alt="MNCS" onerror="this.style.display='none'" />
+      <img src="${amLogo}" alt="Athletics Malawi" onerror="this.style.display='none'" />
       <div class="hdr-text">
-        <div class="org">Malawi National Council of Sports</div>
+        <div class="org">Malawi National Council of Sports · Athletics Malawi</div>
         <div class="event">BT42.195km Race 2026</div>
         <div class="sub">Blantyre · Saturday, 19 September 2026</div>
       </div>
@@ -1598,11 +1673,11 @@
     </p>
     <div class="sigs">
       ${sigBlock(sigs.kalua, 'Jim Kalua', 'Chairman of the Council<br>Malawi National Council of Sports')}
-      ${sigBlock(sigs.chinangwa, 'Ivy Chinangwa', 'Acting Chief Executive Officer<br>Malawi National Council of Sports')}
+      ${sigBlock(sigs.chamwala, 'Kondwani Chamwala', 'President<br>Athletics Malawi')}
       ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195km Race 2026')}
     </div>
-    <p class="foot">Official certificate · Malawi National Council of Sports · BT42.195km Race 2026
-      ${isCompletion ? ' · Completion certificate issued after verified finish' : ' · Entry certificate issued after verified payment'}</p>
+    <p class="foot">Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026
+      ${isCompletion ? ' · Completion certificate issued after verified finish' : ' · Participation certificate (DNF)'}</p>
   </div>
 </body>
 </html>`);

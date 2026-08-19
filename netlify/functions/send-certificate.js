@@ -11,15 +11,15 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
-async function fetchLogoBytes() {
-  const urls = [
-    process.env.URL ? process.env.URL.replace(/\/$/, '') + '/assets/mncs-logo.png' : null,
-    process.env.DEPLOY_PRIME_URL ? process.env.DEPLOY_PRIME_URL.replace(/\/$/, '') + '/assets/mncs-logo.png' : null,
-    'https://btrace.netlify.app/assets/mncs-logo.png'
+async function fetchLogoBytes(path) {
+  const base = [
+    process.env.URL ? process.env.URL.replace(/\/$/, '') : null,
+    process.env.DEPLOY_PRIME_URL ? process.env.DEPLOY_PRIME_URL.replace(/\/$/, '') : null,
+    'https://btrace.netlify.app'
   ].filter(Boolean);
-  for (const u of urls) {
+  for (const b of base) {
     try {
-      const res = await fetch(u);
+      const res = await fetch(b + path);
       if (res.ok) return Buffer.from(await res.arrayBuffer());
     } catch (e) { /* try next */ }
   }
@@ -42,14 +42,29 @@ async function buildCertificatePdf(opts) {
   page.drawRectangle({ x: 28, y: 28, width: width - 56, height: height - 56, borderColor: navy, borderWidth: 3 });
   page.drawRectangle({ x: 36, y: 36, width: width - 72, height: height - 72, borderColor: green, borderWidth: 1.5 });
 
-  // Logo
+  // Logos MNCS + Athletics Malawi
   try {
-    const logoBytes = await fetchLogoBytes();
-    if (logoBytes) {
-      const logo = await doc.embedPng(logoBytes);
-      const lw = 72;
-      const lh = (logo.height / logo.width) * lw;
-      page.drawImage(logo, { x: (width - lw) / 2, y: height - 100, width: lw, height: lh });
+    const logos = [];
+    for (const p of ['/assets/mncs-logo.png', '/assets/am-logo.png']) {
+      const bytes = await fetchLogoBytes(p);
+      if (bytes) {
+        try {
+          logos.push(await doc.embedPng(bytes));
+        } catch (e) {
+          try { logos.push(await doc.embedJpg(bytes)); } catch (e2) {}
+        }
+      }
+    }
+    if (logos.length) {
+      const lw = 56;
+      const gap = 16;
+      const totalW = logos.length * lw + (logos.length - 1) * gap;
+      let x = (width - totalW) / 2;
+      for (const logo of logos) {
+        const lh = (logo.height / logo.width) * lw;
+        page.drawImage(logo, { x, y: height - 95, width: lw, height: lh });
+        x += lw + gap;
+      }
     }
   } catch (e) { /* no logo */ }
 
@@ -149,7 +164,7 @@ async function buildCertificatePdf(opts) {
   const col = [90, 320, 560];
   const people = [
     ['Jim Kalua', 'Chairman, MNCS'],
-    ['Ivy Chinangwa', 'Acting CEO, MNCS'],
+    ['Kondwani Chamwala', 'President, Athletics Malawi'],
     ['Chifundo Tenthani', 'Chair, Organising Committee']
   ];
   people.forEach((p, i) => {
@@ -224,8 +239,8 @@ exports.handler = async (event) => {
 <p>Race day: <strong>${esc(raceDate)}</strong>, Blantyre.</p>
 <p>Your place is confirmed once payment is received:</p>
 <ul>
-<li>TNM Mpamba: *444# → 4 → code <strong>500204</strong></li>
-<li>National Bank of Malawi: <strong>1802283</strong> (reference: your name + mobile)</li>
+<li>Bank transfer to account <strong>782637</strong></li>
+<li>Reference: <strong>your full name + mobile number</strong></li>
 </ul>
 <p>You will receive further email when payment is verified and when your bib is assigned.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;

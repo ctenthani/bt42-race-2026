@@ -80,7 +80,7 @@
   // Works with Netlify Forms. Shows success panel after submit.
   const RACE_DAY_ISO = '2026-09-19'; // age calculated on race day
 
-  // Entry fees (MWK) — shown after race selection; must match Mpamba merchant setup for 500204
+  // Entry fees (MWK) — shown after race selection; bank account 782637
   const ENTRY_FEES = {
     '42.195': 15000,
     '10': 10000,
@@ -262,29 +262,19 @@
         <p>Thank you, <strong>${escapeHtml(name)}</strong>. Your registration for the <strong>${escapeHtml(distLabel)}</strong> has been received.</p>
 
         <div class="mpamba-confirm-card">
-          <p class="mpamba-confirm-title">Pay now with TNM Mpamba</p>
+          <p class="mpamba-confirm-title">Pay by bank transfer</p>
           <ol class="mpamba-steps">
-            <li>Dial <code>*444#</code></li>
-            <li>Select <strong>4</strong></li>
-            <li>Enter business code <code>500204</code></li>
-            <li>Confirm amount <strong>${feeLine}</strong> for ${escapeHtml(distLabel)}</li>
+            <li>Transfer the entry fee to account <code>782637</code></li>
+            <li>Use reference: <strong>your full name + mobile number</strong></li>
+            <li>Keep your deposit slip or transfer confirmation</li>
           </ol>
-          <div class="mpamba-sms-preview">
-            <p class="sms-label">You should then get a confirmation like this:</p>
-            <p class="sms-body">
-              ${escapeHtml(name)} please confirm payment of
-              <strong>${fee ? formatMwk(fee) : '… MWK'}</strong> to
-              <strong>BT42.195 KM RACE / MNCS</strong>.
-              Enter PIN to confirm or Press Cancel to Reject
-            </p>
-          </div>
-          <p class="form-note" style="margin-top:0.75rem">Alternative: National Bank of Malawi account <code>1802283</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
+          <p class="form-note" style="margin-top:0.75rem">Account: <code>782637</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
         </div>
 
         <div class="post-pay-info">
           <p><strong>After payment</strong></p>
           <ul>
-            <li>Keep the Mpamba SMS / bank slip as proof.</li>
+            <li>Keep the bank slip / transfer proof.</li>
             <li>Organisers verify payment, then assign your <strong>bib number</strong>.</li>
             <li>Bib details and packet-pickup info are sent to your phone/email once verified (closer to race week).</li>
             <li>Certificates: entry cert after payment verification; completion cert after you finish — emailed if you provided an email and email sending is configured on the server.</li>
@@ -332,7 +322,7 @@
     if (!el || !distSel) return;
     const d = distSel.value;
     if (d && ENTRY_FEES[d] != null) {
-      el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay via Mpamba <code>*444#</code> → 4 → <code>500204</code>';
+      el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
       el.style.display = 'block';
     } else {
       el.style.display = 'none';
