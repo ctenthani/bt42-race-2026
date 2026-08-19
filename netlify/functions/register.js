@@ -183,6 +183,39 @@ async function writeState(state) {
   }
 }
 
+
+async function sendConfirmationEmail(reg) {
+  const to = (reg.email || '').trim();
+  if (!to) return;
+  const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY;
+  const from = process.env.EMAIL_FROM || 'BT42.195km Race <onboarding@resend.dev>';
+  if (!apiKey) return;
+  const dist = reg.distance || '';
+  const name = reg.fullName || 'Athlete';
+  const html = `<p>Dear ${String(name).replace(/</g,'')},</p>
+<p>Thank you for registering for the <strong>BT42.195km Race</strong> (${String(dist).replace(/</g,'')}).</p>
+<p>Race day: <strong>19 September 2026</strong>, Blantyre.</p>
+<p>Your place is confirmed once payment is received:</p>
+<ul>
+<li>Bank transfer to account <strong>782637</strong></li>
+<li>Reference: <strong>your full name + mobile number</strong></li>
+</ul>
+<p>You will receive further email when payment is verified and when your bib is assigned.</p>
+<p>— Organising Committee, BT42.195km Race</p>`;
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        from,
+        to: [to],
+        subject: 'Entry received — BT42.195km Race 2026',
+        html
+      })
+    });
+  } catch (e) { /* non-fatal */ }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders(), body: '' };
@@ -238,6 +271,9 @@ exports.handler = async (event) => {
     state.updatedAt = new Date().toISOString();
     state.updatedBy = 'register';
     const backend = await writeState(state);
+    // Confirmation email from server (works for all devices)
+    try { await sendConfirmationEmail(reg); } catch (e) {}
+
     return json(200, {
       ok: true,
       backend,

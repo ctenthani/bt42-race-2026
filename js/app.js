@@ -203,13 +203,16 @@
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
-        if (data.email) {
+        // Server register also sends confirmation; client backup if email present
+        const em = (data.email || '').trim();
+        if (em) {
           fetch('/.netlify/functions/send-certificate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               type: 'confirmation',
-              to: data.email,
+              to: em,
+              email: em,
               fullName: data.fullName,
               distance: data.distance,
               raceDate: '19 September 2026'
@@ -277,7 +280,7 @@
             <li>Keep the bank slip / transfer proof.</li>
             <li>Organisers verify payment, then assign your <strong>bib number</strong>.</li>
             <li>Bib details and packet-pickup info are sent to your phone/email once verified (closer to race week).</li>
-            <li>Certificates: entry cert after payment verification; completion cert after you finish — emailed if you provided an email and email sending is configured on the server.</li>
+            <li>Certificates: participation (DNF) or completion (finishers) — emailed when the organisers mark your result, if you provided an email.</li>
           </ul>
         </div>`;
     }

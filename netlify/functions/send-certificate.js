@@ -42,29 +42,25 @@ async function buildCertificatePdf(opts) {
   page.drawRectangle({ x: 28, y: 28, width: width - 56, height: height - 56, borderColor: navy, borderWidth: 3 });
   page.drawRectangle({ x: 36, y: 36, width: width - 72, height: height - 72, borderColor: green, borderWidth: 1.5 });
 
-  // Logos MNCS + Athletics Malawi
+  // Logos: Athletics Malawi far left, MNCS far right
   try {
-    const logos = [];
-    for (const p of ['/assets/mncs-logo.png', '/assets/am-logo.png']) {
-      const bytes = await fetchLogoBytes(p);
-      if (bytes) {
-        try {
-          logos.push(await doc.embedPng(bytes));
-        } catch (e) {
-          try { logos.push(await doc.embedJpg(bytes)); } catch (e2) {}
-        }
+    const embedOne = async (path) => {
+      const bytes = await fetchLogoBytes(path);
+      if (!bytes) return null;
+      try { return await doc.embedPng(bytes); } catch (e) {
+        try { return await doc.embedJpg(bytes); } catch (e2) { return null; }
       }
+    };
+    const am = await embedOne('/assets/am-logo.png');
+    const mncs = await embedOne('/assets/mncs-logo.png');
+    const lw = 64;
+    if (am) {
+      const lh = (am.height / am.width) * lw;
+      page.drawImage(am, { x: 48, y: height - 100, width: lw, height: lh });
     }
-    if (logos.length) {
-      const lw = 56;
-      const gap = 16;
-      const totalW = logos.length * lw + (logos.length - 1) * gap;
-      let x = (width - totalW) / 2;
-      for (const logo of logos) {
-        const lh = (logo.height / logo.width) * lw;
-        page.drawImage(logo, { x, y: height - 95, width: lw, height: lh });
-        x += lw + gap;
-      }
+    if (mncs) {
+      const lh = (mncs.height / mncs.width) * lw;
+      page.drawImage(mncs, { x: width - 48 - lw, y: height - 100, width: lw, height: lh });
     }
   } catch (e) { /* no logo */ }
 

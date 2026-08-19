@@ -1623,9 +1623,9 @@
     border: 10px solid #1B4F72; padding: 12mm 14mm; position: relative;
   }
   .sheet::before { content: ''; position: absolute; inset: 5px; border: 2px solid #D4AC0D; pointer-events: none; }
-  .hdr { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 0.6rem; }
-  .hdr img { width: 72px; height: 72px; }
-  .hdr-text { text-align: left; }
+  .hdr { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.6rem; }
+  .hdr img { width: 72px; height: 72px; object-fit: contain; }
+  .hdr-text { text-align: center; flex: 1; }
   .org { font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: #1B4F72; font-weight: 700; }
   .event { font-size: 20px; margin: 0.2rem 0 0; color: #154360; font-weight: 700; }
   .sub { font-size: 12px; color: #555; }
@@ -1654,13 +1654,13 @@
   </div>
   <div class="sheet">
     <div class="hdr">
-      <img src="${mncsLogo}" alt="MNCS" onerror="this.style.display='none'" />
       <img src="${amLogo}" alt="Athletics Malawi" onerror="this.style.display='none'" />
       <div class="hdr-text">
         <div class="org">Malawi National Council of Sports · Athletics Malawi</div>
         <div class="event">BT42.195km Race 2026</div>
         <div class="sub">Blantyre · Saturday, 19 September 2026</div>
       </div>
+      <img src="${mncsLogo}" alt="MNCS" onerror="this.style.display='none'" />
     </div>
     <h1>${title}</h1>
     <p class="intro">This is to certify that</p>
