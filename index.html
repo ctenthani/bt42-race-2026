@@ -204,8 +204,34 @@
               <p class="form-note" style="margin-top:0.5rem"><strong>Age rule:</strong> Marathon (42.195 km) entrants must be <strong>at least 20 years old on race day</strong> (19 September 2026). 10 km and 5 km have no minimum age beyond parental consent where required.</p>
 
               <div class="form-group">
+                <label>Registration type *</label>
+                <div class="form-row" style="gap:1rem;align-items:center">
+                  <label style="display:flex;align-items:center;gap:0.35rem;font-weight:500">
+                    <input type="radio" name="regType" value="individual" checked id="regTypeIndividual" /> Individual
+                  </label>
+                  <label style="display:flex;align-items:center;gap:0.35rem;font-weight:500">
+                    <input type="radio" name="regType" value="team" id="regTypeTeam" /> Team
+                  </label>
+                </div>
+                <p class="form-note" id="teamHint" style="display:none;margin-top:0.35rem">List every runner. One bank payment (PoP) covers the whole team — total fee = members × distance fee. Use the team contact phone/email for communication.</p>
+              </div>
+
+              <div class="form-group" id="teamNameGroup" style="display:none">
+                <label for="teamName">Team / club name</label>
+                <input type="text" id="teamName" name="teamName" placeholder="Optional — e.g. Blantyre Runners" />
+              </div>
+
+              <div class="form-group" id="individualNameGroup">
                 <label for="fullName">Full Name *</label>
                 <input type="text" id="fullName" name="fullName" required placeholder="As on ID / passport" />
+              </div>
+
+              <div id="teamMembersBlock" style="display:none">
+                <div class="form-group">
+                  <label>Team members * <span class="form-note">(one name per line or use + Add)</span></label>
+                  <div id="teamMembersList"></div>
+                  <button type="button" class="btn-mini" id="addTeamMemberBtn" style="margin-top:0.5rem">+ Add member</button>
+                </div>
               </div>
               <div class="form-row">
                 <div class="form-group">
@@ -265,6 +291,22 @@
                   I agree to the event rules, medical disclaimer, and data use for race organisation.
                 </label>
               </div>
+              
+              <div class="form-group" id="popBlock" style="border:1px solid #ddd;padding:0.75rem;border-radius:8px;background:#fafafa">
+                <label for="paymentRef">Proof of payment (PoP) *</label>
+                <p class="form-note" style="margin:0.25rem 0 0.5rem">Entry is only accepted with proof of payment. Provide <strong>one</strong> of the following:</p>
+                <ul class="form-note" style="margin:0 0 0.5rem 1.1rem">
+                  <li>Bank transfer / deposit <strong>transaction ID or reference number</strong>, or</li>
+                  <li>SMS confirmation reference from your bank, or</li>
+                  <li>A clear photo/PDF copy of the bank deposit or transfer slip</li>
+                </ul>
+                <input type="text" id="paymentRef" name="paymentRef" required
+                  placeholder="e.g. Trans ID / deposit slip number / SMS reference" />
+                <label for="paymentProof" style="margin-top:0.65rem;display:block">Upload slip / SMS screenshot (optional if reference above is complete)</label>
+                <input type="file" id="paymentProof" name="paymentProof" accept="image/*,application/pdf" />
+                <p class="form-note" style="margin-top:0.35rem">Pay to account <code>782637</code>. Reference on the transfer should include name + mobile. Team entries: one PoP covers all members listed.</p>
+              </div>
+
               <button type="submit" class="btn btn-primary btn-block">Submit &amp; Get Payment Instructions</button>
               <p class="form-foot">After you pay using the reference shown next, the team will confirm your entry (usually within 1–2 working days).</p>
             </form>

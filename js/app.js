@@ -115,6 +115,12 @@
 
   window.handleRegister = function (e) {
     const form = document.getElementById('regForm');
+    const teamMode = isTeamMode();
+
+    // Team mode: fullName not required on the individual field
+    const fullNameInput = document.getElementById('fullName');
+    if (fullNameInput) fullNameInput.required = !teamMode;
+
     if (!form.checkValidity()) {
       e.preventDefault();
       form.reportValidity();
@@ -130,7 +136,7 @@
 
     const phoneVal = (formData.get('phone') || '').toString();
     if (!isValidMwPhone(phoneVal)) {
-      alert('Please enter a valid Malawi mobile number (e.g. 0888381177, 888381177, 265888381177 or +265888381177).');
+      alert('Please enter a valid Malawi mobile number (e.g. 0888381177).');
       return false;
     }
     const emPhone = (formData.get('emergencyPhone') || '').toString();
@@ -139,19 +145,56 @@
       return false;
     }
 
-    // Reject marathon if under 20 on race day
-    if (distance === '42.195') {
-      if (age === null || age < 20) {
-        alert('Marathon entries are only open to runners who will be at least 20 years old on race day (19 September 2026). Please choose the 10 km or 5 km, or update your date of birth if it was entered incorrectly.');
+    const paymentRefVal = (formData.get('paymentRef') || '').toString().trim();
+    const proofInput = document.getElementById('paymentProof');
+    const proofFile = proofInput && proofInput.files && proofInput.files[0];
+    if (!paymentRefVal && !proofFile) {
+      alert('Proof of payment is required. Enter a bank/SMS transaction ID or reference, and/or upload a copy of the deposit or transfer slip.');
+      return false;
+    }
+    if (!paymentRefVal) {
+      alert('Please also type the transaction ID or bank reference number (even if you upload a slip).');
+      return false;
+    }
+
+    let memberNames = [];
+    if (teamMode) {
+      memberNames = getTeamMemberNames();
+      if (memberNames.length < 2) {
+        alert('Team registration needs at least 2 member names. Add each runner, or switch to Individual.');
         return false;
       }
     }
 
-    // Also keep a local copy for offline/admin use
+    // Reject marathon if under 20 on race day (contact DOB used as team check for marathon)
+    if (distance === '42.195') {
+      if (age === null || age < 20) {
+        alert('Marathon entries require the contact/entrant date of birth to show age 20+ on race day (19 September 2026). For teams, each marathon runner should be 20+; use the contact DOB only if that applies, or register marathon runners individually.');
+        return false;
+      }
+    }
+
     let data = Object.fromEntries(formData.entries());
     data.submittedAt = new Date().toISOString();
     data.ageOnRaceDay = age;
-    data.feeMwk = ENTRY_FEES[distance] || null;
+    data.regType = teamMode ? 'team' : 'individual';
+    data.teamMembers = memberNames;
+    data.teamName = (formData.get('teamName') || '').toString().trim();
+    data.paymentRef = paymentRefVal;
+    data.hasPop = true;
+    const unitFee = ENTRY_FEES[distance] || 0;
+    const count = teamMode ? memberNames.length : 1;
+    data.feeMwk = unitFee * count;
+    data.memberCount = count;
+
+    if (teamMode) {
+      data.fullName = data.teamName
+        ? (data.teamName + ' (team contact)')
+        : ('Team contact: ' + (memberNames[0] || 'Team'));
+      // Primary display name for contact emails
+      data.contactName = memberNames[0] || 'Team contact';
+    }
+
     try {
       const existing = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
       existing.push(data);
@@ -160,10 +203,8 @@
       console.warn('localStorage save failed', err);
     }
 
-    // Shared list is required for OC monitoring; Forms is backup only.
-    // Build a clean payload (avoid honeypot / form-name only fields)
     const payload = {
-      fullName: data.fullName || data.name || '',
+      fullName: teamMode ? (data.contactName || data.fullName) : (data.fullName || ''),
       phone: data.phone || '',
       email: data.email || '',
       distance: data.distance || '',
@@ -173,13 +214,32 @@
       emergencyPhone: data.emergencyPhone || '',
       submittedAt: data.submittedAt,
       ageOnRaceDay: data.ageOnRaceDay,
-      feeMwk: data.feeMwk
+      feeMwk: data.feeMwk,
+      regType: data.regType,
+      teamName: data.teamName || '',
+      teamMembers: memberNames,
+      paymentRef: data.paymentRef || '',
+      memberCount: count
     };
 
     const submitBtn = form.querySelector('button[type="submit"]');
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Submitting…';
+    }
+
+    function readProofAsDataUrl(file) {
+      return new Promise((resolve) => {
+        if (!file) return resolve('');
+        if (file.size > 4.5 * 1024 * 1024) {
+          alert('PoP file is too large (max about 4.5 MB). Compress the image or enter the transaction ID only.');
+          return resolve('');
+        }
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result || '');
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
     }
 
     // Netlify Forms backup (do not block on this)
@@ -189,7 +249,10 @@
       body: new URLSearchParams(formData).toString()
     }).catch(() => null);
 
-    fetch('/.netlify/functions/register', {
+    readProofAsDataUrl(proofFile).then((proofData) => {
+      if (proofData) payload.paymentProof = proofData;
+      payload.paymentRef = paymentRefVal;
+      return fetch('/.netlify/functions/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
@@ -234,6 +297,14 @@
           submitBtn.textContent = 'Submit registration';
         }
       });
+    }).catch((err) => {
+      console.error(err);
+      alert('Could not read PoP file. Try again or use transaction ID only.');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit registration';
+      }
+    });
 
     return false;
   };
@@ -256,20 +327,25 @@
     const phone = (lastReg && lastReg.phone) || '';
 
     const feeLine = fee
-      ? formatMwk(fee)
+      ? formatMwk(fee) + ((lastReg && lastReg.memberCount > 1) ? ' (team total)' : '')
       : 'the amount shown for your race';
 
     const detail = document.getElementById('regSuccessDetail');
     if (detail) {
       detail.innerHTML = `
         <p>Thank you, <strong>${escapeHtml(name)}</strong>. Your registration for the <strong>${escapeHtml(distLabel)}</strong> has been received.</p>
+        ${(lastReg && lastReg.regType === 'team' && lastReg.teamMembers && lastReg.teamMembers.length)
+          ? '<p><strong>Team members:</strong></p><ul>' + lastReg.teamMembers.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join('') + '</ul>'
+            + (lastReg.teamName ? '<p>Team: <strong>' + escapeHtml(lastReg.teamName) + '</strong></p>' : '')
+            + (lastReg.paymentRef ? '<p>PoP / payment ref noted: <strong>' + escapeHtml(lastReg.paymentRef) + '</strong></p>' : '')
+          : ''}
 
         <div class="mpamba-confirm-card">
           <p class="mpamba-confirm-title">Pay by bank transfer</p>
           <ol class="mpamba-steps">
             <li>Transfer the entry fee to account <code>782637</code></li>
-            <li>Use reference: <strong>your full name + mobile number</strong></li>
-            <li>Keep your deposit slip or transfer confirmation</li>
+            <li>Use reference: <strong>your full name + mobile number</strong>${(lastReg && lastReg.regType === 'team') ? ' (one transfer for the whole team)' : ''}</li>
+            <li>Keep your deposit slip or transfer confirmation (one PoP for the team)</li>
           </ol>
           <p class="form-note" style="margin-top:0.75rem">Account: <code>782637</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
         </div>
@@ -337,4 +413,97 @@
   if (dobInput) dobInput.addEventListener('change', checkMarathonAgeHint);
 
   console.log('BT42.195 Race App — launch ready');
+
+  function isTeamMode() {
+    const t = document.getElementById('regTypeTeam');
+    return !!(t && t.checked);
+  }
+
+  function syncRegTypeUI() {
+    const team = isTeamMode();
+    const ind = document.getElementById('individualNameGroup');
+    const members = document.getElementById('teamMembersBlock');
+    const teamName = document.getElementById('teamNameGroup');
+    const hint = document.getElementById('teamHint');
+    const fullName = document.getElementById('fullName');
+    if (ind) ind.style.display = team ? 'none' : '';
+    if (members) members.style.display = team ? '' : 'none';
+    if (teamName) teamName.style.display = team ? '' : 'none';
+    if (hint) hint.style.display = team ? '' : 'none';
+    if (fullName) {
+      fullName.required = !team;
+      if (team) fullName.value = fullName.value; // keep
+    }
+    if (team) ensureTeamMemberRows(2);
+    updateFeePreview();
+  }
+
+  function ensureTeamMemberRows(min) {
+    const list = document.getElementById('teamMembersList');
+    if (!list) return;
+    while (list.children.length < (min || 1)) addTeamMemberRow();
+  }
+
+  function addTeamMemberRow(name) {
+    const list = document.getElementById('teamMembersList');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'form-row team-member-row';
+    row.style.marginBottom = '0.35rem';
+    row.innerHTML = `
+      <div class="form-group" style="flex:1">
+        <input type="text" class="team-member-name" placeholder="Full name of runner" value="${(name || '').replace(/"/g, '&quot;')}" />
+      </div>
+      <button type="button" class="btn-mini team-member-remove" title="Remove">×</button>`;
+    list.appendChild(row);
+    const rm = row.querySelector('.team-member-remove');
+    if (rm) rm.onclick = () => {
+      if (list.children.length <= 1) return;
+      row.remove();
+      updateFeePreview();
+    };
+    row.querySelector('.team-member-name').addEventListener('input', updateFeePreview);
+  }
+
+  function getTeamMemberNames() {
+    return Array.from(document.querySelectorAll('.team-member-name'))
+      .map((el) => (el.value || '').trim())
+      .filter(Boolean);
+  }
+
+  function updateFeePreview() {
+    const el = document.getElementById('fee-preview');
+    const sel = document.getElementById('distance');
+    if (!el || !sel) return;
+    const d = sel.value;
+    if (d && ENTRY_FEES[d] != null) {
+      const n = isTeamMode() ? Math.max(1, getTeamMemberNames().length || 1) : 1;
+      const total = ENTRY_FEES[d] * n;
+      el.style.display = '';
+      el.innerHTML = n > 1
+        ? 'Team entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + ' × ' + n + ' = ' + formatMwk(total) + '</strong> — pay to account <code>782637</code> (one transfer, ref: team/contact name + mobile)'
+        : 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+
+  function initTeamRegistrationUI() {
+    const ind = document.getElementById('regTypeIndividual');
+    const team = document.getElementById('regTypeTeam');
+    if (ind) ind.addEventListener('change', syncRegTypeUI);
+    if (team) team.addEventListener('change', syncRegTypeUI);
+    const addBtn = document.getElementById('addTeamMemberBtn');
+    if (addBtn) addBtn.onclick = () => { addTeamMemberRow(); updateFeePreview(); };
+    const dist = document.getElementById('distance');
+    if (dist) dist.addEventListener('change', updateFeePreview);
+    syncRegTypeUI();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initTeamRegistrationUI);
+  } else {
+    initTeamRegistrationUI();
+  }
+
 })();

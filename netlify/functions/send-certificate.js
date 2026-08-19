@@ -160,18 +160,24 @@ async function buildCertificatePdf(opts) {
   const col = [90, 320, 560];
   const people = [
     ['Jim Kalua', 'Chairman, MNCS'],
-    ['Kondwani Chamwala', 'President, Athletics Malawi'],
+    ['Kondwani Chamwala', 'President of Athletics Malawi'],
     ['Chifundo Tenthani', 'Chair, Organising Committee']
   ];
-  people.forEach((p, i) => {
+  const peopleFull = [
+    ['Jim Kalua', 'Chairman of the Council', 'Malawi National Council of Sports'],
+    ['Kondwani Chamwala', 'President of Athletics Malawi', 'Athletics Malawi'],
+    ['Chifundo Tenthani', 'Chair, Organising Committee', 'BT42.195km Race 2026']
+  ];
+  peopleFull.forEach((p, i) => {
     page.drawLine({
-      start: { x: col[i], y: sigY + 28 },
-      end: { x: col[i] + 160, y: sigY + 28 },
+      start: { x: col[i], y: sigY + 32 },
+      end: { x: col[i] + 160, y: sigY + 32 },
       thickness: 0.8,
       color: muted
     });
-    page.drawText(p[0], { x: col[i], y: sigY + 12, size: 10, font: fontBold, color: dark });
-    page.drawText(p[1], { x: col[i], y: sigY, size: 9, font, color: muted });
+    page.drawText(p[0], { x: col[i], y: sigY + 18, size: 10, font: fontBold, color: dark });
+    page.drawText(p[1], { x: col[i], y: sigY + 6, size: 8, font, color: muted });
+    page.drawText(p[2], { x: col[i], y: sigY - 6, size: 8, font, color: muted });
   });
 
   return Buffer.from(await doc.save()).toString('base64');

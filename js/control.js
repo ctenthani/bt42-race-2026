@@ -755,8 +755,16 @@
           canvas.width = Math.max(1, Math.round(w * scale));
           canvas.height = Math.max(1, Math.round(h * scale));
           const ctx = canvas.getContext('2d');
+          // White background so transparent PNG signatures are not saved as a black box
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          resolve(canvas.toDataURL('image/jpeg', quality || 0.72));
+          // Prefer PNG to keep crisp ink; fall back to JPEG only if huge
+          let out = canvas.toDataURL('image/png');
+          if (out.length > 350000) {
+            out = canvas.toDataURL('image/jpeg', quality || 0.85);
+          }
+          resolve(out);
         };
         img.onerror = () => resolve(dataUrl);
         img.src = dataUrl;
@@ -1637,7 +1645,7 @@
   .sigs { display: flex; justify-content: space-around; gap: 1rem; margin-top: 1rem; text-align: center; }
   .sig { flex: 1; max-width: 230px; }
   .sig-img-wrap { height: 48px; display: flex; align-items: flex-end; justify-content: center; }
-  .sig-img-wrap img { max-height: 48px; max-width: 160px; object-fit: contain; }
+  .sig-img-wrap img { max-height: 48px; max-width: 160px; object-fit: contain; background: #fff; }
   .sig-line { border-top: 1px solid #333; margin: 0.25rem 0.5rem 0.3rem; }
   .sig-name { font-weight: 700; font-size: 12px; }
   .sig-title { font-size: 10px; color: #444; line-height: 1.3; }
@@ -1673,7 +1681,7 @@
     </p>
     <div class="sigs">
       ${sigBlock(sigs.kalua, 'Jim Kalua', 'Chairman of the Council<br>Malawi National Council of Sports')}
-      ${sigBlock(sigs.chamwala, 'Kondwani Chamwala', 'President<br>Athletics Malawi')}
+      ${sigBlock(sigs.chamwala, 'Kondwani Chamwala', 'President of Athletics Malawi<br>Athletics Malawi')}
       ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195km Race 2026')}
     </div>
     <p class="foot">Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026

@@ -139,10 +139,21 @@ function normalizeReg(body) {
     gender: String(body.gender || '').trim(),
     emergencyName: String(body.emergencyName || '').trim(),
     emergencyPhone: String(body.emergencyPhone || '').trim(),
-    club: String(body.club || '').trim(),
+    club: String(body.club || body.teamName || '').trim(),
     submittedAt: body.submittedAt || new Date().toISOString(),
     ageOnRaceDay: body.ageOnRaceDay != null ? body.ageOnRaceDay : null,
     feeMwk: body.feeMwk != null ? body.feeMwk : null,
+    paymentRef: body.paymentRef ? String(body.paymentRef).trim() : '',
+    paymentProof: (body.paymentProof && String(body.paymentProof).indexOf('data:') === 0)
+      ? String(body.paymentProof).slice(0, 1200000)
+      : '',
+    teamName: body.teamName ? String(body.teamName).trim() : '',
+    teamId: body.teamId || '',
+    regType: body.regType || 'individual',
+    teamContactPhone: body.teamContactPhone || '',
+    teamContactEmail: body.teamContactEmail || '',
+    teamMemberIndex: body.teamMemberIndex || null,
+    teamMemberCount: body.teamMemberCount || null,
     source: 'web-register'
   };
 }
@@ -192,15 +203,18 @@ async function sendConfirmationEmail(reg) {
   if (!apiKey) return;
   const dist = reg.distance || '';
   const name = reg.fullName || 'Athlete';
+  const fee = reg.feeMwk != null ? '<p>Entry fee total: <strong>' + String(reg.feeMwk) + ' MWK</strong></p>' : '';
+  const pop = reg.paymentRef ? '<p>Payment reference noted: <strong>' + String(reg.paymentRef).replace(/</g,'') + '</strong></p>' : '';
   const html = `<p>Dear ${String(name).replace(/</g,'')},</p>
 <p>Thank you for registering for the <strong>BT42.195km Race</strong> (${String(dist).replace(/</g,'')}).</p>
 <p>Race day: <strong>19 September 2026</strong>, Blantyre.</p>
+${fee}${pop}
 <p>Your place is confirmed once payment is received:</p>
 <ul>
 <li>Bank transfer to account <strong>782637</strong></li>
-<li>Reference: <strong>your full name + mobile number</strong></li>
+<li>Reference: <strong>your full name + mobile number</strong> (one transfer can cover a whole team)</li>
 </ul>
-<p>You will receive further email when payment is verified and when your bib is assigned.</p>
+<p>You will receive further email when payment is verified and when bibs are assigned.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
   try {
     await fetch('https://api.resend.com/emails', {
@@ -214,6 +228,49 @@ async function sendConfirmationEmail(reg) {
       })
     });
   } catch (e) { /* non-fatal */ }
+}
+
+
+function buildRegistrationsFromBody(body) {
+  const base = {
+    phone: body.phone || '',
+    email: body.email || '',
+    distance: body.distance || '',
+    dob: body.dob || '',
+    gender: body.gender || '',
+    emergencyName: body.emergencyName || '',
+    emergencyPhone: body.emergencyPhone || '',
+    submittedAt: body.submittedAt || new Date().toISOString(),
+    ageOnRaceDay: body.ageOnRaceDay,
+    paymentRef: body.paymentRef || '',
+    paymentProof: body.paymentProof || '',
+    teamName: body.teamName || '',
+    regType: body.regType || 'individual'
+  };
+  const members = Array.isArray(body.teamMembers)
+    ? body.teamMembers.map((n) => String(n || '').trim()).filter(Boolean)
+    : [];
+  if (body.regType === 'team' && members.length >= 2) {
+    const teamId = 'team-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+    const unit = body.feeMwk && members.length ? Math.round(Number(body.feeMwk) / members.length) : body.feeMwk;
+    return members.map((name, i) => Object.assign({}, base, {
+      fullName: name,
+      feeMwk: unit,
+      teamId: teamId,
+      teamName: body.teamName || '',
+      teamContactPhone: body.phone || '',
+      teamContactEmail: body.email || '',
+      paymentRef: body.paymentRef || '',
+      regType: 'team',
+      teamMemberIndex: i + 1,
+      teamMemberCount: members.length
+    }));
+  }
+  return [Object.assign({}, base, {
+    fullName: body.fullName || body.name || '',
+    feeMwk: body.feeMwk,
+    regType: 'individual'
+  })];
 }
 
 exports.handler = async (event) => {
@@ -235,14 +292,32 @@ exports.handler = async (event) => {
     return json(400, { ok: false, error: 'Invalid JSON' });
   }
 
-  const reg = normalizeReg(body);
-  if (!reg.fullName || !reg.phone || !reg.distance) {
+  const rawMembers = Array.isArray(body.teamMembers)
+    ? body.teamMembers.map((n) => String(n || '').trim()).filter(Boolean)
+    : [];
+  const isTeam = body.regType === 'team' && rawMembers.length >= 2;
+
+  if (!body.phone || !body.distance) {
+    return json(400, { ok: false, error: 'phone and distance are required' });
+  }
+  const popRef = String(body.paymentRef || '').trim();
+  if (!popRef) {
+    return json(400, {
+      ok: false,
+      error: 'Proof of payment is required: bank/SMS transaction ID or deposit reference'
+    });
+  }
+  body.paymentRef = popRef;
+  if (!isTeam && !(body.fullName || body.name)) {
     return json(400, { ok: false, error: 'fullName, phone and distance are required' });
   }
+  if (isTeam && rawMembers.length < 2) {
+    return json(400, { ok: false, error: 'Team registration needs at least 2 member names' });
+  }
 
-  if (reg.distance === '42.195' && reg.dob) {
+  if (body.distance === '42.195' && body.dob) {
     const race = new Date('2026-09-19');
-    const dob = new Date(reg.dob);
+    const dob = new Date(body.dob);
     let age = race.getFullYear() - dob.getFullYear();
     const m = race.getMonth() - dob.getMonth();
     if (m < 0 || (m === 0 && race.getDate() < dob.getDate())) age--;
@@ -252,32 +327,53 @@ exports.handler = async (event) => {
         error: 'Marathon entrants must be at least 20 years old on 19 September 2026'
       });
     }
-    reg.ageOnRaceDay = age;
+    body.ageOnRaceDay = age;
   }
+
+  const regs = buildRegistrationsFromBody(body).map(normalizeReg);
 
   try {
     const { state } = await readState();
-    const sup = new Set(state.suppressedKeys || []);
     const list = Array.isArray(state.registrations) ? state.registrations.slice() : [];
-    const k = keyOf(reg);
-    if (sup.has(k)) {
-      // Chair previously deleted this person — allow re-register by removing suppress
-      state.suppressedKeys = (state.suppressedKeys || []).filter((x) => x !== k);
+    let added = 0;
+    for (const reg of regs) {
+      if (!reg.fullName || !reg.phone || !reg.distance) continue;
+      const k = keyOf(reg);
+      if ((state.suppressedKeys || []).includes(k)) {
+        state.suppressedKeys = (state.suppressedKeys || []).filter((x) => x !== k);
+      }
+      const idx = list.findIndex((r) => keyOf(r) === k);
+      if (idx >= 0) list[idx] = Object.assign({}, list[idx], reg);
+      else {
+        list.push(reg);
+        added++;
+      }
     }
-    const idx = list.findIndex((r) => keyOf(r) === k);
-    if (idx >= 0) list[idx] = Object.assign({}, list[idx], reg);
-    else list.push(reg);
     state.registrations = list;
     state.updatedAt = new Date().toISOString();
-    state.updatedBy = 'register';
+    state.updatedBy = isTeam ? 'register-team' : 'register';
     const backend = await writeState(state);
-    // Confirmation email from server (works for all devices)
-    try { await sendConfirmationEmail(reg); } catch (e) {}
+
+    // One confirmation email to team contact / individual
+    try {
+      await sendConfirmationEmail({
+        fullName: isTeam
+          ? ((body.teamName ? body.teamName + ' team' : 'Team') + ' (' + rawMembers.length + ' runners)')
+          : (body.fullName || body.name || 'Athlete'),
+        email: body.email,
+        distance: body.distance,
+        feeMwk: body.feeMwk,
+        paymentRef: body.paymentRef
+      });
+    } catch (e) {}
 
     return json(200, {
       ok: true,
       backend,
-      message: 'Registration saved to shared list'
+      count: regs.length,
+      message: isTeam
+        ? ('Team registration saved (' + regs.length + ' runners)')
+        : 'Registration saved to shared list'
     });
   } catch (err) {
     return json(500, {
