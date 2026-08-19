@@ -201,20 +201,31 @@ async function sendConfirmationEmail(reg) {
   const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'BT42.195km Race <onboarding@resend.dev>';
   if (!apiKey) return;
-  const dist = reg.distance || '';
   const name = reg.fullName || 'Athlete';
   const fee = reg.feeMwk != null ? '<p>Entry fee total: <strong>' + String(reg.feeMwk) + ' MWK</strong></p>' : '';
   const pop = reg.paymentRef ? '<p>Payment reference noted: <strong>' + String(reg.paymentRef).replace(/</g,'') + '</strong></p>' : '';
+  let roster = '';
+  if (Array.isArray(reg.teamMembersDetailed) && reg.teamMembersDetailed.length) {
+    roster = '<p><strong>Team:</strong> ' + String(reg.teamName || '').replace(/</g,'') + '</p><p><strong>Members:</strong></p><ul>' +
+      reg.teamMembersDetailed.map((m) => {
+        const n = String(m.name || m.fullName || '').replace(/</g,'');
+        const d = String(m.distance || '').replace(/</g,'');
+        const f = m.feeMwk != null ? ' — ' + m.feeMwk + ' MWK' : '';
+        return '<li>' + n + ' (' + d + ')' + f + '</li>';
+      }).join('') + '</ul>';
+  } else if (reg.distance) {
+    roster = '<p>Distance: <strong>' + String(reg.distance).replace(/</g,'') + '</strong></p>';
+  }
   const html = `<p>Dear ${String(name).replace(/</g,'')},</p>
-<p>Thank you for registering for the <strong>BT42.195km Race</strong> (${String(dist).replace(/</g,'')}).</p>
+<p>Thank you for registering for the <strong>BT42.195km Race</strong>.</p>
 <p>Race day: <strong>19 September 2026</strong>, Blantyre.</p>
-${fee}${pop}
+${roster}${fee}${pop}
 <p>Your place is confirmed once payment is received:</p>
 <ul>
 <li>Bank transfer to account <strong>782637</strong></li>
 <li>Reference: <strong>your full name + mobile number</strong> (one transfer can cover a whole team)</li>
 </ul>
-<p>You will receive further email when payment is verified and when bibs are assigned.</p>
+<p>You will receive <strong>one email per stage</strong> (payment verified, bibs) for the whole team. Certificates are issued per athlete after the race.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
   try {
     await fetch('https://api.resend.com/emails', {
@@ -223,7 +234,9 @@ ${fee}${pop}
       body: JSON.stringify({
         from,
         to: [to],
-        subject: 'Entry received — BT42.195km Race 2026',
+        subject: reg.teamName
+          ? ('Team entry received — ' + String(reg.teamName) + ' — BT42.195km Race 2026')
+          : 'Entry received — BT42.195km Race 2026',
         html
       })
     });
@@ -416,16 +429,20 @@ exports.handler = async (event) => {
     state.updatedBy = isTeam ? 'register-team' : 'register';
     const backend = await writeState(state);
 
-    // One confirmation email to team contact / individual
+    // One confirmation email (team = full roster in a single message)
     try {
       await sendConfirmationEmail({
         fullName: isTeam
-          ? ((body.teamName ? body.teamName + ' team' : 'Team') + ' (' + rawMembers.length + ' runners)')
+          ? (body.teamName ? String(body.teamName) + ' (team contact)' : 'Team contact')
           : (body.fullName || body.name || 'Athlete'),
         email: body.email,
         distance: body.distance,
         feeMwk: body.feeMwk,
-        paymentRef: body.paymentRef
+        paymentRef: body.paymentRef,
+        teamName: body.teamName || '',
+        teamMembersDetailed: isTeam ? (body.teamMembersDetailed || regs.map((r) => ({
+          name: r.fullName, distance: r.distance, feeMwk: r.feeMwk
+        }))) : null
       });
     } catch (e) {}
 

@@ -345,9 +345,10 @@
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
-        // Server register also sends confirmation; client backup if email present
+        // Server sends the official confirmation (includes full team roster for teams).
+        // Skip client duplicate for teams to avoid two emails.
         const em = (data.email || '').trim();
-        if (em) {
+        if (em && data.regType !== 'team') {
           fetch('/.netlify/functions/send-certificate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

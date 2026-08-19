@@ -1305,10 +1305,47 @@
         };
         saveBibs(map);
         if (getSyncToken()) livePush({ bibs: map }).catch(() => {});
-        if (r.email && num) {
+        const mates = teamMates(r, rows);
+        const to = teamContactEmail(r, mates);
+        if (to && r.teamId) {
+          const bibMap = loadBibs();
+          const roster = mates.map((m, idx) => {
+            const bk = participantKey(m, idx);
+            const b = (bibMap[bk] && bibMap[bk].number) || (m === r ? String(num).trim() : '—');
+            // better key match
+            return { m: m, b: b };
+          });
+          // Fix bib numbers properly
+          const items = mates.map((m) => {
+            let bnum = '—';
+            Object.keys(bibMap).forEach((k) => {
+              if (bibMap[k] && String(bibMap[k].phone || '') === String(m.phone || '') &&
+                  String(bibMap[k].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()) {
+                bnum = bibMap[k].number;
+              }
+            });
+            if (String(m.fullName) === String(r.fullName) && String(m.phone) === String(r.phone)) {
+              bnum = String(num).trim();
+            }
+            return '<li>' + escapeHtml(m.fullName || '') + ' — ' + escapeHtml(distanceLabel(m.distance)) +
+              ' — bib <strong>' + escapeHtml(String(bnum)) + '</strong></li>';
+          }).join('');
           sendAthleteEmail({
             type: 'bib',
-            to: r.email,
+            to: to,
+            fullName: r.teamName || 'Team',
+            distance: 'team',
+            bib: String(num).trim(),
+            subject: 'Bib numbers — ' + (r.teamName || 'Team') + ' — BT42.195km Race 2026',
+            html: '<p>Dear ' + escapeHtml(r.teamName || 'Team') + ' contact,</p>' +
+              '<p>Bib assignment update for your team:</p><ul>' + items + '</ul>' +
+              '<p>Race day: <strong>19 September 2026</strong>.</p>' +
+              '<p>— Organising Committee, BT42.195km Race</p>'
+          }).then((j) => console.log('Team bib email', j));
+        } else if (to) {
+          sendAthleteEmail({
+            type: 'bib',
+            to: to,
             fullName: r.fullName,
             distance: distanceLabel(r.distance),
             bib: String(num).trim(),
@@ -1346,8 +1383,31 @@
           if (!row) {
             row = rows.find((x, idx) => participantKey(x, idx) === payKey);
           }
-          const to = (row && row.email) ? String(row.email).trim() : '';
-          if (to) {
+          const mates = teamMates(row, list.length ? list : rows);
+          const to = teamContactEmail(row || {}, mates);
+          if (to && row && row.teamId) {
+            // One email for the whole team
+            const roster = mates.map((m) =>
+              '<li>' + escapeHtml(m.fullName || '') + ' — ' + escapeHtml(distanceLabel(m.distance)) + '</li>'
+            ).join('');
+            sendAthleteEmail({
+              type: 'payment',
+              to: to,
+              email: to,
+              fullName: row.teamName ? (row.teamName + ' team') : 'Team',
+              distance: 'team entry',
+              raceDate: '19 September 2026',
+              html: '<p>Dear ' + escapeHtml(row.teamName || 'Team') + ' contact,</p>' +
+                '<p>We have verified payment for your team entry to the <strong>BT42.195km Race</strong>.</p>' +
+                '<p><strong>Team members:</strong></p><ul>' + roster + '</ul>' +
+                '<p>Bib numbers will be assigned next; you will receive one email for the team when bibs are ready.</p>' +
+                '<p>— Organising Committee, BT42.195km Race</p>',
+              subject: 'Payment verified — ' + (row.teamName || 'Team') + ' — BT42.195km Race 2026'
+            }).then((j) => {
+              if (j && j.ok) alert('Payment verified. One team email sent to ' + to);
+              else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
+            });
+          } else if (to) {
             sendAthleteEmail({
               type: 'payment',
               to: to,
@@ -1360,7 +1420,7 @@
               else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
             });
           } else {
-            alert('Payment verified. No email on file for this athlete — confirmation not sent.');
+            alert('Payment verified. No email on file — confirmation not sent.');
           }
         } catch (e) {
           console.warn('Payment email error', e);
@@ -1466,6 +1526,30 @@
     box.innerHTML = Object.keys(labels).map(k => {
       if (!s[k]) return `<div class="sig-prev empty">${labels[k]}: not uploaded</div>`;
       return `<div class="sig-prev"><img src="${s[k]}" alt="${labels[k]}" /><span>${labels[k]}</span></div>`;
+    }).join('');
+  }
+
+
+  function teamMates(row, allRows) {
+    if (!row || !row.teamId) return row ? [row] : [];
+    return (allRows || []).filter((r) => r.teamId && r.teamId === row.teamId);
+  }
+
+  function teamContactEmail(row, mates) {
+    return (row.teamContactEmail || row.email || (mates[0] && mates[0].email) || '').trim();
+  }
+
+  function formatTeamRosterHtml(mates, extra) {
+    const lines = (mates || []).map((m) => {
+      const bib = extra && extra.bibs && extra.bibs[participantKey(m, 0)];
+      // bib map uses keys — pass precomputed labels instead
+      return m;
+    });
+    return mates.map((m, i) => {
+      const fee = m.feeMwk != null ? ' — ' + m.feeMwk + ' MWK' : '';
+      const bib = (extra && extra.bibLabel && extra.bibLabel[i]) ? ' — bib <strong>' + extra.bibLabel[i] + '</strong>' : '';
+      const pay = (extra && extra.payLabel && extra.payLabel[i]) ? ' — ' + extra.payLabel[i] : '';
+      return '<li>' + escapeHtml(m.fullName || '') + ' (' + escapeHtml(distanceLabel(m.distance)) + ')' + fee + bib + pay + '</li>';
     }).join('');
   }
 

@@ -247,15 +247,15 @@ exports.handler = async (event) => {
 <p>You will receive further email when payment is verified and when your bib is assigned.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
   } else if (type === 'bib') {
-    subject = 'Bib number assigned — BT42.195km Race 2026';
-    html = `<p>Dear ${esc(fullName)},</p>
+    subject = body.subject || 'Bib number assigned — BT42.195km Race 2026';
+    html = body.html || `<p>Dear ${esc(fullName)},</p>
 <p>Your entry for the <strong>BT42.195km Race</strong> (${esc(distance)}) is confirmed.</p>
 <p>Your <strong>bib number is ${esc(String(bib))}</strong>.</p>
 <p>Race day: <strong>${esc(raceDate)}</strong>.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
   } else if (type === 'payment') {
-    subject = 'Payment verified — BT42.195km Race 2026';
-    html = `<p>Dear ${esc(fullName)},</p>
+    subject = body.subject || 'Payment verified — BT42.195km Race 2026';
+    html = body.html || `<p>Dear ${esc(fullName)},</p>
 <p>We have verified your payment for the <strong>BT42.195km Race</strong> (${esc(distance)}).</p>
 <p>Your bib number will be assigned next; watch for another email.</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
