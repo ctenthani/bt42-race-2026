@@ -1297,34 +1297,33 @@
         mates.sort((a, b) => (Number(a.teamMemberIndex) || 0) - (Number(b.teamMemberIndex) || 0));
 
         function keyFor(m) {
-          const idx = rows.indexOf(m);
-          return participantKey(m, idx >= 0 ? idx : 0);
+          // Always key by name+phone so team-mates with shared contact phone stay distinct
+          const phone = String(m.phone || m.teamContactPhone || '').replace(/\s+/g, '');
+          const name = String(m.fullName || '').trim().toLowerCase();
+          return (phone + '|' + name) || participantKey(m, rows.indexOf(m));
         }
         function existingBib(m) {
+          // Only accept a bib stored under this member's exact key or exact name match
           const k = keyFor(m);
           if (map[k] && map[k].number) return String(map[k].number);
-          // fallback match name+phone
+          const wantName = String(m.fullName || '').trim().toLowerCase();
           let found = '';
-          Object.keys(map).forEach((k) => {
-            if (map[k] && String(map[k].phone || '') === String(m.phone || '') &&
-                String(map[k].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()) {
-              found = String(map[k].number || '');
+          Object.keys(map).forEach((key) => {
+            const b = map[key];
+            if (!b || !b.number) return;
+            if (String(b.name || '').trim().toLowerCase() === wantName) {
+              // name match only (do NOT match on shared team phone alone)
+              found = String(b.number);
             }
           });
           return found;
         }
 
         if (r.teamId && mates.length > 1) {
-          // Serial assign for whole team from next free bib per distance series
-          const preview = mates.map((m) => {
-            const ex = existingBib(m);
-            return escapeHtml(m.fullName || '') + ' (' + escapeHtml(distanceLabel(m.distance)) + ')' +
-              (ex ? ' — already #' + ex : ' — new');
-          }).join('\n');
           const startSug = nextBibForDistance(mates[0].distance || r.distance, map);
           const startStr = prompt(
             'Assign sequential bibs to ALL ' + mates.length + ' team members of "' + (r.teamName || 'Team') + '".\n\n' +
-            'Starting bib number (others follow in order, skipping numbers already used):',
+            'Starting bib number (each athlete gets the next free number: 1003, 1004, 1005…):',
             String(startSug)
           );
           if (!startStr) return;
@@ -1334,16 +1333,12 @@
             return;
           }
           const used = new Set(
-            Object.values(map).map((b) => Number(b.number)).filter((x) => !isNaN(x))
+            Object.values(map).map((b) => Number(b && b.number)).filter((x) => !isNaN(x) && x > 0)
           );
           const assigned = [];
+          // Always assign fresh sequential numbers for the whole team (re-assign allowed)
           mates.forEach((m) => {
             const k = keyFor(m);
-            let existing = existingBib(m);
-            if (existing) {
-              assigned.push({ m: m, number: existing, key: k });
-              return;
-            }
             while (used.has(n)) n++;
             const numStr = String(n);
             used.add(n);
@@ -1352,13 +1347,13 @@
               assignedAt: new Date().toISOString(),
               distance: m.distance,
               name: m.fullName,
-              phone: m.phone,
+              phone: m.phone || m.teamContactPhone || '',
               email: m.email || m.teamContactEmail || '',
               teamId: m.teamId || r.teamId,
               teamName: m.teamName || r.teamName || ''
             };
             assigned.push({ m: m, number: numStr, key: k });
-            n++;
+            n += 1;
           });
           saveBibs(map);
           if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
