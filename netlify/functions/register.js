@@ -247,24 +247,44 @@ function buildRegistrationsFromBody(body) {
     teamName: body.teamName || '',
     regType: body.regType || 'individual'
   };
+  const detailed = Array.isArray(body.teamMembersDetailed) ? body.teamMembersDetailed : [];
   const members = Array.isArray(body.teamMembers)
     ? body.teamMembers.map((n) => String(n || '').trim()).filter(Boolean)
     : [];
-  if (body.regType === 'team' && members.length >= 2) {
+  if (body.regType === 'team' && (detailed.length >= 2 || members.length >= 2)) {
     const teamId = 'team-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
-    const unit = body.feeMwk && members.length ? Math.round(Number(body.feeMwk) / members.length) : body.feeMwk;
-    return members.map((name, i) => Object.assign({}, base, {
-      fullName: name,
-      feeMwk: unit,
-      teamId: teamId,
-      teamName: body.teamName || '',
-      teamContactPhone: body.phone || '',
-      teamContactEmail: body.email || '',
-      paymentRef: body.paymentRef || '',
-      regType: 'team',
-      teamMemberIndex: i + 1,
-      teamMemberCount: members.length
-    }));
+    const rows = detailed.length >= 2
+      ? detailed
+      : members.map((name) => ({ name: name, distance: body.distance, dob: body.dob, feeMwk: null, ageOnRaceDay: body.ageOnRaceDay }));
+    return rows.map((m, i) => {
+      const name = String(m.name || m.fullName || '').trim();
+      const distance = String(m.distance || body.distance || '').trim();
+      const dob = String(m.dob || '').trim();
+      let age = m.ageOnRaceDay;
+      if (dob && (age == null)) {
+        const race = new Date('2026-09-19');
+        const d0 = new Date(dob);
+        age = race.getFullYear() - d0.getFullYear();
+        const mm = race.getMonth() - d0.getMonth();
+        if (mm < 0 || (mm === 0 && race.getDate() < d0.getDate())) age--;
+      }
+      return Object.assign({}, base, {
+        fullName: name,
+        distance: distance,
+        dob: dob,
+        ageOnRaceDay: age,
+        feeMwk: m.feeMwk != null ? m.feeMwk : base.feeMwk,
+        teamId: teamId,
+        teamName: body.teamName || '',
+        teamContactPhone: body.phone || '',
+        teamContactEmail: body.email || '',
+        paymentRef: body.paymentRef || '',
+        paymentProof: body.paymentProof || '',
+        regType: 'team',
+        teamMemberIndex: i + 1,
+        teamMemberCount: rows.length
+      });
+    });
   }
   return [Object.assign({}, base, {
     fullName: body.fullName || body.name || '',
@@ -295,7 +315,10 @@ exports.handler = async (event) => {
   const rawMembers = Array.isArray(body.teamMembers)
     ? body.teamMembers.map((n) => String(n || '').trim()).filter(Boolean)
     : [];
-  const isTeam = body.regType === 'team' && rawMembers.length >= 2;
+  const isTeam = body.regType === 'team' && (
+    rawMembers.length >= 2 ||
+    (Array.isArray(body.teamMembersDetailed) && body.teamMembersDetailed.length >= 2)
+  );
 
   if (!body.phone || !body.distance) {
     return json(400, { ok: false, error: 'phone and distance are required' });
@@ -311,11 +334,30 @@ exports.handler = async (event) => {
   if (!isTeam && !(body.fullName || body.name)) {
     return json(400, { ok: false, error: 'fullName, phone and distance are required' });
   }
-  if (isTeam && rawMembers.length < 2) {
+  if (isTeam && rawMembers.length < 2 && !(Array.isArray(body.teamMembersDetailed) && body.teamMembersDetailed.length >= 2)) {
     return json(400, { ok: false, error: 'Team registration needs at least 2 member names' });
   }
 
-  if (body.distance === '42.195' && body.dob) {
+  if (isTeam && Array.isArray(body.teamMembersDetailed)) {
+    for (const m of body.teamMembersDetailed) {
+      if (String(m.distance || '') === '42.195') {
+        const dob = m.dob ? new Date(m.dob) : null;
+        if (!dob || isNaN(dob.getTime())) {
+          return json(400, { ok: false, error: 'Marathon team members need a date of birth' });
+        }
+        const race = new Date('2026-09-19');
+        let age = race.getFullYear() - dob.getFullYear();
+        const mm = race.getMonth() - dob.getMonth();
+        if (mm < 0 || (mm === 0 && race.getDate() < dob.getDate())) age--;
+        if (age < 20) {
+          return json(400, {
+            ok: false,
+            error: (m.name || 'A team member') + ' must be at least 20 on race day for the marathon'
+          });
+        }
+      }
+    }
+  } else if (body.distance === '42.195' && body.dob) {
     const race = new Date('2026-09-19');
     const dob = new Date(body.dob);
     let age = race.getFullYear() - dob.getFullYear();

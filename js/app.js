@@ -120,6 +120,12 @@
     // Team mode: fullName not required on the individual field
     const fullNameInput = document.getElementById('fullName');
     if (fullNameInput) fullNameInput.required = !teamMode;
+    const distMain = document.getElementById('distance');
+    if (distMain) distMain.required = !teamMode;
+    const dobMain = document.getElementById('dob');
+    if (dobMain) dobMain.required = !teamMode;
+    const genderMain = document.getElementById('gender');
+    if (genderMain) genderMain.required = !teamMode;
 
     if (!form.checkValidity()) {
       e.preventDefault();
@@ -158,19 +164,32 @@
     }
 
     let memberNames = [];
+    let teamMembersDetailed = [];
     if (teamMode) {
-      memberNames = getTeamMemberNames();
+      teamMembersDetailed = getTeamMembers();
+      memberNames = teamMembersDetailed.map((m) => m.name).filter(Boolean);
       if (memberNames.length < 2) {
-        alert('Team registration needs at least 2 member names. Add each runner, or switch to Individual.');
+        alert('Team registration needs at least 2 members. Add each runner with name, distance and date of birth.');
         return false;
       }
-    }
-
-    // Reject marathon if under 20 on race day (contact DOB used as team check for marathon)
-    if (distance === '42.195') {
-      if (age === null || age < 20) {
-        alert('Marathon entries require the contact/entrant date of birth to show age 20+ on race day (19 September 2026). For teams, each marathon runner should be 20+; use the contact DOB only if that applies, or register marathon runners individually.');
-        return false;
+      for (let i = 0; i < teamMembersDetailed.length; i++) {
+        const m = teamMembersDetailed[i];
+        if (!m.name || !m.distance || !m.dob) {
+          alert('Each team member needs full name, distance and date of birth.');
+          return false;
+        }
+        if (m.distance === '42.195' && (m.ageOnRaceDay === null || m.ageOnRaceDay < 20)) {
+          alert(m.name + ' cannot enter the marathon: must be at least 20 years old on 19 September 2026.');
+          return false;
+        }
+      }
+    } else {
+      // Individual marathon age check
+      if (distance === '42.195') {
+        if (age === null || age < 20) {
+          alert('Marathon entries are only open to runners who will be at least 20 years old on race day (19 September 2026).');
+          return false;
+        }
       }
     }
 
@@ -182,10 +201,12 @@
     data.teamName = (formData.get('teamName') || '').toString().trim();
     data.paymentRef = paymentRefVal;
     data.hasPop = true;
-    const unitFee = ENTRY_FEES[distance] || 0;
-    const count = teamMode ? memberNames.length : 1;
-    data.feeMwk = unitFee * count;
+    const count = teamMode ? teamMembersDetailed.length : 1;
+    data.feeMwk = teamMode
+      ? teamMembersDetailed.reduce(function (s, m) { return s + (m.feeMwk || 0); }, 0)
+      : (ENTRY_FEES[distance] || 0);
     data.memberCount = count;
+    data.teamMembersDetailed = teamMode ? teamMembersDetailed : [];
 
     if (teamMode) {
       data.fullName = data.teamName
@@ -218,6 +239,7 @@
       regType: data.regType,
       teamName: data.teamName || '',
       teamMembers: memberNames,
+      teamMembersDetailed: teamMode ? teamMembersDetailed : [],
       paymentRef: data.paymentRef || '',
       memberCount: count
     };
@@ -430,10 +452,19 @@
     if (members) members.style.display = team ? '' : 'none';
     if (teamName) teamName.style.display = team ? '' : 'none';
     if (hint) hint.style.display = team ? '' : 'none';
-    if (fullName) {
-      fullName.required = !team;
-      if (team) fullName.value = fullName.value; // keep
-    }
+    // Hide shared distance / DOB / gender for team — each member has their own
+    ['distance', 'dob', 'gender'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const wrap = el.closest('.form-group') || el.closest('.form-row');
+      if (wrap && wrap.classList.contains('form-row')) {
+        wrap.style.display = team ? 'none' : '';
+      } else if (el.closest('.form-group')) {
+        el.closest('.form-group').style.display = team ? 'none' : '';
+      }
+      el.required = !team;
+    });
+    if (fullName) fullName.required = !team;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }
@@ -444,47 +475,106 @@
     while (list.children.length < (min || 1)) addTeamMemberRow();
   }
 
-  function addTeamMemberRow(name) {
+  function addTeamMemberRow(preset) {
     const list = document.getElementById('teamMembersList');
     if (!list) return;
+    const p = preset || {};
     const row = document.createElement('div');
-    row.className = 'form-row team-member-row';
-    row.style.marginBottom = '0.35rem';
+    row.className = 'team-member-row';
+    row.style.cssText = 'border:1px solid #e0e0e0;border-radius:8px;padding:0.65rem;margin-bottom:0.5rem;background:#fff';
     row.innerHTML = `
-      <div class="form-group" style="flex:1">
-        <input type="text" class="team-member-name" placeholder="Full name of runner" value="${(name || '').replace(/"/g, '&quot;')}" />
+      <div class="form-row" style="align-items:flex-end">
+        <div class="form-group" style="flex:2">
+          <label>Full name *</label>
+          <input type="text" class="team-member-name" required placeholder="As on ID" value="${String(p.name || '').replace(/"/g, '&quot;')}" />
+        </div>
+        <div class="form-group" style="flex:1.2">
+          <label>Distance *</label>
+          <select class="team-member-distance" required>
+            <option value="">Select</option>
+            <option value="42.195">42.195 km Marathon</option>
+            <option value="10">10 km Race</option>
+            <option value="5">5 km Fun Run</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:1.1">
+          <label>Date of birth *</label>
+          <input type="date" class="team-member-dob" required />
+        </div>
+        <button type="button" class="btn-mini team-member-remove" title="Remove">×</button>
       </div>
-      <button type="button" class="btn-mini team-member-remove" title="Remove">×</button>`;
+      <p class="form-note team-member-fee" style="margin:0.25rem 0 0"></p>`;
     list.appendChild(row);
+    const distSel = row.querySelector('.team-member-distance');
+    if (p.distance) distSel.value = p.distance;
+    const dobEl = row.querySelector('.team-member-dob');
+    if (p.dob) dobEl.value = p.dob;
     const rm = row.querySelector('.team-member-remove');
     if (rm) rm.onclick = () => {
       if (list.children.length <= 1) return;
       row.remove();
       updateFeePreview();
     };
-    row.querySelector('.team-member-name').addEventListener('input', updateFeePreview);
+    ['.team-member-name', '.team-member-distance', '.team-member-dob'].forEach((sel) => {
+      row.querySelector(sel).addEventListener('change', updateFeePreview);
+      row.querySelector(sel).addEventListener('input', updateFeePreview);
+    });
+    updateFeePreview();
+  }
+
+  function getTeamMembers() {
+    return Array.from(document.querySelectorAll('.team-member-row')).map((row) => {
+      const name = (row.querySelector('.team-member-name').value || '').trim();
+      const distance = (row.querySelector('.team-member-distance').value || '').trim();
+      const dob = (row.querySelector('.team-member-dob').value || '').trim();
+      const age = ageOnRaceDay(dob);
+      const fee = ENTRY_FEES[distance] != null ? ENTRY_FEES[distance] : 0;
+      return { name: name, distance: distance, dob: dob, ageOnRaceDay: age, feeMwk: fee };
+    });
   }
 
   function getTeamMemberNames() {
-    return Array.from(document.querySelectorAll('.team-member-name'))
-      .map((el) => (el.value || '').trim())
-      .filter(Boolean);
+    return getTeamMembers().map((m) => m.name).filter(Boolean);
   }
 
   function updateFeePreview() {
     const el = document.getElementById('fee-preview');
-    const sel = document.getElementById('distance');
-    if (!el || !sel) return;
-    const d = sel.value;
-    if (d && ENTRY_FEES[d] != null) {
-      const n = isTeamMode() ? Math.max(1, getTeamMemberNames().length || 1) : 1;
-      const total = ENTRY_FEES[d] * n;
+    if (!el) return;
+    if (isTeamMode()) {
+      const members = getTeamMembers();
+      let total = 0;
+      let lines = [];
+      members.forEach((m, i) => {
+        const feeEl = document.querySelectorAll('.team-member-row')[i];
+        const note = feeEl && feeEl.querySelector('.team-member-fee');
+        if (m.distance && ENTRY_FEES[m.distance] != null) {
+          total += ENTRY_FEES[m.distance];
+          const label = FEE_LABELS[m.distance] || m.distance;
+          if (note) {
+            let warn = '';
+            if (m.distance === '42.195' && (m.ageOnRaceDay === null || m.ageOnRaceDay < 20)) {
+              warn = ' · <span style="color:#C0392B">Marathon needs age 20+ on 19 Sep 2026</span>';
+            }
+            note.innerHTML = formatMwk(ENTRY_FEES[m.distance]) + ' — ' + label + warn;
+          }
+          lines.push((m.name || 'Member ' + (i + 1)) + ': ' + formatMwk(ENTRY_FEES[m.distance]));
+        } else if (note) {
+          note.textContent = 'Select distance to see fee';
+        }
+      });
       el.style.display = '';
-      el.innerHTML = n > 1
-        ? 'Team entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + ' × ' + n + ' = ' + formatMwk(total) + '</strong> — pay to account <code>782637</code> (one transfer, ref: team/contact name + mobile)'
-        : 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
+      el.innerHTML = total > 0
+        ? 'Team total: <strong>' + formatMwk(total) + '</strong> (' + members.filter(function(m){return m.distance;}).length + ' runners) — one transfer to account <code>782637</code> (ref: team/contact name + mobile)'
+        : 'Add each member’s distance to see the team total — pay to account <code>782637</code>';
     } else {
-      el.style.display = 'none';
+      const sel = document.getElementById('distance');
+      const d = sel && sel.value;
+      if (d && ENTRY_FEES[d] != null) {
+        el.style.display = '';
+        el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
+      } else {
+        el.style.display = 'none';
+      }
     }
   }
 
