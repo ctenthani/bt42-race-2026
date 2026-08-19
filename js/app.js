@@ -195,6 +195,20 @@
           return false;
         }
       }
+      const teamNameEl = document.getElementById('teamName');
+      const teamNameVal = (teamNameEl && teamNameEl.value || '').trim();
+      if (!teamNameVal) {
+        alert('Team / club name is required for team registration.');
+        if (teamNameEl) teamNameEl.focus();
+        return false;
+      }
+      const emailEl = document.getElementById('email');
+      const emailVal = (emailEl && emailEl.value || '').trim();
+      if (!emailVal || emailVal.indexOf('@') < 1) {
+        alert('A valid email address is required for team registration (confirmation and updates are sent there).');
+        if (emailEl) emailEl.focus();
+        return false;
+      }
     } else {
       // Individual marathon age check
       if (distance === '42.195') {
@@ -236,12 +250,15 @@
       console.warn('localStorage save failed', err);
     }
 
+    const primaryDistance = teamMode && teamMembersDetailed[0]
+      ? teamMembersDetailed[0].distance
+      : (data.distance || '');
     const payload = {
       fullName: teamMode ? (data.contactName || data.fullName) : (data.fullName || ''),
       phone: data.phone || '',
       email: data.email || '',
-      distance: data.distance || '',
-      dob: data.dob || '',
+      distance: primaryDistance,
+      dob: teamMode && teamMembersDetailed[0] ? teamMembersDetailed[0].dob : (data.dob || ''),
       gender: data.gender || '',
       emergencyName: data.emergencyName || '',
       emergencyPhone: data.emergencyPhone || '',
@@ -361,17 +378,24 @@
     const phone = (lastReg && lastReg.phone) || '';
 
     const feeLine = fee
-      ? formatMwk(fee) + ((lastReg && lastReg.memberCount > 1) ? ' (team total)' : '')
+      ? formatMwk(fee) + ((lastReg && lastReg.memberCount > 1) ? ' total for the team' : '')
       : 'the amount shown for your race';
 
     const detail = document.getElementById('regSuccessDetail');
     if (detail) {
       detail.innerHTML = `
         <p>Thank you, <strong>${escapeHtml(name)}</strong>. Your registration for the <strong>${escapeHtml(distLabel)}</strong> has been received.</p>
-        ${(lastReg && lastReg.regType === 'team' && lastReg.teamMembers && lastReg.teamMembers.length)
-          ? '<p><strong>Team members:</strong></p><ul>' + lastReg.teamMembers.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join('') + '</ul>'
-            + (lastReg.teamName ? '<p>Team: <strong>' + escapeHtml(lastReg.teamName) + '</strong></p>' : '')
+        ${(lastReg && lastReg.regType === 'team' && lastReg.teamMembersDetailed && lastReg.teamMembersDetailed.length)
+          ? '<p><strong>Team:</strong> ' + escapeHtml(lastReg.teamName || '') + '</p>'
+            + '<p><strong>Team members:</strong></p><ul>' + lastReg.teamMembersDetailed.map(function(m){
+                var lab = FEE_LABELS[m.distance] || m.distance || '';
+                return '<li>' + escapeHtml(m.name) + ' — ' + escapeHtml(lab) + (m.feeMwk != null ? ' (' + formatMwk(m.feeMwk) + ')' : '') + '</li>';
+              }).join('') + '</ul>'
+            + '<p style="font-size:1.05rem"><strong>Total entry fee: ' + formatMwk(lastReg.feeMwk || 0) + '</strong></p>'
             + (lastReg.paymentRef ? '<p>PoP / payment ref noted: <strong>' + escapeHtml(lastReg.paymentRef) + '</strong></p>' : '')
+          : (lastReg && lastReg.regType === 'team' && lastReg.teamMembers && lastReg.teamMembers.length)
+          ? '<p><strong>Team members:</strong></p><ul>' + lastReg.teamMembers.map(function(n){ return '<li>' + escapeHtml(n) + '</li>'; }).join('') + '</ul>'
+            + '<p><strong>Total entry fee: ' + formatMwk(lastReg.feeMwk || 0) + '</strong></p>'
           : ''}
 
         <div class="mpamba-confirm-card">
@@ -478,6 +502,10 @@
       el.required = !team;
       el.disabled = !!team;
     });
+    const teamNameInput = document.getElementById('teamName');
+    if (teamNameInput) teamNameInput.required = !!team;
+    const emailInput = document.getElementById('email');
+    if (emailInput) emailInput.required = !!team;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }

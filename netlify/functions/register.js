@@ -320,8 +320,24 @@ exports.handler = async (event) => {
     (Array.isArray(body.teamMembersDetailed) && body.teamMembersDetailed.length >= 2)
   );
 
-  if (!body.phone || !body.distance) {
+  const hasTeamDetails = Array.isArray(body.teamMembersDetailed) && body.teamMembersDetailed.length >= 2;
+  if (!body.phone) {
+    return json(400, { ok: false, error: 'phone is required' });
+  }
+  if (!body.distance && !hasTeamDetails) {
     return json(400, { ok: false, error: 'phone and distance are required' });
+  }
+  if (body.regType === 'team') {
+    if (!(body.teamName && String(body.teamName).trim())) {
+      return json(400, { ok: false, error: 'Team name is required' });
+    }
+    if (!(body.email && String(body.email).trim())) {
+      return json(400, { ok: false, error: 'Email is required for team registration' });
+    }
+  }
+  // Ensure distance for downstream if only team details provided
+  if (!body.distance && hasTeamDetails) {
+    body.distance = body.teamMembersDetailed[0].distance || '10';
   }
   const popRef = String(body.paymentRef || '').trim();
   if (!popRef) {
