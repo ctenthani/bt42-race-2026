@@ -1320,28 +1320,40 @@
         }
 
         if (r.teamId && mates.length > 1) {
-          const startSug = nextBibForDistance(mates[0].distance || r.distance, map);
-          const startStr = prompt(
-            'Assign sequential bibs to ALL ' + mates.length + ' team members of "' + (r.teamName || 'Team') + '".\n\n' +
-            'Starting bib number (each athlete gets the next free number: 1003, 1004, 1005…):',
-            String(startSug)
-          );
-          if (!startStr) return;
-          let n = parseInt(String(startStr).trim(), 10);
-          if (!n || n < 1) {
-            alert('Invalid starting bib number');
-            return;
-          }
+          // Preview next free bib per distance series for this team
           const used = new Set(
             Object.values(map).map((b) => Number(b && b.number)).filter((x) => !isNaN(x) && x > 0)
           );
+          const seriesNote = {
+            '42.195': 'Marathon series (1001+)',
+            '10': '10 km series (2001+)',
+            '5': '5 km series (3001+)'
+          };
+          const plan = mates.map((m) => {
+            const sug = nextBibForDistance(m.distance, map);
+            return (m.fullName || '') + ' — ' + distanceLabel(m.distance) + ' → ~' + sug;
+          }).join('\n');
+          if (!confirm(
+            'Assign bibs to team "' + (r.teamName || 'Team') + '" by RACE:\n\n' +
+            plan + '\n\n' +
+            'Marathon: 1001+ · 10 km: 2001+ · 5 km: 3001+\n' +
+            'Numbers already used are skipped. Continue?'
+          )) return;
+
           const assigned = [];
-          // Always assign fresh sequential numbers for the whole team (re-assign allowed)
+          // Cursor per distance so team-mates in the same race get consecutive numbers
+          const cursor = {};
           mates.forEach((m) => {
             const k = keyFor(m);
+            const dist = m.distance || '10';
+            if (cursor[dist] == null) {
+              cursor[dist] = nextBibForDistance(dist, map);
+            }
+            let n = cursor[dist];
             while (used.has(n)) n++;
             const numStr = String(n);
             used.add(n);
+            cursor[dist] = n + 1;
             map[k] = {
               number: numStr,
               assignedAt: new Date().toISOString(),
@@ -1353,7 +1365,6 @@
               teamName: m.teamName || r.teamName || ''
             };
             assigned.push({ m: m, number: numStr, key: k });
-            n += 1;
           });
           saveBibs(map);
           if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
