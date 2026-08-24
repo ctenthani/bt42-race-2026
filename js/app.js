@@ -12,9 +12,21 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     document.querySelectorAll('.nav a, .tab').forEach(el => {
-      el.classList.toggle('active', el.dataset.page === pageId);
+      const active = el.dataset.page === pageId;
+      el.classList.toggle('active', active);
+      if (active) el.setAttribute('aria-current', 'page');
+      else el.removeAttribute('aria-current');
     });
     document.getElementById('nav')?.classList.remove('open');
+    const menuButton = document.getElementById('navToggle');
+    if (menuButton) {
+      menuButton.setAttribute('aria-expanded', 'false');
+      menuButton.setAttribute('aria-label', 'Open menu');
+    }
+    const pageTitle = target && target.querySelector('h1');
+    document.title = pageId === 'home' || !pageTitle
+      ? 'BT42.195km Race 2026'
+      : pageTitle.textContent.trim() + ' | BT42.195km Race 2026';
 
     // Initialise Control Room when that page is shown
     if (pageId === 'control' && window.BT42Control) {
@@ -35,7 +47,11 @@
   const toggle = document.getElementById('navToggle');
   const nav = document.getElementById('nav');
   if (toggle && nav) {
-    toggle.addEventListener('click', () => nav.classList.toggle('open'));
+    toggle.addEventListener('click', () => {
+      const open = nav.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    });
   }
 
   document.querySelectorAll('[data-page]').forEach(link => {
@@ -45,6 +61,19 @@
         e.preventDefault();
         location.hash = page;
       }
+    });
+  });
+
+  document.querySelectorAll('.race-entry[data-distance]').forEach(link => {
+    link.addEventListener('click', () => {
+      const distance = link.dataset.distance;
+      window.setTimeout(() => {
+        const select = document.getElementById('distance');
+        if (!select || isTeamMode()) return;
+        select.value = distance;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        select.focus();
+      }, 0);
     });
   });
 

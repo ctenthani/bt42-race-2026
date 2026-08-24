@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#1B4F72" />
   <meta name="description" content="BT42.195km Race 2026 — Full marathon, 10 km & 5 km fun runs. 19 September 2026, Blantyre." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -15,6 +15,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to main content</a>
   <!-- App Shell -->
   <div id="app">
     <button class="control-entry" onclick="location.hash='control'; navigate('control')" title="Committee Control Room">📋 Control</button>
@@ -25,10 +26,10 @@
           <span class="logo-mark">BT</span>
           <span class="logo-text">42.195<span class="logo-year">2026</span></span>
         </a>
-        <button class="nav-toggle" id="navToggle" aria-label="Menu">
+        <button class="nav-toggle" id="navToggle" aria-label="Open menu" aria-controls="nav" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
-        <nav class="nav" id="nav">
+        <nav class="nav" id="nav" aria-label="Primary navigation">
           <a href="#home" data-page="home">Home</a>
           <a href="#races" data-page="races">Races</a>
           <a href="#register" data-page="register" class="nav-cta">Register</a>
@@ -55,7 +56,7 @@
               <a href="#register" class="btn btn-primary" onclick="navigate('register')">Register Now</a>
               <a href="#races" class="btn btn-outline" onclick="navigate('races')">View Races</a>
             </div>
-            <div class="countdown" id="countdown">
+            <div class="countdown" id="countdown" role="timer" aria-label="Countdown to race day">
               <div class="cd-item"><span id="cd-days">--</span><label>Days</label></div>
               <div class="cd-item"><span id="cd-hours">--</span><label>Hours</label></div>
               <div class="cd-item"><span id="cd-mins">--</span><label>Mins</label></div>
@@ -82,7 +83,7 @@
                 <li>Chip timing (planned)</li>
                 <li>Strong prize structure</li>
               </ul>
-              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter Marathon</a>
+              <a href="#register" class="btn btn-sm race-entry" data-distance="42.195">Enter Marathon</a>
             </article>
             <article class="race-card tenk">
               <div class="race-dist">10 km</div>
@@ -93,7 +94,7 @@
                 <li>Great for club runners</li>
                 <li>Medals for finishers</li>
               </ul>
-              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter 10 km</a>
+              <a href="#register" class="btn btn-sm race-entry" data-distance="10">Enter 10 km</a>
             </article>
             <article class="race-card fivek">
               <div class="race-dist">5 km</div>
@@ -104,7 +105,7 @@
                 <li>Family friendly</li>
                 <li>Festival atmosphere</li>
               </ul>
-              <a href="#register" class="btn btn-sm" onclick="navigate('register')">Enter 5 km</a>
+              <a href="#register" class="btn btn-sm race-entry" data-distance="5">Enter 5 km</a>
             </article>
           </div>
         </div>
