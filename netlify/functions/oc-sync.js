@@ -13,6 +13,7 @@ const emptyState = () => ({
   finishes: {},
   attendance: {},
   signatures: {},
+  staffUsers: [],
   suppressedKeys: [],
   updatedAt: null,
   updatedBy: null
@@ -368,6 +369,14 @@ function mergeState(current, body, role) {
   }
   if (body.attendance && typeof body.attendance === 'object') {
     next.attendance = Object.assign({}, current.attendance || {}, body.attendance);
+  }
+  if (body.staffUsers && Array.isArray(body.staffUsers)) {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can update staff users');
+      e.statusCode = 403;
+      throw e;
+    }
+    next.staffUsers = body.staffUsers;
   }
   if (body.signatures && typeof body.signatures === 'object') {
     if (role !== 'chair') {

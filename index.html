@@ -513,13 +513,16 @@
           <!-- PIN Gate -->
           <div id="control-gate" class="control-gate">
             <h2>Committee Control Room</h2>
-            <p>Enter the <strong>committee password</strong> to open the shared planner (checklist, deadlines, sponsors, participants, budget, race day).</p>
-            <p style="font-size:0.9rem;color:var(--text-muted)">Chair password unlocks the same planner <em>plus</em> private Chair meeting notes and editable metrics.</p>
+            <p>Sign in with the <strong>username and password</strong> given to you by the Chair.</p>
+            <p style="font-size:0.9rem;color:var(--text-muted)">Ops accounts can verify payments, assign bibs and record finish times. Chair manages who has access.</p>
             <form id="control-pin-form">
-              <input type="password" id="control-pin" placeholder="Password" autocomplete="off" />
-              <button type="submit" class="btn btn-primary btn-block">Enter Control Room</button>
+              <label for="control-user" class="form-note">Username</label>
+              <input type="text" id="control-user" placeholder="Username" autocomplete="username" style="margin-bottom:0.5rem" />
+              <label for="control-pin" class="form-note">Password</label>
+              <input type="password" id="control-pin" placeholder="Password" autocomplete="current-password" />
+              <button type="submit" class="btn btn-primary btn-block">Sign in</button>
             </form>
-            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Passwords are distributed by the Chair. Contact the Chair if you need access.</p>
+            <p style="margin-top:1rem;font-size:0.8rem;opacity:0.7">Ask the Chair for a login if you need to confirm payments, assign bibs or enter results.</p>
           </div>
 
           <!-- Control Room content -->
@@ -532,6 +535,7 @@
               <button class="ctrl-tab active" data-panel="dash">Dashboard</button>
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
               <button class="ctrl-tab" data-panel="chair">Chair notes</button>
+              <button class="ctrl-tab" data-panel="staff">Staff logins</button>
               <button class="ctrl-tab" data-panel="participants">Participants</button>
               <button class="ctrl-tab" data-panel="checklist">Checklist</button>
               <button class="ctrl-tab" data-panel="meetings">Meetings</button>
@@ -565,6 +569,13 @@
             </div>
 
             <!-- Checklist -->
+            
+            <div id="panel-staff" class="ctrl-panel">
+              <h3>Staff logins</h3>
+              <p class="form-note">Chair only. Create usernames and passwords for people who may verify payments, assign bibs and enter finish times. Share credentials securely (not on social media).</p>
+              <div id="staff-admin"></div>
+            </div>
+
             <div id="panel-participants" class="ctrl-panel">
               <h3 class="ctrl-section-title">Participants · Payment · Certificates</h3>
               <div class="notice" style="margin-bottom:1rem">

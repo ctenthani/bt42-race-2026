@@ -1,9 +1,11 @@
 /* BT42.195km Race 2026 — Control Room logic */
 
 (function () {
-  // Committee PIN = shared planner. Chair PIN = shared planner + Chair notes.
+  // Bootstrap accounts (always available). Chair can create more ops accounts.
   const COMMITTEE_PIN = 'bt42oc';
   const CHAIR_PIN = 'bt42chair';
+  const STAFF_KEY = 'bt42_staff_users';
+  const SESSION_USER_KEY = 'bt42_control_user';
 
   const STORAGE_KEY = 'bt42_checklist_status';
   const SPONSOR_KEY = 'bt42_sponsor_status';
@@ -23,6 +25,45 @@
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
+  let currentUser = sessionStorage.getItem(SESSION_USER_KEY) || '';
+  let perms = {
+    payment: sessionStorage.getItem('bt42_perm_payment') === '1',
+    bibs: sessionStorage.getItem('bt42_perm_bibs') === '1',
+    finish: sessionStorage.getItem('bt42_perm_finish') === '1',
+    manageStaff: sessionStorage.getItem('bt42_perm_staff') === '1'
+  };
+  // Chair always has all perms
+  if (isChair) {
+    perms = { payment: true, bibs: true, finish: true, manageStaff: true };
+  }
+
+  async function sha256(text) {
+    try {
+      const data = new TextEncoder().encode(String(text));
+      const buf = await crypto.subtle.digest('SHA-256', data);
+      return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    } catch (e) {
+      // Fallback (weak) if subtle unavailable
+      let h = 0;
+      const s = String(text);
+      for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i) | 0;
+      return 'x' + Math.abs(h).toString(16);
+    }
+  }
+
+  function loadStaffUsers() {
+    try {
+      const list = JSON.parse(localStorage.getItem(STAFF_KEY) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }
+  function saveStaffUsers(list) {
+    localStorage.setItem(STAFF_KEY, JSON.stringify(list || []));
+  }
+  function canPayment() { return isChair || !!perms.payment; }
+  function canBibs() { return isChair || !!perms.bibs; }
+  function canFinish() { return isChair || !!perms.finish; }
+  function canManageStaff() { return isChair || !!perms.manageStaff; }
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
@@ -49,9 +90,27 @@
     }
     const badge = $('#ctrl-role-badge');
     if (badge) {
-      badge.textContent = isChair ? 'Signed in as Chair' : 'Signed in as Committee';
-      badge.className = isChair ? 'role-badge chair' : 'role-badge committee';
+      let label = 'Committee (view)';
+      let cls = 'role-badge committee';
+      if (isChair) { label = 'Chair' + (currentUser ? ' · ' + currentUser : ''); cls = 'role-badge chair'; }
+      else if (canPayment() || canBibs() || canFinish()) {
+        const bits = [];
+        if (canPayment()) bits.push('pay');
+        if (canBibs()) bits.push('bibs');
+        if (canFinish()) bits.push('finish');
+        label = (currentUser || 'Ops') + ' · ' + bits.join('/');
+        cls = 'role-badge chair';
+      } else if (currentUser) {
+        label = currentUser + ' · view';
+      }
+      badge.textContent = 'Signed in as ' + label;
+      badge.className = cls;
     }
+    // Staff tab: chair only
+    $$('.ctrl-tab[data-panel="staff"], #panel-staff').forEach((el) => {
+      if (canManageStaff()) el.classList.remove('chair-only-hidden');
+      else el.classList.add('chair-only-hidden');
+    });
     // If non-chair is on chair panel, switch to dashboard
     if (!isChair) {
       const chairPanel = $('#panel-chair');
@@ -66,11 +125,29 @@
     }
   }
 
-  function unlock(role) {
+  function unlock(role, user, userPerms) {
     unlocked = true;
     isChair = role === 'chair';
+    currentUser = user || (isChair ? 'chair' : 'committee');
+    if (isChair) {
+      perms = { payment: true, bibs: true, finish: true, manageStaff: true };
+    } else if (userPerms) {
+      perms = {
+        payment: !!userPerms.payment,
+        bibs: !!userPerms.bibs,
+        finish: !!userPerms.finish,
+        manageStaff: !!userPerms.manageStaff
+      };
+    } else {
+      perms = { payment: false, bibs: false, finish: false, manageStaff: false };
+    }
     sessionStorage.setItem('bt42_control_unlocked', '1');
     sessionStorage.setItem('bt42_control_role', isChair ? 'chair' : 'committee');
+    sessionStorage.setItem(SESSION_USER_KEY, currentUser);
+    sessionStorage.setItem('bt42_perm_payment', perms.payment ? '1' : '0');
+    sessionStorage.setItem('bt42_perm_bibs', perms.bibs ? '1' : '0');
+    sessionStorage.setItem('bt42_perm_finish', perms.finish ? '1' : '0');
+    sessionStorage.setItem('bt42_perm_staff', perms.manageStaff ? '1' : '0');
     const gate = $('#control-gate');
     const room = $('#control-room');
     if (gate) gate.classList.add('hidden');
@@ -106,29 +183,74 @@
     }).catch(() => startLiveSync());
   }
 
-  function tryUnlock(e) {
+  async function tryUnlock(e) {
     e.preventDefault();
-    const input = $('#control-pin');
-    if (!input) return;
-    const val = input.value.trim().toLowerCase();
-    if (val === CHAIR_PIN) {
-      unlock('chair');
-    } else if (val === COMMITTEE_PIN) {
-      unlock('committee');
+    const userEl = $('#control-user');
+    const passEl = $('#control-pin');
+    if (!passEl) return;
+    const username = ((userEl && userEl.value) || '').trim().toLowerCase();
+    const password = (passEl.value || '').trim();
+    if (!password) {
+      alert('Enter password');
+      return;
+    }
+
+    // Bootstrap: username optional if using legacy single-field PINs
+    if ((!username || username === 'chair') && password.toLowerCase() === CHAIR_PIN) {
+      unlock('chair', 'chair');
+      return;
+    }
+    if ((!username || username === 'committee') && password.toLowerCase() === COMMITTEE_PIN) {
+      unlock('committee', 'committee');
+      return;
+    }
+
+    if (!username) {
+      alert('Enter your username (from the Chair) and password.');
+      return;
+    }
+
+    const hash = await sha256(password);
+    const staff = loadStaffUsers();
+    const acc = staff.find((u) => String(u.username || '').toLowerCase() === username);
+    if (!acc || acc.passwordHash !== hash) {
+      alert('Incorrect username or password. Ask the Chair for a login.');
+      passEl.value = '';
+      return;
+    }
+    if (acc.disabled) {
+      alert('This account is disabled. Contact the Chair.');
+      return;
+    }
+    if (acc.role === 'chair') {
+      unlock('chair', acc.username);
     } else {
-      alert('Incorrect password. Use the committee password, or the Chair password for Chair-only notes.');
-      input.value = '';
+      unlock('committee', acc.username, {
+        payment: !!acc.canPayment,
+        bibs: !!acc.canBibs,
+        finish: !!acc.canFinish,
+        manageStaff: false
+      });
     }
   }
 
   function logoutControl() {
     sessionStorage.removeItem('bt42_control_unlocked');
     sessionStorage.removeItem('bt42_control_role');
+    sessionStorage.removeItem(SESSION_USER_KEY);
+    sessionStorage.removeItem('bt42_perm_payment');
+    sessionStorage.removeItem('bt42_perm_bibs');
+    sessionStorage.removeItem('bt42_perm_finish');
+    sessionStorage.removeItem('bt42_perm_staff');
     unlocked = false;
     isChair = false;
+    currentUser = '';
+    perms = { payment: false, bibs: false, finish: false, manageStaff: false };
     showGate();
     const input = $('#control-pin');
     if (input) input.value = '';
+    const u = $('#control-user');
+    if (u) u.value = '';
   }
 
   // ---------- Status persistence ----------
@@ -871,6 +993,9 @@
     if (s.attendance && typeof s.attendance === 'object') {
       localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
     }
+    if (Array.isArray(s.staffUsers)) {
+      try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
+    }
     if (isChair && s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
       // Only overwrite local if server has real image data (not empty)
       const hasReal = ['kalua', 'chamwala', 'tenthani'].some(
@@ -930,6 +1055,7 @@
       payload.payments = loadPayments();
       payload.replacePayments = true;
       payload.signatures = loadSigs();
+      payload.staffUsers = loadStaffUsers();
     }
     return pushSharedState(payload);
   }
@@ -1096,7 +1222,7 @@
     let html = `<div class="notice" style="margin-bottom:1rem">
       <strong>Participant list</strong> — visible to all committee members.<br>
       <strong>Payment verification (Verify / Reject)</strong> — <em>Chair only</em>.
-      ${isChair ? '' : '<br><span class="pay-status pay-wait">You are signed in as Committee: payment status is view-only.</span>'}
+      ${canPayment() ? '' : '<br><span class="pay-status pay-wait">Payment verify requires an Ops or Chair login.</span>'}
       <br>Pay to bank account <code>782637</code> (reference: name + mobile).
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
@@ -1149,19 +1275,19 @@
         <td>
           <span class="pay-status ${stClass}">${stLabel}</span>
           <div class="actions-cell">
-            ${isChair ? '<button type="button" class="btn-mini pay-verify" data-key="' + escapeHtml(key) + '">Verify</button><button type="button" class="btn-mini pay-reject" data-key="' + escapeHtml(key) + '">Reject</button>' : '<small class="form-note">Chair verifies</small>'}
+            ${canPayment() ? '<button type="button" class="btn-mini pay-verify" data-key="' + escapeHtml(key) + '">Verify</button><button type="button" class="btn-mini pay-reject" data-key="' + escapeHtml(key) + '">Reject</button>' : '<small class="form-note">Ops/Chair verifies</small>'}
           </div>
         </td>
         <td>
           ${bibs[key] && bibs[key].number ? '<strong>#' + bibs[key].number + '</strong>' : '<span class="pay-status pay-wait">No bib</span>'}
           <div class="actions-cell">
-            <button type="button" class="btn-mini bib-assign" data-key="${escapeHtml(key)}" data-i="${i}" ${st !== 'verified' ? 'disabled title="Verify payment first"' : ''}>Assign bib</button>
+            <button type="button" class="btn-mini bib-assign" data-key="${escapeHtml(key)}" data-i="${i}" ${!canBibs() ? 'disabled title="Need Ops/Chair login"' : (st !== 'verified' ? 'disabled title="Verify payment first"' : '')}>Assign bib</button>
           </div>
         </td>
         <td>
           <span class="pay-status ${fClass}">${fLabel}</span>
           <div class="actions-cell">
-            <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}">Finish</button>
+            <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}" ${!canFinish() ? 'disabled title="Need Ops/Chair login"' : ''}>Finish</button>
             <button type="button" class="btn-mini fin-dnf" data-key="${escapeHtml(key)}" data-i="${i}">DNF</button>
           </div>
         </td>
@@ -1288,6 +1414,7 @@
 
     container.querySelectorAll('.bib-assign').forEach(btn => {
       btn.onclick = () => {
+        if (!canBibs()) { alert('Your login cannot assign bibs. Ask the Chair for an Ops account.'); return; }
         const i = Number(btn.dataset.i);
         const r = rows[i];
         if (!r) return;
@@ -1425,7 +1552,7 @@
 
     container.querySelectorAll('.pay-verify').forEach(btn => {
       btn.onclick = () => {
-        if (!isChair) { alert('Only the Chair can verify payments.'); return; }
+        if (!canPayment()) { alert('Your login cannot verify payments. Ask the Chair for an Ops account.'); return; }
         const map = loadPayments();
         const note = prompt('Optional note (Bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
         map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: 'Chair' };
@@ -1493,7 +1620,7 @@
     });
     container.querySelectorAll('.pay-reject').forEach(btn => {
       btn.onclick = () => {
-        if (!isChair) { alert('Only the Chair can reject payments.'); return; }
+        if (!canPayment()) { alert('Your login cannot reject payments.'); return; }
         const map = loadPayments();
         map[btn.dataset.key] = { status: 'rejected', note: prompt('Reason (optional):', '') || '', verifiedAt: new Date().toISOString() };
         savePayments(map);
@@ -1503,6 +1630,7 @@
     });
     container.querySelectorAll('.fin-ok').forEach(btn => {
       btn.onclick = () => {
+        if (!canFinish()) { alert('Your login cannot enter finish times.'); return; }
         const map = loadFinishes();
         const time = prompt('Official finish time (optional, e.g. 3:42:15):', (map[btn.dataset.key] || {}).time || '') || '';
         map[btn.dataset.key] = { status: 'finished', time, finishedAt: new Date().toISOString() };
@@ -1522,6 +1650,7 @@
     });
     container.querySelectorAll('.fin-dnf').forEach(btn => {
       btn.onclick = () => {
+        if (!canFinish()) { alert('Your login cannot enter DNF.'); return; }
         const map = loadFinishes();
         map[btn.dataset.key] = { status: 'dnf', finishedAt: new Date().toISOString() };
         saveFinishes(map);
@@ -1841,6 +1970,120 @@
 
   window.BT42OpenCertificate = openCertificate;
 
+
+  function renderStaffAdmin() {
+    const box = $('#staff-admin');
+    if (!box) return;
+    if (!canManageStaff()) {
+      box.innerHTML = '<p class="form-note">Only the Chair can manage staff logins.</p>';
+      return;
+    }
+    const list = loadStaffUsers();
+    let rows = list.map((u, i) => {
+      const flags = [
+        u.canPayment ? 'Payment' : '',
+        u.canBibs ? 'Bibs' : '',
+        u.canFinish ? 'Finish' : ''
+      ].filter(Boolean).join(', ') || 'View only';
+      return '<tr><td>' + escapeHtml(u.username) + '</td><td>' + escapeHtml(u.displayName || '') + '</td><td>' +
+        escapeHtml(flags) + '</td><td>' + (u.disabled ? 'Disabled' : 'Active') +
+        '</td><td><button type="button" class="btn-mini staff-disable" data-i="' + i + '">' +
+        (u.disabled ? 'Enable' : 'Disable') + '</button> ' +
+        '<button type="button" class="btn-mini staff-reset" data-i="' + i + '">Reset password</button> ' +
+        '<button type="button" class="btn-mini staff-delete" data-i="' + i + '" style="color:#C0392B">Delete</button></td></tr>';
+    }).join('');
+    if (!rows) rows = '<tr><td colspan="5">No staff accounts yet — create one below and share username/password.</td></tr>';
+    box.innerHTML = `
+      <div class="card" style="margin-bottom:1rem;padding:0.75rem">
+        <h4 style="margin-top:0">Create Ops login</h4>
+        <p class="form-note">Give this to committee members who should verify payments, assign bibs, or enter finish times.</p>
+        <div class="form-row">
+          <div class="form-group"><label>Username *</label><input type="text" id="staff-new-user" placeholder="e.g. grace.pay" /></div>
+          <div class="form-group"><label>Display name</label><input type="text" id="staff-new-name" placeholder="e.g. Grace" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Password *</label><input type="text" id="staff-new-pass" placeholder="Share once, then they can ask for reset" /></div>
+        </div>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-pay" checked /> Can verify / reject payments</label>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-bibs" checked /> Can assign bibs</label>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-finish" checked /> Can enter Finish / DNF</label>
+        <button type="button" class="btn btn-primary" id="staff-create-btn">Create login</button>
+      </div>
+      <div class="table-wrap"><table class="data-table">
+        <thead><tr><th>Username</th><th>Name</th><th>Permissions</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <p class="form-note" style="margin-top:0.75rem">Built-in: username <code>chair</code> / password <code>bt42chair</code> (full access). View-only: <code>committee</code> / <code>bt42oc</code>.</p>`;
+    const createBtn = $('#staff-create-btn');
+    if (createBtn) createBtn.onclick = async () => {
+      const username = (($('#staff-new-user') || {}).value || '').trim().toLowerCase();
+      const displayName = (($('#staff-new-name') || {}).value || '').trim();
+      const password = (($('#staff-new-pass') || {}).value || '').trim();
+      if (!username || username.length < 2) { alert('Username required'); return; }
+      if (!password || password.length < 4) { alert('Password at least 4 characters'); return; }
+      if (username === 'chair' || username === 'committee') {
+        alert('That username is reserved');
+        return;
+      }
+      const list = loadStaffUsers();
+      if (list.some((u) => u.username === username)) {
+        alert('Username already exists');
+        return;
+      }
+      const passwordHash = await sha256(password);
+      list.push({
+        username,
+        displayName,
+        passwordHash,
+        role: 'ops',
+        canPayment: !!($('#staff-can-pay') || {}).checked,
+        canBibs: !!($('#staff-can-bibs') || {}).checked,
+        canFinish: !!($('#staff-can-finish') || {}).checked,
+        disabled: false,
+        createdAt: new Date().toISOString()
+      });
+      saveStaffUsers(list);
+      if (getSyncToken()) livePush({ staffUsers: list }).catch(() => {});
+      alert('Created login for "' + username + '". Share username and password with them securely.');
+      renderStaffAdmin();
+    };
+    box.querySelectorAll('.staff-disable').forEach((btn) => {
+      btn.onclick = () => {
+        const list = loadStaffUsers();
+        const i = Number(btn.dataset.i);
+        if (!list[i]) return;
+        list[i].disabled = !list[i].disabled;
+        saveStaffUsers(list);
+        if (getSyncToken()) livePush({ staffUsers: list }).catch(() => {});
+        renderStaffAdmin();
+      };
+    });
+    box.querySelectorAll('.staff-delete').forEach((btn) => {
+      btn.onclick = () => {
+        if (!confirm('Delete this login?')) return;
+        const list = loadStaffUsers();
+        list.splice(Number(btn.dataset.i), 1);
+        saveStaffUsers(list);
+        if (getSyncToken()) livePush({ staffUsers: list }).catch(() => {});
+        renderStaffAdmin();
+      };
+    });
+    box.querySelectorAll('.staff-reset').forEach((btn) => {
+      btn.onclick = async () => {
+        const list = loadStaffUsers();
+        const i = Number(btn.dataset.i);
+        if (!list[i]) return;
+        const p = prompt('New password for ' + list[i].username + ':', '');
+        if (!p || p.length < 4) return;
+        list[i].passwordHash = await sha256(p);
+        saveStaffUsers(list);
+        if (getSyncToken()) livePush({ staffUsers: list }).catch(() => {});
+        alert('Password updated. Share the new password with them.');
+        renderStaffAdmin();
+      };
+    });
+  }
+
   function renderDeadlines() {
     const container = $('#ctrl-deadlines');
     if (!container) return;
@@ -1922,6 +2165,7 @@
     renderAttendance();
     renderDeadlines();
     if (isChair) renderChairNotes();
+    if (canManageStaff()) renderStaffAdmin();
     renderNotes();
     initControlTabs();
     applyRoleUI();
@@ -1952,7 +2196,7 @@
       if (logoutBtn) logoutBtn.onclick = logoutControl;
 
       if (unlocked) {
-        unlock(isChair ? 'chair' : 'committee');
+        unlock(isChair ? 'chair' : 'committee', currentUser || (isChair ? 'chair' : 'committee'), perms);
       } else {
         showGate();
       }
