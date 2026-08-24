@@ -371,6 +371,7 @@
           throw new Error(bits.join(' — ') || ('HTTP ' + res.status));
         }
         showSuccess(data);
+        clearRegistrationDraft();
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
@@ -564,7 +565,7 @@
     const teamNameInput = document.getElementById('teamName');
     if (teamNameInput) teamNameInput.required = !!team;
     const emailInput = document.getElementById('email');
-    if (emailInput) emailInput.required = !!team;
+    if (emailInput) emailInput.required = true;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }
@@ -681,10 +682,69 @@
     syncRegTypeUI();
   }
 
+  // Keep an in-progress registration in this browser tab so a network error or
+  // accidental refresh does not force the runner to re-enter important details.
+  // File inputs are intentionally excluded and must be selected again.
+  const REG_DRAFT_KEY = 'bt42_registration_draft_v1';
+
+  function saveRegistrationDraft() {
+    const form = document.getElementById('regForm');
+    if (!form) return;
+    const draft = {};
+    form.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
+      if (field.type === 'file' || field.type === 'hidden' || field.name === 'bot-field') return;
+      if ((field.type === 'radio' || field.type === 'checkbox') && !field.checked) return;
+      draft[field.name] = field.type === 'checkbox' ? true : field.value;
+    });
+    if (isTeamMode()) draft._teamMembersDetailed = getTeamMembers();
+    try { sessionStorage.setItem(REG_DRAFT_KEY, JSON.stringify(draft)); } catch (e) {}
+  }
+
+  function restoreRegistrationDraft() {
+    const form = document.getElementById('regForm');
+    if (!form) return;
+    let draft = null;
+    try { draft = JSON.parse(sessionStorage.getItem(REG_DRAFT_KEY) || 'null'); } catch (e) {}
+    if (!draft) return;
+    Object.keys(draft).forEach((name) => {
+      if (name.charAt(0) === '_') return;
+      const fields = form.querySelectorAll('[name="' + CSS.escape(name) + '"]');
+      fields.forEach((field) => {
+        if (field.type === 'radio') field.checked = field.value === draft[name];
+        else if (field.type === 'checkbox') field.checked = Boolean(draft[name]);
+        else field.value = draft[name];
+      });
+    });
+    syncRegTypeUI();
+    if (Array.isArray(draft._teamMembersDetailed) && draft._teamMembersDetailed.length) {
+      const list = document.getElementById('teamMembersList');
+      if (list) list.innerHTML = '';
+      draft._teamMembersDetailed.forEach((member) => addTeamMemberRow(member));
+    }
+    checkMarathonAgeHint();
+    updateFeePreview();
+  }
+
+  function clearRegistrationDraft() {
+    try { sessionStorage.removeItem(REG_DRAFT_KEY); } catch (e) {}
+  }
+
+  function initRegistrationDraft() {
+    const form = document.getElementById('regForm');
+    if (!form) return;
+    restoreRegistrationDraft();
+    form.addEventListener('input', saveRegistrationDraft);
+    form.addEventListener('change', saveRegistrationDraft);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTeamRegistrationUI);
+    document.addEventListener('DOMContentLoaded', () => {
+      initTeamRegistrationUI();
+      initRegistrationDraft();
+    });
   } else {
     initTeamRegistrationUI();
+    initRegistrationDraft();
   }
 
 })();

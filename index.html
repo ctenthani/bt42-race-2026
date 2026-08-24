@@ -52,6 +52,7 @@
             <p class="hero-sub">Blantyre · 19 September 2026</p>
             <p class="hero-date">Saturday, 19 September 2026</p>
             <p class="hero-tagline">Embrace the Challenge · Race Up Blantyre</p>
+            <p class="last-updated">Registration open · Last updated 24 August 2026</p>
             <div class="hero-actions">
               <a href="#register" class="btn btn-primary" onclick="navigate('register')">Register Now</a>
               <a href="#races" class="btn btn-outline" onclick="navigate('races')">View Races</a>
@@ -69,6 +70,13 @@
               <span class="badge-unit">km</span>
             </div>
           </div>
+        </div>
+
+        <div class="quick-facts" aria-label="Race essentials">
+          <div><strong>19 Sep 2026</strong><span>Race day</span></div>
+          <div><strong>Kamuzu Stadium</strong><span>Blantyre</span></div>
+          <div><strong>MK5,000–MK15,000</strong><span>Entry fees</span></div>
+          <div><strong>Registration open</strong><span>Enter today</span></div>
         </div>
 
         <div class="section container">
@@ -137,6 +145,22 @@
             </div>
           </div>
         </div>
+
+        <div class="section container">
+          <h2 class="section-title">The Blantyre Marathon Story</h2>
+          <p class="section-lead">A proud city race bringing together Malawi’s leading distance runners and the wider community.</p>
+          <div class="race-gallery">
+            <figure>
+              <img src="assets/blantyre-marathon-finish-2019.jpg" alt="A Blantyre Marathon runner approaching the finish line" loading="lazy" />
+              <figcaption>Racing for the finish in Blantyre, 2018.</figcaption>
+            </figure>
+            <figure>
+              <img src="assets/blantyre-marathon-podium-2019.jpg" alt="Blantyre Marathon winners standing on the podium" loading="lazy" />
+              <figcaption>Celebrating the 2018 men’s podium.</figcaption>
+            </figure>
+          </div>
+          <p class="photo-credit">Historical 2018 race photographs published by <a href="https://www.nyasatimes.com/kachere-rehabilitation-to-benefit-from-proceeds-from-bt-marathon/" target="_blank" rel="noopener">Nyasa Times in 2019</a>.</p>
+        </div>
       </section>
 
       <!-- RACES -->
@@ -156,7 +180,7 @@
                 <tr><td>Start (target)</td><td>~06:30</td></tr>
                 <tr><td>Categories</td><td>Open, Age Groups, Veterans</td></tr>
                 <tr><td>Prizes</td><td>Competitive (details soon)</td></tr>
-                <tr><td>Entry (indicative)</td><td>From K20,000</td></tr>
+                <tr><td>Entry fee</td><td>MK15,000</td></tr>
               </table>
             </div>
             <div class="info-card">
@@ -166,7 +190,7 @@
                 <tr><td>Start (target)</td><td>~06:45–07:00</td></tr>
                 <tr><td>Categories</td><td>Open + recreational</td></tr>
                 <tr><td>Prizes</td><td>Scaled prizes</td></tr>
-                <tr><td>Entry (indicative)</td><td>From K15,000</td></tr>
+                <tr><td>Entry fee</td><td>MK10,000</td></tr>
               </table>
             </div>
             <div class="info-card">
@@ -176,7 +200,7 @@
                 <tr><td>Start (target)</td><td>~07:15–07:30</td></tr>
                 <tr><td>Focus</td><td>Community & families</td></tr>
                 <tr><td>Prizes</td><td>Recognition + medals</td></tr>
-                <tr><td>Entry (indicative)</td><td>Affordable / early bird</td></tr>
+                <tr><td>Entry fee</td><td>MK5,000</td></tr>
               </table>
             </div>
           </div>
@@ -192,7 +216,7 @@
         <div class="page-header">
           <div class="container">
             <h1>Register</h1>
-            <p>Secure your place — registration opens mid-August 2026</p>
+            <p>Registration is open — secure your place for 19 September 2026</p>
           </div>
         </div>
         <div class="container section">
@@ -201,7 +225,7 @@
               <input type="hidden" name="form-name" value="bt42-registration" />
               <p class="hidden" style="display:none"><label>Don’t fill this out: <input name="bot-field" /></label></p>
               <h2>Entry Form</h2>
-              <p class="form-note">Complete the form below. After submission you will receive bank payment instructions. Your place is confirmed once payment is received.</p>
+              <p class="form-note">Complete the form after paying by bank transfer or Mpamba. Your entry is received immediately and confirmed once the organising team verifies payment.</p>
               <p class="form-note" style="margin-top:0.5rem"><strong>Age rule:</strong> Marathon (42.195 km) entrants must be <strong>at least 20 years old on race day</strong> (19 September 2026). 10 km and 5 km have no minimum age beyond parental consent where required.</p>
 
               <div class="form-group">
@@ -242,8 +266,8 @@
                     title="Malawi mobile number, e.g. 0888381177" />
                 </div>
                 <div class="form-group">
-                  <label for="email">Email <span id="emailRequiredMark"></span></label>
-                  <input type="email" id="email" name="email" placeholder="optional" />
+                  <label for="email">Email *</label>
+                  <input type="email" id="email" name="email" required placeholder="Needed for confirmations, bib and certificate" />
                 </div>
               </div>
               <div class="form-row">
@@ -289,7 +313,7 @@
               <div class="form-group checkbox">
                 <label>
                   <input type="checkbox" id="terms" name="terms" required />
-                  I agree to the event rules, medical disclaimer, and data use for race organisation.
+                  I agree to the event rules, medical disclaimer, and the <a href="#privacy">privacy notice</a> covering use of my registration information.
                 </label>
               </div>
               
@@ -306,6 +330,7 @@
                 <label for="paymentProof" style="margin-top:0.65rem;display:block">Upload slip / SMS screenshot (optional if reference above is complete)</label>
                 <input type="file" id="paymentProof" name="paymentProof" accept="image/*,application/pdf" />
                 <p class="form-note" style="margin-top:0.35rem">Pay to account <code>782637</code>. Reference on the transfer should include name + mobile. Team entries: one PoP covers all members listed. The transaction ID you type here is how the committee matches your payment — keep the same reference on the bank transfer.</p>
+                <p class="form-note"><strong>Mpamba:</strong> dial the Mpamba menu, choose <strong>4</strong> as the required payment-flow option, follow the prompts, and keep the transaction reference shown in the confirmation SMS.</p>
               </div>
 
               <button type="submit" class="btn btn-primary btn-block">Submit &amp; Get Payment Instructions</button>
@@ -318,7 +343,7 @@
                 <p class="status-pill open">Registration Open</p>
                 <ul class="checklist">
                   <li>Online form (this page)</li>
-                  <li>Mobile money payments</li>
+                  <li>Mpamba mobile-money payments</li>
                   <li>Physical registration points (TBC)</li>
                   <li>Early-bird discounts planned</li>
                 </ul>
@@ -328,7 +353,7 @@
                 <p><strong>Bank payment</strong></p>
                 <ol style="margin:0.35rem 0 0.75rem 1.1rem;font-size:0.9rem;padding:0">
                   <li>Transfer to account <code>782637</code></li>
-                  <li>Select <strong>4</strong></li>
+                  <li>For Mpamba, select <strong>4</strong> in the payment flow</li>
                   <li>Keep your deposit slip or transfer proof</li>
                   <li>Amount for your race distance appears — confirm and pay</li>
                 </ol>
@@ -337,7 +362,17 @@
               </div>
               <div class="sidebar-card">
                 <h3>Need Help?</h3>
-                <p>Contact the organising team via the channels published by MNCS closer to opening.</p>
+                <p>Contact Mr. Nicholas Kanyenda, General Secretary for Athletics Malawi.</p>
+                <p><a href="tel:+265999959009"><strong>+265 999 959 009</strong></a></p>
+              </div>
+              <div class="sidebar-card">
+                <h3>What happens next?</h3>
+                <ol class="email-timeline">
+                  <li>Entry received email</li>
+                  <li>Payment confirmed email</li>
+                  <li>Bib number email</li>
+                  <li>Participation or completion certificate</li>
+                </ol>
               </div>
             </aside>
           </div>
@@ -448,7 +483,7 @@
             <details>
               <summary>Key Dates</summary>
               <ul>
-                <li><strong>Registration opens:</strong> 18 August 2026 (target)</li>
+                <li><strong>Registration:</strong> Open now</li>
                 <li><strong>Packet pickup / Expo:</strong> 17–18 September 2026</li>
                 <li><strong>Race Day:</strong> Saturday, 19 September 2026</li>
                 <li><strong>Marathon minimum age:</strong> 20 years old on race day</li>
@@ -469,7 +504,13 @@
             </details>
             <details>
               <summary>Contact</summary>
-              <p>Organising Committee Chair and MNCS contacts will be published here once the committee is fully constituted. For now, monitor official MNCS channels and this platform for updates.</p>
+              <p>Contact Mr. Nicholas Kanyenda, General Secretary for Athletics Malawi, on <a href="tel:+265999959009">+265 999 959 009</a>.</p>
+            </details>
+            <details id="privacy">
+              <summary>Privacy Notice</summary>
+              <p>We collect registration details—including name, contact information, date of birth, emergency-contact details, race selection and payment evidence—to administer entries, verify eligibility and payment, communicate race information, support participant safety, allocate bibs, record results and issue certificates.</p>
+              <p>Registration information is available only to authorised race officials who need it for these purposes. Payment documents and emergency-contact details are not published. We retain information only for event administration, financial reconciliation, safety, results and certificate records, after which it should be securely deleted or anonymised where practical.</p>
+              <p>To request access, correction or deletion of your information, contact Mr. Nicholas Kanyenda on <a href="tel:+265999959009">+265 999 959 009</a>. Some records may need to be retained where required for legitimate event, financial or legal purposes.</p>
             </details>
           </div>
         </div>
@@ -644,6 +685,7 @@
         <p><strong>BT42.195km Race 2026</strong> · Blantyre, Malawi</p>
         <p>Organised under the Malawi National Council of Sports</p>
         <p class="footer-note">BT42.195km Race · 19 September 2026</p>
+        <p class="footer-note">Last updated 24 August 2026</p>
       </div>
     </footer>
   </div>
