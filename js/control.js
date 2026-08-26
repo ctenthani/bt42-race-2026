@@ -1580,30 +1580,42 @@
       btn.onclick = () => {
         if (!canPayment()) { alert('Your login cannot verify payments. Ask the Chair for an Ops account.'); return; }
         const map = loadPayments();
-        const note = prompt('Optional note (Bank ref):', (map[btn.dataset.key] || {}).note || '') || '';
-        map[btn.dataset.key] = { status: 'verified', note, verifiedAt: new Date().toISOString(), verifiedBy: 'Chair' };
+        const payKey = btn.dataset.key;
+        const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+        let row = list.find((x, idx) => participantKey(x, idx) === payKey);
+        if (!row) {
+          row = list.find((x) => {
+            const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
+            return k === payKey;
+          });
+        }
+        if (!row) {
+          row = rows.find((x, idx) => participantKey(x, idx) === payKey);
+        }
+        const mates = teamMates(row, (list.length ? list : rows));
+        const toVerify = (row && row.teamId && mates.length > 1) ? mates : (row ? [row] : []);
+        const note = prompt(
+          toVerify.length > 1
+            ? ('Verify payment for ALL ' + toVerify.length + ' members of team "' + (row.teamName || 'Team') + '"?\nOptional note (Bank ref):')
+            : 'Optional note (Bank ref):',
+          (map[payKey] || {}).note || ''
+        );
+        if (note === null) return; // cancelled
+        const verifiedAt = new Date().toISOString();
+        const verifiedBy = currentUser || (isChair ? 'Chair' : 'Ops');
+        toVerify.forEach((m, idx) => {
+          const k = participantKey(m, rows.indexOf(m) >= 0 ? rows.indexOf(m) : idx);
+          map[k] = { status: 'verified', note: note || '', verifiedAt: verifiedAt, verifiedBy: verifiedBy, teamId: m.teamId || (row && row.teamId) || '' };
+        });
+        // Also mark original button key
+        map[payKey] = { status: 'verified', note: note || '', verifiedAt: verifiedAt, verifiedBy: verifiedBy };
         savePayments(map);
         if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
         renderParticipants();
-        // Email if athlete provided email
         try {
-          const payKey = btn.dataset.key;
-          const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
-          let row = list.find((x, idx) => participantKey(x, idx) === payKey);
-          if (!row) {
-            row = list.find((x) => {
-              const k = String(x.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(x.fullName || '').trim().toLowerCase();
-              return k === payKey;
-            });
-          }
-          if (!row) {
-            row = rows.find((x, idx) => participantKey(x, idx) === payKey);
-          }
-          const mates = teamMates(row, list.length ? list : rows);
           const to = teamContactEmail(row || {}, mates);
-          if (to && row && row.teamId) {
-            // One email for the whole team
-            const roster = mates.map((m) =>
+          if (to && row && row.teamId && toVerify.length > 1) {
+            const roster = toVerify.map((m) =>
               '<li>' + escapeHtml(m.fullName || '') + ' — ' + escapeHtml(distanceLabel(m.distance)) + '</li>'
             ).join('');
             sendAthleteEmail({
@@ -1614,14 +1626,14 @@
               distance: 'team entry',
               raceDate: '27 September 2026',
               html: '<p>Dear ' + escapeHtml(row.teamName || 'Team') + ' contact,</p>' +
-                '<p>We have verified payment for your team entry to the <strong>BT42.195km Race</strong>.</p>' +
-                '<p><strong>Team members:</strong></p><ul>' + roster + '</ul>' +
+                '<p>We have verified payment for your <strong>entire team</strong> entry to the <strong>BT42.195km Race</strong>.</p>' +
+                '<p><strong>Team members verified:</strong></p><ul>' + roster + '</ul>' +
                 '<p>Bib numbers will be assigned next; you will receive one email for the team when bibs are ready.</p>' +
                 '<p>— Organising Committee, BT42.195km Race</p>',
               subject: 'Payment verified — ' + (row.teamName || 'Team') + ' — BT42.195km Race 2026'
             }).then((j) => {
-              if (j && j.ok) alert('Payment verified. One team email sent to ' + to);
-              else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
+              if (j && j.ok) alert('Payment verified for ' + toVerify.length + ' team members. One email sent to ' + to);
+              else alert('Payment verified for ' + toVerify.length + ' members. Email may have failed: ' + ((j && j.error) || 'unknown'));
             });
           } else if (to) {
             sendAthleteEmail({
@@ -1636,7 +1648,9 @@
               else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
             });
           } else {
-            alert('Payment verified. No email on file — confirmation not sent.');
+            alert(toVerify.length > 1
+              ? ('Payment verified for all ' + toVerify.length + ' team members. No email on file.')
+              : 'Payment verified. No email on file — confirmation not sent.');
           }
         } catch (e) {
           console.warn('Payment email error', e);
@@ -1648,10 +1662,29 @@
       btn.onclick = () => {
         if (!canPayment()) { alert('Your login cannot reject payments.'); return; }
         const map = loadPayments();
-        map[btn.dataset.key] = { status: 'rejected', note: prompt('Reason (optional):', '') || '', verifiedAt: new Date().toISOString() };
+        const payKey = btn.dataset.key;
+        const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+        let row = list.find((x, idx) => participantKey(x, idx) === payKey) ||
+          rows.find((x, idx) => participantKey(x, idx) === payKey);
+        const mates = teamMates(row, list.length ? list : rows);
+        const toReject = (row && row.teamId && mates.length > 1) ? mates : (row ? [row] : []);
+        const reason = prompt(
+          toReject.length > 1
+            ? ('Reject payment for ALL ' + toReject.length + ' team members? Reason (optional):')
+            : 'Reason (optional):',
+          ''
+        );
+        if (reason === null) return;
+        const verifiedAt = new Date().toISOString();
+        toReject.forEach((m, idx) => {
+          const k = participantKey(m, rows.indexOf(m) >= 0 ? rows.indexOf(m) : idx);
+          map[k] = { status: 'rejected', note: reason || '', verifiedAt: verifiedAt };
+        });
+        map[payKey] = { status: 'rejected', note: reason || '', verifiedAt: verifiedAt };
         savePayments(map);
         if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
         renderParticipants();
+        if (toReject.length > 1) alert('Payment rejected for ' + toReject.length + ' team members.');
       };
     });
     container.querySelectorAll('.fin-ok').forEach(btn => {
