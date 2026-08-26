@@ -21,34 +21,13 @@
 
 html { scroll-behavior: smooth; }
 
-.skip-link {
-  position: fixed;
-  top: 0.5rem;
-  left: 0.5rem;
-  z-index: 1000;
-  padding: 0.7rem 1rem;
-  border-radius: 8px;
-  background: #fff;
-  color: var(--primary-dark);
-  font-weight: 700;
-  box-shadow: var(--shadow);
-  transform: translateY(-150%);
-}
-
-.skip-link:focus { transform: translateY(0); }
-
-:focus-visible {
-  outline: 3px solid #F4D03F;
-  outline-offset: 3px;
-}
-
 body {
   font-family: var(--font);
   background: var(--bg);
   color: var(--text);
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-  padding-bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: var(--tabbar-h);
 }
 
 a { color: var(--primary); text-decoration: none; }
@@ -214,36 +193,6 @@ img { max-width: 100%; display: block; }
   margin-top: 0.35rem;
   opacity: 0.8;
   font-size: 0.95rem;
-}
-
-.last-updated { margin-top: 0.75rem; font-size: 0.82rem; opacity: 0.82; }
-
-.quick-facts {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  max-width: 1100px;
-  margin: -1.2rem auto 0;
-  padding: 0 1.25rem;
-  position: relative;
-  z-index: 2;
-  gap: 0.7rem;
-}
-.quick-facts div { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 0.85rem; box-shadow: var(--shadow); }
-.quick-facts strong, .quick-facts span { display: block; }
-.quick-facts strong { color: var(--primary); font-size: 0.95rem; }
-.quick-facts span { color: var(--text-muted); font-size: 0.75rem; margin-top: 0.1rem; }
-.section-lead { text-align: center; color: var(--text-muted); max-width: 680px; margin: -0.5rem auto 1.3rem; }
-.race-gallery { display: grid; gap: 1rem; }
-.race-gallery figure { overflow: hidden; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
-.race-gallery img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
-.race-gallery figcaption { padding: 0.7rem 0.9rem; color: var(--text-muted); font-size: 0.85rem; }
-.photo-credit { text-align: center; color: var(--text-muted); font-size: 0.75rem; margin-top: 0.8rem; }
-.email-timeline { padding-left: 1.2rem; color: var(--text-muted); font-size: 0.9rem; }
-.email-timeline li { margin-bottom: 0.4rem; }
-
-@media (min-width: 768px) {
-  .quick-facts { grid-template-columns: repeat(4, 1fr); }
-  .race-gallery { grid-template-columns: repeat(2, 1fr); }
 }
 
 .hero-actions {
@@ -1568,14 +1517,5 @@ img { max-width: 100%; display: block; }
   .team-member-grid select {
     font-size: 15px;
     padding: 0.45rem 0.3rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
   }
 }

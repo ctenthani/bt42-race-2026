@@ -12,21 +12,9 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
     document.querySelectorAll('.nav a, .tab').forEach(el => {
-      const active = el.dataset.page === pageId;
-      el.classList.toggle('active', active);
-      if (active) el.setAttribute('aria-current', 'page');
-      else el.removeAttribute('aria-current');
+      el.classList.toggle('active', el.dataset.page === pageId);
     });
     document.getElementById('nav')?.classList.remove('open');
-    const menuButton = document.getElementById('navToggle');
-    if (menuButton) {
-      menuButton.setAttribute('aria-expanded', 'false');
-      menuButton.setAttribute('aria-label', 'Open menu');
-    }
-    const pageTitle = target && target.querySelector('h1');
-    document.title = pageId === 'home' || !pageTitle
-      ? 'BT42.195km Race 2026'
-      : pageTitle.textContent.trim() + ' | BT42.195km Race 2026';
 
     // Initialise Control Room when that page is shown
     if (pageId === 'control' && window.BT42Control) {
@@ -47,11 +35,7 @@
   const toggle = document.getElementById('navToggle');
   const nav = document.getElementById('nav');
   if (toggle && nav) {
-    toggle.addEventListener('click', () => {
-      const open = nav.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', String(open));
-      toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
-    });
+    toggle.addEventListener('click', () => nav.classList.toggle('open'));
   }
 
   document.querySelectorAll('[data-page]').forEach(link => {
@@ -61,19 +45,6 @@
         e.preventDefault();
         location.hash = page;
       }
-    });
-  });
-
-  document.querySelectorAll('.race-entry[data-distance]').forEach(link => {
-    link.addEventListener('click', () => {
-      const distance = link.dataset.distance;
-      window.setTimeout(() => {
-        const select = document.getElementById('distance');
-        if (!select || isTeamMode()) return;
-        select.value = distance;
-        select.dispatchEvent(new Event('change', { bubbles: true }));
-        select.focus();
-      }, 0);
     });
   });
 
@@ -371,7 +342,6 @@
           throw new Error(bits.join(' — ') || ('HTTP ' + res.status));
         }
         showSuccess(data);
-        clearRegistrationDraft();
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
@@ -565,7 +535,7 @@
     const teamNameInput = document.getElementById('teamName');
     if (teamNameInput) teamNameInput.required = !!team;
     const emailInput = document.getElementById('email');
-    if (emailInput) emailInput.required = true;
+    if (emailInput) emailInput.required = !!team;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }
@@ -682,69 +652,10 @@
     syncRegTypeUI();
   }
 
-  // Keep an in-progress registration in this browser tab so a network error or
-  // accidental refresh does not force the runner to re-enter important details.
-  // File inputs are intentionally excluded and must be selected again.
-  const REG_DRAFT_KEY = 'bt42_registration_draft_v1';
-
-  function saveRegistrationDraft() {
-    const form = document.getElementById('regForm');
-    if (!form) return;
-    const draft = {};
-    form.querySelectorAll('input[name], select[name], textarea[name]').forEach((field) => {
-      if (field.type === 'file' || field.type === 'hidden' || field.name === 'bot-field') return;
-      if ((field.type === 'radio' || field.type === 'checkbox') && !field.checked) return;
-      draft[field.name] = field.type === 'checkbox' ? true : field.value;
-    });
-    if (isTeamMode()) draft._teamMembersDetailed = getTeamMembers();
-    try { sessionStorage.setItem(REG_DRAFT_KEY, JSON.stringify(draft)); } catch (e) {}
-  }
-
-  function restoreRegistrationDraft() {
-    const form = document.getElementById('regForm');
-    if (!form) return;
-    let draft = null;
-    try { draft = JSON.parse(sessionStorage.getItem(REG_DRAFT_KEY) || 'null'); } catch (e) {}
-    if (!draft) return;
-    Object.keys(draft).forEach((name) => {
-      if (name.charAt(0) === '_') return;
-      const fields = form.querySelectorAll('[name="' + CSS.escape(name) + '"]');
-      fields.forEach((field) => {
-        if (field.type === 'radio') field.checked = field.value === draft[name];
-        else if (field.type === 'checkbox') field.checked = Boolean(draft[name]);
-        else field.value = draft[name];
-      });
-    });
-    syncRegTypeUI();
-    if (Array.isArray(draft._teamMembersDetailed) && draft._teamMembersDetailed.length) {
-      const list = document.getElementById('teamMembersList');
-      if (list) list.innerHTML = '';
-      draft._teamMembersDetailed.forEach((member) => addTeamMemberRow(member));
-    }
-    checkMarathonAgeHint();
-    updateFeePreview();
-  }
-
-  function clearRegistrationDraft() {
-    try { sessionStorage.removeItem(REG_DRAFT_KEY); } catch (e) {}
-  }
-
-  function initRegistrationDraft() {
-    const form = document.getElementById('regForm');
-    if (!form) return;
-    restoreRegistrationDraft();
-    form.addEventListener('input', saveRegistrationDraft);
-    form.addEventListener('change', saveRegistrationDraft);
-  }
-
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      initTeamRegistrationUI();
-      initRegistrationDraft();
-    });
+    document.addEventListener('DOMContentLoaded', initTeamRegistrationUI);
   } else {
     initTeamRegistrationUI();
-    initRegistrationDraft();
   }
 
 })();

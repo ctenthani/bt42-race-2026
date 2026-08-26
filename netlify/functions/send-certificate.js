@@ -164,11 +164,36 @@ async function buildCertificatePdf(opts) {
     ['Chifundo Tenthani', 'Chair, Organising Committee']
   ];
   const peopleFull = [
-    ['Jim Kalua', 'Chairman of the Council', 'Malawi National Council of Sports'],
-    ['Kondwani Chamwala', 'President of Athletics Malawi', 'Athletics Malawi'],
-    ['Chifundo Tenthani', 'Chair, Organising Committee', 'BT42.195km Race 2026']
+    ['Jim Kalua', 'Chairman of the Council', 'Malawi National Council of Sports', 'kalua'],
+    ['Kondwani Chamwala', 'President of Athletics Malawi', 'Athletics Malawi', 'chamwala'],
+    ['Chifundo Tenthani', 'Chair, Organising Committee', 'BT42.195km Race 2026', 'tenthani']
   ];
-  peopleFull.forEach((p, i) => {
+  const sigImages = opts.signatures || {};
+  for (let i = 0; i < peopleFull.length; i++) {
+    const p = peopleFull[i];
+    const dataUrl = sigImages[p[3]];
+    if (dataUrl && typeof dataUrl === 'string' && dataUrl.indexOf('data:image') === 0) {
+      try {
+        const b64 = dataUrl.split(',')[1];
+        const bytes = Buffer.from(b64, 'base64');
+        let img;
+        if (dataUrl.indexOf('image/png') >= 0) img = await doc.embedPng(bytes);
+        else img = await doc.embedJpg(bytes);
+        const maxW = 140;
+        const maxH = 36;
+        let iw = img.width;
+        let ih = img.height;
+        const scale = Math.min(maxW / iw, maxH / ih, 1);
+        iw *= scale;
+        ih *= scale;
+        page.drawImage(img, {
+          x: col[i] + (150 - iw) / 2,
+          y: sigY + 34,
+          width: iw,
+          height: ih
+        });
+      } catch (e) { /* ignore bad image */ }
+    }
     page.drawLine({
       start: { x: col[i], y: sigY + 32 },
       end: { x: col[i] + 160, y: sigY + 32 },
@@ -178,7 +203,7 @@ async function buildCertificatePdf(opts) {
     page.drawText(p[0], { x: col[i], y: sigY + 18, size: 10, font: fontBold, color: dark });
     page.drawText(p[1], { x: col[i], y: sigY + 6, size: 8, font, color: muted });
     page.drawText(p[2], { x: col[i], y: sigY - 6, size: 8, font, color: muted });
-  });
+  }
 
   return Buffer.from(await doc.save()).toString('base64');
 }
@@ -283,7 +308,8 @@ exports.handler = async (event) => {
         distance,
         finishTime,
         reason,
-        isCompletion: finalCompletion
+        isCompletion: finalCompletion,
+        signatures: body.signatures || {}
       });
       attachments.push({
         filename: finalCompletion

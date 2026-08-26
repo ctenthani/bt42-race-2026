@@ -924,19 +924,30 @@
   }
 
   function nextBibForDistance(distance, bibs) {
-    const used = Object.values(bibs).map(b => Number(b.number)).filter(n => !isNaN(n));
+    const used = Object.values(bibs).map(b => Number(b && b.number)).filter(n => !isNaN(n));
+    const code = normalizeDistanceCode(distance);
     let start = 1001;
-    if (distance === '10') start = 2001;
-    if (distance === '5') start = 3001;
+    if (code === '10') start = 2001;
+    if (code === '5') start = 3001;
     let n = start;
     while (used.includes(n)) n++;
     return n;
   }
 
   function participantKey(r, i) {
-    const phone = (r.phone || '').replace(/\s+/g, '');
-    const name = (r.fullName || '').trim().toLowerCase();
+    const phone = String(r.phone || r.teamContactPhone || '').replace(/\s+/g, '');
+    const name = String(r.fullName || '').trim().toLowerCase();
+    // Always combine name when present so team-mates sharing one contact phone stay distinct
+    if (phone && name) return phone + '|' + name;
     return phone || name || ('idx-' + i);
+  }
+
+  function normalizeDistanceCode(d) {
+    const s = String(d || '').toLowerCase().replace(/\s+/g, '');
+    if (s.indexOf('42') >= 0 || s.indexOf('marathon') >= 0) return '42.195';
+    if (s === '10' || s.indexOf('10km') >= 0 || s.indexOf('10k') >= 0) return '10';
+    if (s === '5' || s.indexOf('5km') >= 0 || s.indexOf('5k') >= 0 || s.indexOf('fun') >= 0) return '5';
+    return String(d || '');
   }
 
   function distanceLabel(d) {
@@ -1472,7 +1483,7 @@
           const cursor = {};
           mates.forEach((m) => {
             const k = keyFor(m);
-            const dist = m.distance || '10';
+            const dist = normalizeDistanceCode(m.distance) || '10';
             if (cursor[dist] == null) {
               cursor[dist] = nextBibForDistance(dist, map);
             }
@@ -1728,7 +1739,12 @@
   }
 
   function teamContactEmail(row, mates) {
-    return (row.teamContactEmail || row.email || (mates[0] && mates[0].email) || '').trim();
+    const list = mates && mates.length ? mates : (row ? [row] : []);
+    for (const m of list) {
+      const e = (m.teamContactEmail || m.email || '').trim();
+      if (e && e.indexOf('@') > 0) return e;
+    }
+    return (row && (row.teamContactEmail || row.email) || '').trim();
   }
 
   function formatTeamRosterHtml(mates, extra) {
@@ -1763,7 +1779,7 @@
 
 
   function queueParticipationEmail(r, reason) {
-    const to = (r.email || '').trim();
+    const to = (r.email || r.teamContactEmail || '').trim();
     if (!to) {
       console.info('No email on file — participation certificate not emailed for', r.fullName);
       return;
@@ -1788,6 +1804,7 @@
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
     ].join('');
+    const sigsP = loadSigs();
     sendAthleteEmail({
       type: 'participation',
       to: to,
@@ -1795,7 +1812,12 @@
       distance: dist,
       reason: reason || '',
       subject: 'Certificate of Participation — BT42.195km Race 2026',
-      raceDate: '19 September 2026'
+      raceDate: '19 September 2026',
+      signatures: {
+        kalua: sigsP.kalua || '',
+        chamwala: sigsP.chamwala || '',
+        tenthani: sigsP.tenthani || ''
+      }
     }).then((j) => {
       if (j && j.ok) console.log('Participation certificate emailed to', to);
       else console.warn('Participation certificate email result', j);
@@ -1803,7 +1825,7 @@
   }
 
   function queueCompletionEmail(r, finishTime) {
-    const to = (r.email || '').trim();
+    const to = (r.email || r.teamContactEmail || '').trim();
     if (!to) {
       console.info('No email on file — completion certificate not emailed for', r.fullName);
       return;
@@ -1829,6 +1851,7 @@
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
     ].join('');
+    const sigsC = loadSigs();
     sendAthleteEmail({
       type: 'completion',
       to: to,
@@ -1836,7 +1859,12 @@
       distance: dist,
       finishTime: finishTime || '',
       subject: 'Certificate of Completion — BT42.195km Race 2026',
-      raceDate: '19 September 2026'
+      raceDate: '19 September 2026',
+      signatures: {
+        kalua: sigsC.kalua || '',
+        chamwala: sigsC.chamwala || '',
+        tenthani: sigsC.tenthani || ''
+      }
     }).then((j) => {
       if (j && j.ok) console.log('Completion certificate emailed to', to);
       else console.warn('Completion certificate email result', j);
