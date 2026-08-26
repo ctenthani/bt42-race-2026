@@ -4,7 +4,17 @@
   const RACE_DATE = new Date('2026-09-27T06:30:00+02:00'); // CAT
 
   // ---- Navigation ----
-  function navigate(pageId) {
+  function navigate(pageId, opts) {
+    opts = opts || {};
+    let distancePrefill = opts.distance || '';
+    if (pageId && String(pageId).indexOf('?') >= 0) {
+      const parts = String(pageId).split('?');
+      pageId = parts[0];
+      try {
+        const q = new URLSearchParams(parts[1] || '');
+        distancePrefill = distancePrefill || q.get('distance') || '';
+      } catch (e) {}
+    }
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     const target = document.getElementById('page-' + pageId);
     if (target) {
@@ -16,9 +26,11 @@
     });
     document.getElementById('nav')?.classList.remove('open');
 
-    // Initialise Control Room when that page is shown
     if (pageId === 'control' && window.BT42Control) {
       window.BT42Control.init();
+    }
+    if (pageId === 'register' && distancePrefill && typeof window.applyRaceDistance === 'function') {
+      setTimeout(function () { window.applyRaceDistance(distancePrefill); }, 30);
     }
   }
 
@@ -91,6 +103,19 @@
     '10': '10 km Race',
     '5': '5 km Fun Run'
   };
+
+  function applyRaceDistance(code) {
+    const allowed = { '42.195': 1, '10': 1, '5': 1 };
+    if (!code || !allowed[String(code)]) return false;
+    const sel = document.getElementById('distance');
+    if (!sel) return false;
+    sel.value = String(code);
+    try { sel.dispatchEvent(new Event('change', { bubbles: true })); } catch (e) {}
+    if (typeof updateFeePreview === 'function') updateFeePreview();
+    return true;
+  }
+  window.applyRaceDistance = applyRaceDistance;
+
 
   function ageOnRaceDay(dobStr) {
     if (!dobStr) return null;
@@ -650,6 +675,14 @@
     const dist = document.getElementById('distance');
     if (dist) dist.addEventListener('change', updateFeePreview);
     syncRegTypeUI();
+    // Prefill distance from URL e.g. #register?distance=10
+    try {
+      const raw = (location.hash || '').replace('#', '');
+      if (raw.indexOf('register') === 0 && raw.indexOf('distance=') >= 0) {
+        const q = new URLSearchParams(raw.split('?')[1] || '');
+        applyRaceDistance(q.get('distance'));
+      }
+    } catch (e) {}
   }
 
   if (document.readyState === 'loading') {
