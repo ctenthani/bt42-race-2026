@@ -218,7 +218,7 @@ async function sendConfirmationEmail(reg) {
   }
   const html = `<p>Dear ${String(name).replace(/</g,'')},</p>
 <p>Thank you for registering for the <strong>BT42.195km Race</strong>.</p>
-<p>Race day: <strong>19 September 2026</strong>, Blantyre.</p>
+<p>Race day: <strong>27 September 2026</strong>, Blantyre.</p>
 ${roster}${fee}${pop}
 <p>Your place is confirmed once payment is received:</p>
 <ul>
@@ -277,7 +277,7 @@ function buildRegistrationsFromBody(body) {
       const dob = String(m.dob || '').trim();
       let age = m.ageOnRaceDay;
       if (dob && (age == null)) {
-        const race = new Date('2026-09-19');
+        const race = new Date('2026-09-27');
         const d0 = new Date(dob);
         age = race.getFullYear() - d0.getFullYear();
         const mm = race.getMonth() - d0.getMonth();
@@ -378,7 +378,7 @@ exports.handler = async (event) => {
         if (!dob || isNaN(dob.getTime())) {
           return json(400, { ok: false, error: 'Marathon team members need a date of birth' });
         }
-        const race = new Date('2026-09-19');
+        const race = new Date('2026-09-27');
         let age = race.getFullYear() - dob.getFullYear();
         const mm = race.getMonth() - dob.getMonth();
         if (mm < 0 || (mm === 0 && race.getDate() < dob.getDate())) age--;
@@ -391,7 +391,7 @@ exports.handler = async (event) => {
       }
     }
   } else if (body.distance === '42.195' && body.dob) {
-    const race = new Date('2026-09-19');
+    const race = new Date('2026-09-27');
     const dob = new Date(body.dob);
     let age = race.getFullYear() - dob.getFullYear();
     const m = race.getMonth() - dob.getMonth();
@@ -399,7 +399,7 @@ exports.handler = async (event) => {
     if (age < 20) {
       return json(400, {
         ok: false,
-        error: 'Marathon entrants must be at least 20 years old on 19 September 2026'
+        error: 'Marathon entrants must be at least 20 years old on 27 September 2026'
       });
     }
     body.ageOnRaceDay = age;

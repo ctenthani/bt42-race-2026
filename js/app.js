@@ -1,7 +1,7 @@
 /* BT42.195km Race 2026 — App logic (launch version) */
 
 (function () {
-  const RACE_DATE = new Date('2026-09-19T06:30:00+02:00'); // CAT
+  const RACE_DATE = new Date('2026-09-27T06:30:00+02:00'); // CAT
 
   // ---- Navigation ----
   function navigate(pageId) {
@@ -78,7 +78,7 @@
 
   // ---- Registration form ----
   // Works with Netlify Forms. Shows success panel after submit.
-  const RACE_DAY_ISO = '2026-09-19'; // age calculated on race day
+  const RACE_DAY_ISO = '2026-09-27'; // age calculated on race day
 
   // Entry fees (MWK) — shown after race selection; bank account 782637
   const ENTRY_FEES = {
@@ -191,7 +191,7 @@
           return false;
         }
         if (m.distance === '42.195' && (m.ageOnRaceDay === null || m.ageOnRaceDay < 20)) {
-          alert(m.name + ' cannot enter the marathon: must be at least 20 years old on 19 September 2026.');
+          alert(m.name + ' cannot enter the marathon: must be at least 20 years old on 27 September 2026.');
           return false;
         }
       }
@@ -213,7 +213,7 @@
       // Individual marathon age check
       if (distance === '42.195') {
         if (age === null || age < 20) {
-          alert('Marathon entries are only open to runners who will be at least 20 years old on race day (19 September 2026).');
+          alert('Marathon entries are only open to runners who will be at least 20 years old on race day (27 September 2026).');
           return false;
         }
       }
@@ -358,7 +358,7 @@
               email: em,
               fullName: data.fullName,
               distance: data.distance,
-              raceDate: '19 September 2026'
+              raceDate: '27 September 2026'
             })
           }).catch(() => {});
         }

@@ -148,8 +148,8 @@ async function buildCertificatePdf(opts) {
     });
   }
 
-  page.drawText('Race day: 19 September 2026  ·  Blantyre, Malawi', {
-    x: (width - font.widthOfTextAtSize('Race day: 19 September 2026  ·  Blantyre, Malawi', 11)) / 2,
+  page.drawText('Race day: 27 September 2026  ·  Blantyre, Malawi', {
+    x: (width - font.widthOfTextAtSize('Race day: 27 September 2026  ·  Blantyre, Malawi', 11)) / 2,
     y: 150,
     size: 11,
     font,
@@ -247,7 +247,7 @@ exports.handler = async (event) => {
   const fullName = body.fullName || 'Athlete';
   const distance = body.distance || '';
   const bib = body.bib || '';
-  const raceDate = body.raceDate || '19 September 2026';
+  const raceDate = body.raceDate || '27 September 2026';
   const finishTime = body.finishTime || '';
   const reason = body.reason || '';
 

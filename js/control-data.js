@@ -1,7 +1,7 @@
 /* BT42.195km Race 2026 — Control Room data (from Project Planner) */
 
 window.BT42_DATA = {
-  raceDate: '2026-09-19T06:30:00+02:00',
+  raceDate: '2026-09-27T06:30:00+02:00',
   eventName: 'BT42.195km Race 2026',
   chair: 'Chifundo Tenthani',
   meetLink: 'https://meet.google.com/ixu-kyfn-pvc',
@@ -34,7 +34,7 @@ window.BT42_DATA = {
     { id: 'dl12', when: '2026-09-16', title: 'Prize-giving & results process ready', detail: 'Script, podium protocol, verification team briefed.', critical: false },
     { id: 'dl13', when: '2026-09-17', title: 'Pre-race briefing (on-site)', detail: 'Marshals, medical, media, start lists final.', critical: true },
     { id: 'dl14', when: '2026-09-18', title: 'Packet pickup / final checks', detail: 'Equipment, water, radios, weather contingency confirmed.', critical: true },
-    { id: 'dl15', when: '2026-09-19', title: 'RACE DAY', detail: 'Execute run sheet. Safety first. Document issues for debrief.', critical: true },
+    { id: 'dl15', when: '2026-09-27', title: 'RACE DAY', detail: 'Execute run sheet. Safety first. Document issues for debrief.', critical: true },
     { id: 'dl16', when: '2026-09-24', title: 'Post-race debrief', detail: 'Feedback, finance, sponsor reports, 2027 recommendations.', critical: true }
   ],
 
@@ -43,7 +43,7 @@ window.BT42_DATA = {
       meetingId: 1, date: '2026-08-13', title: 'Kick-off — Chair briefing notes',
       notes: [
         'Open by confirming your formal appointment with MNCS and thanking the room.',
-        'State the non-negotiables: safety/medical cover, clear route approvals, registration open by 18 Aug (race is 19 Sep).',
+        'State the non-negotiables: safety/medical cover, clear route approvals, registration open by 18 Aug (race is 27 Sep).',
         'Ask each lead to own one workstream: Technical, Medical, Logistics, Marketing, Sponsorship, Finance, Volunteers, Digital.',
         'Agree a single source of truth: this Control Room + one shared OC WhatsApp group.',
         'Decision needed today: registration platform (Netlify Forms + mobile money) and indicative fees.',
@@ -207,7 +207,7 @@ window.BT42_DATA = {
   ],
 
   meetings: [
-    { id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Kick-off & Structure', agenda: ['Formal confirmation of Chair & OC roles', 'Review of previous edition learnings', 'Draft budget & prize structure', 'Route & date confirmation (19 Sep)', 'Sponsorship strategy & target list', 'Registration platform decision', 'Immediate action items & owners'], attendees: 'Chair, MNCS reps, Technical Lead, Marketing, Finance, Medical lead' },
+    { id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Kick-off & Structure', agenda: ['Formal confirmation of Chair & OC roles', 'Review of previous edition learnings', 'Draft budget & prize structure', 'Route & date confirmation (27 Sep)', 'Sponsorship strategy & target list', 'Registration platform decision', 'Immediate action items & owners'], attendees: 'Chair, MNCS reps, Technical Lead, Marketing, Finance, Medical lead' },
     { id: 2, date: '2026-08-19', time: '14:00–15:30', type: 'Virtual or Hybrid', focus: 'Registration & Marketing Launch', agenda: ['Registration system live status', 'Marketing calendar & first campaign assets', 'Sponsor outreach progress report', 'Volunteer recruitment plan', 'Medical & safety preliminary plan', 'App / website review'], attendees: 'Full OC + digital/tech lead' },
     { id: 3, date: '2026-08-27', time: '14:00–16:00', type: 'In-person', focus: 'Sponsorship Deep Dive', agenda: ['Sponsor pipeline & signed letters of intent', 'Benefits packages finalisation', 'Prize money confirmation vs budget', 'Course & logistics detailed plan', 'Timing system & chip supplier', 'Risk register review'], attendees: 'Chair, Finance, Marketing, Technical, MNCS' },
     { id: 4, date: '2026-09-02', time: '14:00–15:30', type: 'Hybrid', focus: 'Operations Mid-Point', agenda: ['Registration numbers & marketing performance', 'Final course map & police/traffic plan', 'Medical deployment plan', 'Water stations & logistics', 'Bibs, medals, T-shirts production status', 'Packet pickup plan'], attendees: 'Full OC' },
@@ -233,7 +233,7 @@ window.BT42_DATA = {
 
   budget: {
     currency: 'MWK',
-    note: 'Figures from 2026 BT42.195km Race budget worksheet (adapted for 19 Sep 2026). Tentative until Chair/Finance confirm.',
+    note: 'Figures from 2026 BT42.195km Race budget worksheet (adapted for 27 Sep 2026). Tentative until Chair/Finance confirm.',
     expenditure: [
       { cat: 'Protocol', item: 'Medals, ceremony, DC, supplies', est: 1246000 },
       { cat: 'Marketing', item: 'Branding, media, T-shirts, streaming, PA, events', est: 13336986 },

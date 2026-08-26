@@ -1479,19 +1479,28 @@
           )) return;
 
           const assigned = [];
-          // Cursor per distance so team-mates in the same race get consecutive numbers
+          // Cursor per distance series so same-race team-mates get consecutive unique bibs
           const cursor = {};
+          const assignedNums = new Set();
           mates.forEach((m) => {
             const k = keyFor(m);
             const dist = normalizeDistanceCode(m.distance) || '10';
             if (cursor[dist] == null) {
               cursor[dist] = nextBibForDistance(dist, map);
             }
-            let n = cursor[dist];
-            while (used.has(n)) n++;
+            let n = Number(cursor[dist]);
+            while (used.has(n) || assignedNums.has(n)) n += 1;
             const numStr = String(n);
             used.add(n);
+            assignedNums.add(n);
             cursor[dist] = n + 1;
+            // Remove any previous bib entry for this athlete (old colliding keys)
+            Object.keys(map).forEach((oldKey) => {
+              if (map[oldKey] && String(map[oldKey].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()
+                  && String(map[oldKey].teamId || '') === String(m.teamId || r.teamId || '')) {
+                if (oldKey !== k) delete map[oldKey];
+              }
+            });
             map[k] = {
               number: numStr,
               assignedAt: new Date().toISOString(),
@@ -1502,8 +1511,14 @@
               teamId: m.teamId || r.teamId,
               teamName: m.teamName || r.teamName || ''
             };
-            assigned.push({ m: m, number: numStr, key: k });
+            assigned.push({ m: m, number: numStr, key: k, distance: dist });
           });
+          // Safety: never allow duplicate numbers in this batch
+          const nums = assigned.map((a) => a.number);
+          if (new Set(nums).size !== nums.length) {
+            alert('Bib assignment error: duplicate numbers detected. Try again.');
+            return;
+          }
           saveBibs(map);
           if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
 
@@ -1522,12 +1537,12 @@
               subject: 'Bib numbers — ' + (r.teamName || 'Team') + ' — BT42.195km Race 2026',
               html: '<p>Dear ' + escapeHtml(r.teamName || 'Team') + ' contact,</p>' +
                 '<p>Bib numbers for your team:</p><ul>' + items + '</ul>' +
-                '<p>Race day: <strong>19 September 2026</strong>.</p>' +
+                '<p>Race day: <strong>27 September 2026</strong>.</p>' +
                 '<p>— Organising Committee, BT42.195km Race</p>'
             }).then((j) => console.log('Team bib email', j));
           }
           renderParticipants();
-          alert('Assigned ' + assigned.length + ' bib(s) for team "' + (r.teamName || '') + '".');
+          alert('Assigned ' + assigned.length + ' bib(s) for team "' + (r.teamName || '') + '":\n' + assigned.map(function(a){ return a.m.fullName + ' (' + distanceLabel(a.m.distance) + ') → #' + a.number; }).join('\n') + (to ? '\n\nOne email sent to ' + to : ''));
           return;
         }
 
@@ -1553,7 +1568,7 @@
             fullName: r.fullName,
             distance: distanceLabel(r.distance),
             bib: String(num).trim(),
-            raceDate: '19 September 2026'
+            raceDate: '27 September 2026'
           }).then((j) => console.log('Bib email', j));
         }
         renderParticipants();
@@ -1597,7 +1612,7 @@
               email: to,
               fullName: row.teamName ? (row.teamName + ' team') : 'Team',
               distance: 'team entry',
-              raceDate: '19 September 2026',
+              raceDate: '27 September 2026',
               html: '<p>Dear ' + escapeHtml(row.teamName || 'Team') + ' contact,</p>' +
                 '<p>We have verified payment for your team entry to the <strong>BT42.195km Race</strong>.</p>' +
                 '<p><strong>Team members:</strong></p><ul>' + roster + '</ul>' +
@@ -1615,7 +1630,7 @@
               email: to,
               fullName: (row && row.fullName) || '',
               distance: distanceLabel((row && row.distance) || ''),
-              raceDate: '19 September 2026'
+              raceDate: '27 September 2026'
             }).then((j) => {
               if (j && j.ok) alert('Payment verified. Confirmation email sent to ' + to);
               else alert('Payment verified. Email may have failed: ' + ((j && j.error) || 'unknown'));
@@ -1798,7 +1813,7 @@
       ' of the <strong>BT42.195km Race 2026</strong>, organised under the auspices of the',
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       reasonLine,
-      '<p>Race day: <strong>19 September 2026</strong> · Blantyre, Malawi</p>',
+      '<p>Race day: <strong>27 September 2026</strong> · Blantyre, Malawi</p>',
       '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p>— Organising Committee, BT42.195km Race</p>',
@@ -1812,7 +1827,7 @@
       distance: dist,
       reason: reason || '',
       subject: 'Certificate of Participation — BT42.195km Race 2026',
-      raceDate: '19 September 2026',
+      raceDate: '27 September 2026',
       signatures: {
         kalua: sigsP.kalua || '',
         chamwala: sigsP.chamwala || '',
@@ -1844,7 +1859,7 @@
       ' of the <strong>BT42.195km Race 2026</strong>, organised under the auspices of the',
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       timeLine,
-      '<p>Race day: <strong>19 September 2026</strong> · Blantyre, Malawi</p>',
+      '<p>Race day: <strong>27 September 2026</strong> · Blantyre, Malawi</p>',
       '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p style="font-size:0.85rem;color:#777">A printable certificate is also available from the Organising Committee on request.</p>',
@@ -1859,7 +1874,7 @@
       distance: dist,
       finishTime: finishTime || '',
       subject: 'Certificate of Completion — BT42.195km Race 2026',
-      raceDate: '19 September 2026',
+      raceDate: '27 September 2026',
       signatures: {
         kalua: sigsC.kalua || '',
         chamwala: sigsC.chamwala || '',
@@ -1970,7 +1985,7 @@
       <div class="hdr-text">
         <div class="org">Malawi National Council of Sports · Athletics Malawi</div>
         <div class="event">BT42.195km Race 2026</div>
-        <div class="sub">Blantyre · Saturday, 19 September 2026</div>
+        <div class="sub">Blantyre · Sunday, 27 September 2026</div>
       </div>
       <img src="${mncsLogo}" alt="MNCS" onerror="this.style.display='none'" />
     </div>
