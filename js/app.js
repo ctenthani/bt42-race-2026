@@ -182,6 +182,12 @@
       alert('Please enter a valid Malawi mobile number (e.g. 0888381177).');
       return false;
     }
+
+    const emailVal = (formData.get('email') || '').toString().trim();
+    if (!emailVal || emailVal.indexOf('@') < 1) {
+      alert('Email address is required so we can send entry confirmation, payment updates, bib numbers and certificates.');
+      return false;
+    }
     const emPhone = (formData.get('emergencyPhone') || '').toString();
     if (!emPhone || !isValidMwPhone(emPhone)) {
       alert('Please enter a valid Malawi mobile for the emergency contact.');
@@ -560,7 +566,7 @@
     const teamNameInput = document.getElementById('teamName');
     if (teamNameInput) teamNameInput.required = !!team;
     const emailInput = document.getElementById('email');
-    if (emailInput) emailInput.required = !!team;
+    if (emailInput) emailInput.required = true;
     if (team) ensureTeamMemberRows(2);
     updateFeePreview();
   }

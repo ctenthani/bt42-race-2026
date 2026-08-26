@@ -344,12 +344,12 @@ exports.handler = async (event) => {
   if (!body.distance && !hasTeamDetails) {
     return json(400, { ok: false, error: 'phone and distance are required' });
   }
+  if (!(body.email && String(body.email).trim() && String(body.email).indexOf('@') > 0)) {
+    return json(400, { ok: false, error: 'Email is required so entrants receive confirmation, bib and certificate emails' });
+  }
   if (body.regType === 'team') {
     if (!(body.teamName && String(body.teamName).trim())) {
       return json(400, { ok: false, error: 'Team name is required' });
-    }
-    if (!(body.email && String(body.email).trim())) {
-      return json(400, { ok: false, error: 'Email is required for team registration' });
     }
   }
   // Ensure distance for downstream if only team details provided
