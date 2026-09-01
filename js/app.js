@@ -42,7 +42,44 @@
   }
 
   window.addEventListener('hashchange', handleHash);
-  document.addEventListener('DOMContentLoaded', handleHash);
+  function applyStoredSiteContent() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('bt42_site_content') || 'null');
+      if (!raw || typeof raw !== 'object') return;
+      if (raw.heroSub && raw.heroSub.indexOf('Sunday') < 0 && raw.heroSub.indexOf('27 September') >= 0) {
+        raw.heroSub = 'Blantyre · Sunday, 27 September 2026';
+      }
+      if (window.BT42_ENTRY_FEES) {
+        if (raw.feesMarathon != null) window.BT42_ENTRY_FEES['42.195'] = Number(raw.feesMarathon);
+        if (raw.fees10 != null) window.BT42_ENTRY_FEES['10'] = Number(raw.fees10);
+        if (raw.fees5 != null) window.BT42_ENTRY_FEES['5'] = Number(raw.fees5);
+      }
+      document.querySelectorAll('[data-site]').forEach((el) => {
+        const key = el.getAttribute('data-site');
+        if (key === 'feesLine' && raw.feesMarathon != null) {
+          el.textContent = 'Marathon ' + Number(raw.feesMarathon).toLocaleString('en-MW') +
+            ' · 10 km ' + Number(raw.fees10).toLocaleString('en-MW') +
+            ' · 5 km ' + Number(raw.fees5).toLocaleString('en-MW');
+        } else if (key === 'bankAccount' && raw.bankAccount) {
+          el.textContent = raw.bankAccount;
+        } else if (key === 'announcement') {
+          el.textContent = raw.announcement || '';
+          el.style.display = raw.announcement ? '' : 'none';
+        } else if (key === 'heroDate') {
+          /* removed duplicate date line */
+        } else if (key === 'heroSub') {
+          el.textContent = raw.heroSub || 'Blantyre · Sunday, 27 September 2026';
+        } else if (raw[key] != null && raw[key] !== '') {
+          el.textContent = raw[key];
+        }
+      });
+    } catch (e) {}
+  }
+  document.addEventListener('DOMContentLoaded', function () {
+    applyStoredSiteContent();
+    handleHash();
+  });
+  // remove duplicate if any - handled below
 
   const toggle = document.getElementById('navToggle');
   const nav = document.getElementById('nav');
@@ -93,7 +130,7 @@
   const RACE_DAY_ISO = '2026-09-27'; // age calculated on race day
 
   // Entry fees (MWK) — shown after race selection; bank account 782637
-  const ENTRY_FEES = {
+  const ENTRY_FEES = window.BT42_ENTRY_FEES = {
     '42.195': 15000,
     '10': 10000,
     '5': 5000

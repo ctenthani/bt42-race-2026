@@ -48,8 +48,8 @@
           <div class="hero-content">
             <p class="hero-eyebrow">Malawi National Council of Sports</p>
             <h1>BT<span class="accent">42.195</span></h1>
-            <p class="hero-sub">Blantyre · 27 September 2026</p>
-            <p class="hero-date">Sunday, 27 September 2026</p>
+            <p class="hero-sub" data-site="heroSub">Blantyre · Sunday, 27 September 2026</p>
+            <p class="form-note" data-site="announcement" id="site-announcement" style="margin-top:0.75rem"></p>
             <p class="hero-tagline">Embrace the Challenge · Race Up Blantyre</p>
             <div class="hero-actions">
               <a href="#register" class="btn btn-primary" onclick="navigate('register')">Register Now</a>
@@ -180,8 +180,8 @@
             </div>
           </div>
           <div class="notice">
-            <strong>Entry fees (MWK):</strong> Marathon 15,000 · 10 km 10,000 · 5 km 5,000.
-              Pay via bank transfer to account <code>782637</code> (reference: your full name + mobile). Exact start times and prizes remain subject to OC confirmation.
+            <strong>Entry fees (MWK):</strong> <span data-site="feesLine">Marathon 15,000 · 10 km 10,000 · 5 km 5,000</span>.
+              Pay via bank transfer to account <code data-site="bankAccount">782637</code> (reference: your full name + mobile). Exact start times and prizes remain subject to OC confirmation.
           </div>
         </div>
       </section>
@@ -304,7 +304,7 @@
                   placeholder="e.g. Trans ID / deposit slip number / SMS reference" />
                 <label for="paymentProof" style="margin-top:0.65rem;display:block">Upload slip / SMS screenshot (optional if reference above is complete)</label>
                 <input type="file" id="paymentProof" name="paymentProof" accept="image/*,application/pdf" />
-                <p class="form-note" style="margin-top:0.35rem">Pay to account <code>782637</code>. Reference on the transfer should include name + mobile. Team entries: one PoP covers all members listed. The transaction ID you type here is how the committee matches your payment — keep the same reference on the bank transfer.</p>
+                <p class="form-note" style="margin-top:0.35rem">Pay to account <code data-site="bankAccount">782637</code>. Reference on the transfer should include name + mobile. Team entries: one PoP covers all members listed. The transaction ID you type here is how the committee matches your payment — keep the same reference on the bank transfer.</p>
               </div>
 
               <button type="submit" class="btn btn-primary btn-block">Submit &amp; Get Payment Instructions</button>
@@ -326,7 +326,7 @@
                 <h3>Payment details</h3>
                 <p><strong>Bank payment</strong></p>
                 <ol style="margin:0.35rem 0 0.75rem 1.1rem;font-size:0.9rem;padding:0">
-                  <li>Transfer to account <code>782637</code></li>
+                  <li>Transfer to account <code data-site="bankAccount">782637</code></li>
                   <li>Select <strong>4</strong></li>
                   <li>Keep your deposit slip or transfer proof</li>
                   <li>Amount for your race distance appears — confirm and pay</li>
@@ -536,6 +536,7 @@
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
               <button class="ctrl-tab" data-panel="chair">Chair notes</button>
               <button class="ctrl-tab" data-panel="staff">Staff logins</button>
+              <button class="ctrl-tab" data-panel="site">Site content</button>
               <button class="ctrl-tab" data-panel="participants">Participants</button>
               <button class="ctrl-tab" data-panel="checklist">Checklist</button>
               <button class="ctrl-tab" data-panel="meetings">Meetings</button>
@@ -570,6 +571,11 @@
 
             <!-- Checklist -->
             
+            <div id="panel-site" class="ctrl-panel">
+              <h3>Public site content</h3>
+              <p class="form-note">Chair only. Changes appear on the public pages for everyone after save/sync.</p>
+              <div id="site-content-admin"></div>
+            </div>
             <div id="panel-staff" class="ctrl-panel">
               <h3>Staff logins</h3>
               <p class="form-note">Chair only. Create usernames and passwords for people who may verify payments, assign bibs and enter finish times. Share credentials securely (not on social media).</p>
@@ -581,7 +587,7 @@
               <div class="notice" style="margin-bottom:1rem">
                 <strong>Shared with all committee members:</strong> full participant list and payment/finish status.<br>
                 <strong>Chair only:</strong> Verify / Reject payment, e-signatures.<br>
-                Live list = shared Blobs store (all OC devices). Use <strong>Upload this phone's local entries</strong> if registrations were saved offline. Backup inbox: Netlify Forms <code>bt42-registration</code>. Pay: bank account <code>782637</code> (reference: name + mobile).
+                Live list = shared Blobs store (all OC devices). Use <strong>Upload this phone's local entries</strong> if registrations were saved offline. Backup inbox: Netlify Forms <code>bt42-registration</code>. Pay: bank account <code data-site="bankAccount">782637</code> (reference: name + mobile).
               </div>
               <div id="ctrl-sync-bar"></div>
               <div id="ctrl-participants"></div>
@@ -642,7 +648,7 @@
       <div class="container">
         <p><strong>BT42.195km Race 2026</strong> · Blantyre, Malawi</p>
         <p>Organised under the Malawi National Council of Sports</p>
-        <p class="footer-note">BT42.195km Race · 27 September 2026</p>
+        <p class="footer-note" data-site="footerNote">BT42.195km Race · 27 September 2026</p>
       </div>
     </footer>
   </div>

@@ -5,6 +5,7 @@
   const COMMITTEE_PIN = 'bt42oc';
   const CHAIR_PIN = 'bt42chair';
   const STAFF_KEY = 'bt42_staff_users';
+  const SITE_CONTENT_KEY = 'bt42_site_content';
   const SESSION_USER_KEY = 'bt42_control_user';
 
   const STORAGE_KEY = 'bt42_checklist_status';
@@ -109,6 +110,10 @@
     // Staff tab: chair only
     $$('.ctrl-tab[data-panel="staff"], #panel-staff').forEach((el) => {
       if (canManageStaff()) el.classList.remove('chair-only-hidden');
+      else el.classList.add('chair-only-hidden');
+    });
+    $$('.ctrl-tab[data-panel="site"], #panel-site').forEach((el) => {
+      if (isChair) el.classList.remove('chair-only-hidden');
       else el.classList.add('chair-only-hidden');
     });
     // If non-chair is on chair panel, switch to dashboard
@@ -849,20 +854,52 @@
     localStorage.setItem(PAYMENT_KEY, JSON.stringify(map));
   }
 
+  function isSigDataUrl(v) {
+    return typeof v === 'string' && v.indexOf('data:image') === 0 && v.length > 80;
+  }
+
+  function normalizeSigMap(raw) {
+    const src = raw && typeof raw === 'object' ? raw : {};
+    const out = {
+      kalua: src.kalua || '',
+      chamwala: src.chamwala || src.chinangwa || '',
+      tenthani: src.tenthani || ''
+    };
+    ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
+      if (!isSigDataUrl(out[k])) out[k] = '';
+    });
+    return out;
+  }
+
+  function mergeSigMaps(local, incoming) {
+    const a = normalizeSigMap(local);
+    const b = normalizeSigMap(incoming);
+    return {
+      kalua: b.kalua || a.kalua,
+      chamwala: b.chamwala || a.chamwala,
+      tenthani: b.tenthani || a.tenthani
+    };
+  }
+
   function loadSigs() {
-    try { return JSON.parse(localStorage.getItem(SIGS_KEY) || '{}'); }
-    catch { return {}; }
+    try { return normalizeSigMap(JSON.parse(localStorage.getItem(SIGS_KEY) || '{}')); }
+    catch { return normalizeSigMap({}); }
   }
 
   function saveSigs(map) {
     try {
-      localStorage.setItem(SIGS_KEY, JSON.stringify(map));
+      const merged = mergeSigMaps(loadSigs(), map);
+      localStorage.setItem(SIGS_KEY, JSON.stringify(merged));
       return true;
     } catch (e) {
       console.warn('localStorage signature save failed', e);
       alert('Could not save signature on this device (storage full?). Try a smaller PNG/JPG.');
       return false;
     }
+  }
+
+  function certSignaturesPayload() {
+    return normalizeSigMap(loadSigs());
   }
 
   function compressSigImage(dataUrl, maxW, quality) {
@@ -882,9 +919,9 @@
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
           // Prefer PNG to keep crisp ink; fall back to JPEG only if huge
-          let out = canvas.toDataURL('image/png');
-          if (out.length > 350000) {
-            out = canvas.toDataURL('image/jpeg', quality || 0.85);
+          let out = canvas.toDataURL('image/jpeg', quality || 0.82);
+          if (out.length > 220000) {
+            out = canvas.toDataURL('image/jpeg', 0.68);
           }
           resolve(out);
         };
@@ -899,7 +936,7 @@
   async function pushSignaturesToServer(map) {
     if (!getSyncToken() || !isChair) return { ok: false, skipped: true };
     try {
-      return await livePush({ signatures: map });
+      return await livePush({ signatures: mergeSigMaps(loadSigs(), map || {}) });
     } catch (e) {
       return { ok: false, error: String(e) };
     }
@@ -1007,17 +1044,18 @@
     if (Array.isArray(s.staffUsers)) {
       try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
     }
-    if (isChair && s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
-      // Only overwrite local if server has real image data (not empty)
-      const hasReal = ['kalua', 'chamwala', 'tenthani'].some(
-        (k) => typeof s.signatures[k] === 'string' && s.signatures[k].indexOf('data:image') === 0
-      );
-      if (hasReal) {
-        try {
-          localStorage.setItem(SIGS_KEY, JSON.stringify(s.signatures));
-        } catch (e) {
-          console.warn('Could not store signatures from server', e);
-        }
+    if (s.siteContent && typeof s.siteContent === 'object') {
+      try {
+        localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(s.siteContent));
+        applySiteContentToPublic(s.siteContent);
+      } catch (e) {}
+    }
+    if (s.signatures && typeof s.signatures === 'object' && !s.signatures._presentOnly) {
+      const merged = mergeSigMaps(loadSigs(), s.signatures);
+      try {
+        localStorage.setItem(SIGS_KEY, JSON.stringify(merged));
+      } catch (e) {
+        console.warn('Could not store signatures from server', e);
       }
     }
     localStorage.setItem(SYNC_META_KEY, JSON.stringify({
@@ -1067,6 +1105,7 @@
       payload.replacePayments = true;
       payload.signatures = loadSigs();
       payload.staffUsers = loadStaffUsers();
+      payload.siteContent = loadSiteContent();
     }
     return pushSharedState(payload);
   }
@@ -1861,11 +1900,7 @@
       reason: reason || '',
       subject: 'Certificate of Participation — BT42.195km Race 2026',
       raceDate: '27 September 2026',
-      signatures: {
-        kalua: sigsP.kalua || '',
-        chamwala: sigsP.chamwala || '',
-        tenthani: sigsP.tenthani || ''
-      }
+      signatures: certSignaturesPayload()
     }).then((j) => {
       if (j && j.ok) console.log('Participation certificate emailed to', to);
       else console.warn('Participation certificate email result', j);
@@ -1908,11 +1943,7 @@
       finishTime: finishTime || '',
       subject: 'Certificate of Completion — BT42.195km Race 2026',
       raceDate: '27 September 2026',
-      signatures: {
-        kalua: sigsC.kalua || '',
-        chamwala: sigsC.chamwala || '',
-        tenthani: sigsC.tenthani || ''
-      }
+      signatures: certSignaturesPayload()
     }).then((j) => {
       if (j && j.ok) console.log('Completion certificate emailed to', to);
       else console.warn('Completion certificate email result', j);
@@ -2045,6 +2076,122 @@
   }
 
   window.BT42OpenCertificate = openCertificate;
+
+
+
+  function defaultSiteContent() {
+    return {
+      heroSub: 'Blantyre · Sunday, 27 September 2026',
+      heroDate: '',
+      announcement: '',
+      feesMarathon: 15000,
+      fees10: 10000,
+      fees5: 5000,
+      bankAccount: '782637',
+      footerNote: 'BT42.195km Race · 27 September 2026',
+      aboutBlurb: '',
+      updatedAt: null,
+      updatedBy: null
+    };
+  }
+  function loadSiteContent() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SITE_CONTENT_KEY) || 'null');
+      return Object.assign(defaultSiteContent(), raw && typeof raw === 'object' ? raw : {});
+    } catch (e) {
+      return defaultSiteContent();
+    }
+  }
+  function saveSiteContent(obj) {
+    localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(obj));
+  }
+  function feesLineFrom(c) {
+    return 'Marathon ' + Number(c.feesMarathon).toLocaleString('en-MW') +
+      ' · 10 km ' + Number(c.fees10).toLocaleString('en-MW') +
+      ' · 5 km ' + Number(c.fees5).toLocaleString('en-MW');
+  }
+  function applySiteContentToPublic(c) {
+    c = c || loadSiteContent();
+    try {
+      document.querySelectorAll('[data-site]').forEach((el) => {
+        const key = el.getAttribute('data-site');
+        if (key === 'feesLine') el.textContent = feesLineFrom(c);
+        else if (key === 'bankAccount') el.textContent = c.bankAccount || '782637';
+        else if (key === 'announcement') {
+          el.textContent = c.announcement || '';
+          el.style.display = c.announcement ? '' : 'none';
+        } else if (c[key] != null) {
+          el.textContent = c[key];
+        }
+      });
+      // Update in-memory fees for registration form
+      if (window.BT42_ENTRY_FEES) {
+        window.BT42_ENTRY_FEES['42.195'] = Number(c.feesMarathon) || 15000;
+        window.BT42_ENTRY_FEES['10'] = Number(c.fees10) || 10000;
+        window.BT42_ENTRY_FEES['5'] = Number(c.fees5) || 5000;
+      }
+    } catch (e) {}
+  }
+
+  function renderSiteContentAdmin() {
+    const box = $('#site-content-admin');
+    if (!box) return;
+    if (!isChair) {
+      box.innerHTML = '<p class="form-note">Only the Chair can edit public site content.</p>';
+      return;
+    }
+    const c = loadSiteContent();
+    box.innerHTML = `
+      <div class="card" style="padding:0.75rem">
+        <div class="form-group"><label>Hero location &amp; date (one line)</label>
+          <input type="text" id="sc-heroSub" value="${escapeHtml(c.heroSub)}" /></div>
+        <div class="form-group"><label>Announcement (shown under hero; leave blank to hide)</label>
+          <textarea id="sc-announcement" rows="2">${escapeHtml(c.announcement || '')}</textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Marathon fee (MWK)</label>
+            <input type="number" id="sc-feeM" value="${Number(c.feesMarathon) || 15000}" min="0" step="500" /></div>
+          <div class="form-group"><label>10 km fee (MWK)</label>
+            <input type="number" id="sc-fee10" value="${Number(c.fees10) || 10000}" min="0" step="500" /></div>
+          <div class="form-group"><label>5 km fee (MWK)</label>
+            <input type="number" id="sc-fee5" value="${Number(c.fees5) || 5000}" min="0" step="500" /></div>
+        </div>
+        <div class="form-group"><label>Bank account number</label>
+          <input type="text" id="sc-bank" value="${escapeHtml(c.bankAccount || '782637')}" /></div>
+        <div class="form-group"><label>Footer note</label>
+          <input type="text" id="sc-footer" value="${escapeHtml(c.footerNote)}" /></div>
+        <button type="button" class="btn btn-primary" id="sc-save">Save &amp; publish to site</button>
+        <p class="form-note" id="sc-status" style="margin-top:0.5rem"></p>
+      </div>`;
+    const saveBtn = $('#sc-save');
+    if (saveBtn) saveBtn.onclick = () => {
+      const next = Object.assign(loadSiteContent(), {
+        heroSub: (($('#sc-heroSub') || {}).value || '').trim(),
+        heroDate: '',
+        announcement: (($('#sc-announcement') || {}).value || '').trim(),
+        feesMarathon: Number((($('#sc-feeM') || {}).value) || 15000),
+        fees10: Number((($('#sc-fee10') || {}).value) || 10000),
+        fees5: Number((($('#sc-fee5') || {}).value) || 5000),
+        bankAccount: (($('#sc-bank') || {}).value || '782637').trim(),
+        footerNote: (($('#sc-footer') || {}).value || '').trim(),
+        updatedAt: new Date().toISOString(),
+        updatedBy: currentUser || 'chair'
+      });
+      saveSiteContent(next);
+      applySiteContentToPublic(next);
+      if (getSyncToken()) {
+        livePush({ siteContent: next }).then(() => {
+          const st = $('#sc-status');
+          if (st) st.textContent = 'Saved and synced. Public pages will show the new content.';
+        }).catch(() => {
+          const st = $('#sc-status');
+          if (st) st.textContent = 'Saved on this device. Sync failed — check connection.';
+        });
+      } else {
+        const st = $('#sc-status');
+        if (st) st.textContent = 'Saved on this device.';
+      }
+    };
+  }
 
 
   function renderStaffAdmin() {
@@ -2242,6 +2389,8 @@
     renderDeadlines();
     if (isChair) renderChairNotes();
     if (canManageStaff()) renderStaffAdmin();
+    if (isChair) renderSiteContentAdmin();
+    applySiteContentToPublic();
     renderNotes();
     initControlTabs();
     applyRoleUI();

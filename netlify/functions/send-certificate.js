@@ -11,6 +11,62 @@ function esc(s) {
     .replace(/"/g, '&quot;');
 }
 
+
+function envNonEmpty(name) {
+  const v = process.env[name];
+  return v && String(v).trim() ? String(v).trim() : '';
+}
+
+async function loadStoredSignatures() {
+  const out = { kalua: '', chamwala: '', tenthani: '' };
+  try {
+    const siteID = envNonEmpty('NETLIFY_SITE_ID') || envNonEmpty('SITE_ID');
+    const token = envNonEmpty('NETLIFY_BLOBS_TOKEN') || envNonEmpty('NETLIFY_AUTH_TOKEN');
+    if (siteID && token) {
+      const { getStore } = require('@netlify/blobs');
+      const store = getStore({ name: 'bt42-oc-sync', siteID, token, consistency: 'strong' });
+      const raw = await store.get('state', { type: 'json' });
+      const sigs = raw && raw.signatures ? raw.signatures : {};
+      ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
+        const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
+        if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
+      });
+      return out;
+    }
+  } catch (e) { /* ignore */ }
+  try {
+    const bin = envNonEmpty('JSONBIN_BIN_ID');
+    const key = envNonEmpty('JSONBIN_API_KEY');
+    if (bin && key) {
+      const res = await fetch('https://api.jsonbin.io/v3/b/' + bin + '/latest', {
+        headers: { 'X-Master-Key': key }
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const sigs = (j.record && j.record.signatures) || {};
+        ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
+          const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
+          if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
+        });
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return out;
+}
+
+function mergeSigPayload(fromBody, fromStore) {
+  const keys = ['kalua', 'chamwala', 'tenthani'];
+  const out = {};
+  keys.forEach((k) => {
+    const a = fromBody && fromBody[k];
+    const b = fromStore && fromStore[k];
+    out[k] = (typeof a === 'string' && a.indexOf('data:image') === 0) ? a
+      : (typeof b === 'string' && b.indexOf('data:image') === 0) ? b
+      : '';
+  });
+  return out;
+}
+
 async function fetchLogoBytes(path) {
   const base = [
     process.env.URL ? process.env.URL.replace(/\/$/, '') : null,
@@ -177,8 +233,14 @@ async function buildCertificatePdf(opts) {
         const b64 = dataUrl.split(',')[1];
         const bytes = Buffer.from(b64, 'base64');
         let img;
-        if (dataUrl.indexOf('image/png') >= 0) img = await doc.embedPng(bytes);
-        else img = await doc.embedJpg(bytes);
+        try {
+          img = dataUrl.indexOf('png') >= 0 ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
+        } catch (e1) {
+          try { img = await doc.embedPng(bytes); } catch (e2) {
+            try { img = await doc.embedJpg(bytes); } catch (e3) { img = null; }
+          }
+        }
+        if (!img) continue;
         const maxW = 140;
         const maxH = 36;
         let iw = img.width;
@@ -309,7 +371,7 @@ exports.handler = async (event) => {
         finishTime,
         reason,
         isCompletion: finalCompletion,
-        signatures: body.signatures || {}
+        signatures: mergeSigPayload(body.signatures || {}, await loadStoredSignatures())
       });
       attachments.push({
         filename: finalCompletion

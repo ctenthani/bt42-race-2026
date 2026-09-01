@@ -14,6 +14,7 @@ const emptyState = () => ({
   attendance: {},
   signatures: {},
   staffUsers: [],
+  siteContent: null,
   suppressedKeys: [],
   updatedAt: null,
   updatedBy: null
@@ -370,6 +371,14 @@ function mergeState(current, body, role) {
   if (body.attendance && typeof body.attendance === 'object') {
     next.attendance = Object.assign({}, current.attendance || {}, body.attendance);
   }
+  if (body.siteContent && typeof body.siteContent === 'object') {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can update site content');
+      e.statusCode = 403;
+      throw e;
+    }
+    next.siteContent = body.siteContent;
+  }
   if (body.staffUsers && Array.isArray(body.staffUsers)) {
     if (role !== 'chair') {
       const e = new Error('Only Chair can update staff users');
@@ -384,7 +393,17 @@ function mergeState(current, body, role) {
       e.status = 403;
       throw e;
     }
-    next.signatures = Object.assign({}, current.signatures || {}, body.signatures);
+    const curS = current.signatures || {};
+    const incS = body.signatures || {};
+    const pick = (k, alt) => {
+      const v = incS[k] || (alt ? incS[alt] : '') || curS[k] || (alt ? curS[alt] : '');
+      return (typeof v === 'string' && v.indexOf('data:image') === 0) ? v : (curS[k] || '');
+    };
+    next.signatures = {
+      kalua: pick('kalua'),
+      chamwala: pick('chamwala', 'chinangwa'),
+      tenthani: pick('tenthani')
+    };
   }
   if (Array.isArray(body.suppressedKeys)) {
     if (role !== 'chair') {
@@ -459,9 +478,9 @@ exports.handler = async (event) => {
       }
       if (role !== 'chair' && state.signatures) {
         state.signatures = {
-          kalua: !!state.signatures.kalua,
-          chinangwa: !!state.signatures.chinangwa,
-          tenthani: !!state.signatures.tenthani,
+          kalua: !!(state.signatures.kalua && String(state.signatures.kalua).indexOf('data:image') === 0),
+          chamwala: !!(state.signatures.chamwala && String(state.signatures.chamwala).indexOf('data:image') === 0),
+          tenthani: !!(state.signatures.tenthani && String(state.signatures.tenthani).indexOf('data:image') === 0),
           _presentOnly: true
         };
       }
