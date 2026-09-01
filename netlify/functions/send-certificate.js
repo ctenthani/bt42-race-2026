@@ -83,6 +83,7 @@ async function fetchLogoBytes(path) {
 }
 
 async function buildCertificatePdf(opts) {
+  const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
   const doc = await PDFDocument.create();
   const page = doc.addPage([842, 595]); // A4 landscape
   const font = await doc.embedFont(StandardFonts.TimesRoman);
@@ -90,15 +91,42 @@ async function buildCertificatePdf(opts) {
   const { width, height } = page.getSize();
 
   const navy = rgb(0.106, 0.31, 0.447);
-  const green = rgb(0.153, 0.682, 0.376);
+  const gold = rgb(0.490, 0.400, 0.031);
   const dark = rgb(0.12, 0.12, 0.12);
-  const muted = rgb(0.4, 0.4, 0.4);
+  const muted = rgb(0.35, 0.35, 0.35);
+  const green = rgb(0.831, 0.675, 0.051);
 
-  // Double border like on-screen cert
-  page.drawRectangle({ x: 28, y: 28, width: width - 56, height: height - 56, borderColor: navy, borderWidth: 3 });
-  page.drawRectangle({ x: 36, y: 36, width: width - 72, height: height - 72, borderColor: green, borderWidth: 1.5 });
+  const drawCentered = (text, y, size, fnt, color) => {
+    const t = String(text || '');
+    const w = fnt.widthOfTextAtSize(t, size);
+    page.drawText(t, { x: Math.max(48, (width - w) / 2), y, size, font: fnt, color });
+  };
 
-  // Logos: Athletics Malawi far left, MNCS far right
+  const wrapCentered = (text, y, size, fnt, color, maxW) => {
+    const words = String(text || '').split(/\s+/);
+    let line = '';
+    let cy = y;
+    const lines = [];
+    words.forEach((w) => {
+      const trial = line ? line + ' ' + w : w;
+      if (fnt.widthOfTextAtSize(trial, size) > maxW && line) {
+        lines.push(line);
+        line = w;
+      } else line = trial;
+    });
+    if (line) lines.push(line);
+    lines.forEach((ln) => {
+      drawCentered(ln, cy, size, fnt, color);
+      cy -= size + 5;
+    });
+    return cy;
+  };
+
+  // Full-page double frame (navy + gold) matching Control Room print
+  page.drawRectangle({ x: 18, y: 18, width: width - 36, height: height - 36, borderColor: navy, borderWidth: 8 });
+  page.drawRectangle({ x: 28, y: 28, width: width - 56, height: height - 56, borderColor: green, borderWidth: 1.6 });
+
+  // Logos
   try {
     const embedOne = async (path) => {
       const bytes = await fetchLogoBytes(path);
@@ -109,116 +137,58 @@ async function buildCertificatePdf(opts) {
     };
     const am = await embedOne('/assets/am-logo.png');
     const mncs = await embedOne('/assets/mncs-logo.png');
-    const lw = 64;
+    const lw = 78;
     if (am) {
-      const lh = (am.height / am.width) * lw;
-      page.drawImage(am, { x: 48, y: height - 100, width: lw, height: lh });
+      const lh = Math.min(78, (am.height / am.width) * lw);
+      page.drawImage(am, { x: 48, y: height - 118, width: lw, height: lh });
     }
     if (mncs) {
-      const lh = (mncs.height / mncs.width) * lw;
-      page.drawImage(mncs, { x: width - 48 - lw, y: height - 100, width: lw, height: lh });
+      const lh = Math.min(78, (mncs.height / mncs.width) * lw);
+      page.drawImage(mncs, { x: width - 48 - lw, y: height - 118, width: lw, height: lh });
     }
-  } catch (e) { /* no logo */ }
+  } catch (e) { /* logos optional */ }
 
-  page.drawText('MALAWI NATIONAL COUNCIL OF SPORTS', {
-    x: (width - fontBold.widthOfTextAtSize('MALAWI NATIONAL COUNCIL OF SPORTS', 11)) / 2,
-    y: height - 118,
-    size: 11,
-    font: fontBold,
-    color: navy
-  });
-  page.drawText('BT42.195km Race 2026', {
-    x: (width - font.widthOfTextAtSize('BT42.195km Race 2026', 12)) / 2,
-    y: height - 136,
-    size: 12,
-    font,
-    color: muted
-  });
+  drawCentered('MALAWI NATIONAL COUNCIL OF SPORTS  ·  ATHLETICS MALAWI', height - 78, 11, fontBold, navy);
+  drawCentered('BT42.195km Race 2026', height - 98, 18, fontBold, navy);
+  drawCentered('Blantyre · Sunday, 27 September 2026', height - 118, 11, font, muted);
 
   const title = opts.isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION';
-  page.drawText(title, {
-    x: (width - fontBold.widthOfTextAtSize(title, 26)) / 2,
-    y: height - 185,
-    size: 26,
-    font: fontBold,
-    color: navy
-  });
-
-  const intro = 'This is to certify that';
-  page.drawText(intro, {
-    x: (width - font.widthOfTextAtSize(intro, 13)) / 2,
-    y: height - 225,
-    size: 13,
-    font,
-    color: dark
-  });
+  drawCentered(title, height - 168, 26, fontBold, gold);
+  drawCentered('This is to certify that', height - 200, 13, font, dark);
 
   const name = String(opts.fullName || 'Athlete').slice(0, 80);
-  const nameSize = name.length > 36 ? 20 : 24;
-  page.drawText(name, {
-    x: (width - fontBold.widthOfTextAtSize(name, nameSize)) / 2,
-    y: height - 265,
-    size: nameSize,
-    font: fontBold,
-    color: dark
+  const nameSize = name.length > 32 ? 22 : 28;
+  drawCentered(name, height - 242, nameSize, fontBold, dark);
+  const nameW = Math.min(520, fontBold.widthOfTextAtSize(name, nameSize) + 40);
+  page.drawLine({
+    start: { x: (width - nameW) / 2, y: height - 250 },
+    end: { x: (width + nameW) / 2, y: height - 250 },
+    thickness: 0.8,
+    color: rgb(0.75, 0.75, 0.75)
   });
 
-  const dist = String(opts.distance || 'race').slice(0, 80);
-  let body;
-  if (opts.isCompletion) {
-    body = opts.finishTime
-      ? `has successfully completed the ${dist} of the BT42.195km Race 2026 in a time of ${opts.finishTime}, organised under the auspices of the Malawi National Council of Sports.`
-      : `has successfully completed the ${dist} of the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.`;
-  } else {
-    body =
-      opts.reason && /dnf/i.test(opts.reason)
-        ? `was a registered participant in the ${dist} of the BT42.195km Race 2026 (Did Not Finish), organised under the auspices of the Malawi National Council of Sports.`
-        : `was a registered participant in the ${dist} of the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.`;
-  }
+  const distance = String(opts.distance || 'race');
+  const finishTime = opts.finishTime ? String(opts.finishTime) : '';
+  const body = opts.isCompletion
+    ? ('has successfully completed the ' + distance + ' of the BT42.195km Race 2026' +
+       (finishTime ? ' in a time of ' + finishTime : '') +
+       ', organised under the auspices of the Malawi National Council of Sports.')
+    : ('is a registered participant in the ' + distance +
+       ' of the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.');
+  wrapCentered(body, height - 280, 12, font, dark, 640);
 
-  const maxW = width - 140;
-  const words = body.split(' ');
-  let line = '';
-  let y = height - 305;
-  for (const w of words) {
-    const test = line ? line + ' ' + w : w;
-    if (font.widthOfTextAtSize(test, 12) > maxW) {
-      page.drawText(line, {
-        x: (width - font.widthOfTextAtSize(line, 12)) / 2,
-        y,
-        size: 12,
-        font,
-        color: dark
-      });
-      y -= 18;
-      line = w;
-    } else line = test;
-  }
-  if (line) {
-    page.drawText(line, {
-      x: (width - font.widthOfTextAtSize(line, 12)) / 2,
-      y,
-      size: 12,
-      font,
-      color: dark
-    });
-  }
+  const phone = String(opts.phone || '').replace(/[^\d+]/g, '');
+  const email = String(opts.email || '');
+  const certId = String(opts.certId || ((opts.isCompletion ? 'BT42-FIN-' : 'BT42-PART-') + Date.now().toString(36).toUpperCase()));
+  const issued = String(opts.issued || new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }));
+  const meta = 'Certificate ID: ' + certId + '  ·  Issued: ' + issued +
+    (phone ? '  ·  Tel: ' + phone : '') + (email ? '  ·  ' + email : '');
+  drawCentered(meta, 168, 9, font, muted);
 
-  page.drawText('Race day: 27 September 2026  ·  Blantyre, Malawi', {
-    x: (width - font.widthOfTextAtSize('Race day: 27 September 2026  ·  Blantyre, Malawi', 11)) / 2,
-    y: 150,
-    size: 11,
-    font,
-    color: muted
-  });
-
-  const sigY = 78;
-  const col = [90, 320, 560];
-  const people = [
-    ['Jim Kalua', 'Chairman, MNCS'],
-    ['Kondwani Chamwala', 'President of Athletics Malawi'],
-    ['Chifundo Tenthani', 'Chair, Organising Committee']
-  ];
+  // Signatures — three columns filling lower third
+  const sigY = 88;
+  const col = [70, 321, 572];
+  const colW = 200;
   const peopleFull = [
     ['Jim Kalua', 'Chairman of the Council', 'Malawi National Council of Sports', 'kalua'],
     ['Kondwani Chamwala', 'President of Athletics Malawi', 'Athletics Malawi', 'chamwala'],
@@ -232,40 +202,45 @@ async function buildCertificatePdf(opts) {
       try {
         const b64 = dataUrl.split(',')[1];
         const bytes = Buffer.from(b64, 'base64');
-        let img;
-        try {
-          img = dataUrl.indexOf('png') >= 0 ? await doc.embedPng(bytes) : await doc.embedJpg(bytes);
-        } catch (e1) {
-          try { img = await doc.embedPng(bytes); } catch (e2) {
-            try { img = await doc.embedJpg(bytes); } catch (e3) { img = null; }
-          }
+        let img = null;
+        try { img = await doc.embedPng(bytes); } catch (e1) {
+          try { img = await doc.embedJpg(bytes); } catch (e2) { img = null; }
         }
-        if (!img) continue;
-        const maxW = 140;
-        const maxH = 36;
-        let iw = img.width;
-        let ih = img.height;
-        const scale = Math.min(maxW / iw, maxH / ih, 1);
-        iw *= scale;
-        ih *= scale;
-        page.drawImage(img, {
-          x: col[i] + (150 - iw) / 2,
-          y: sigY + 34,
-          width: iw,
-          height: ih
-        });
-      } catch (e) { /* ignore bad image */ }
+        if (img) {
+          const maxW = 150;
+          const maxH = 42;
+          let iw = img.width;
+          let ih = img.height;
+          const scale = Math.min(maxW / iw, maxH / ih, 1);
+          iw *= scale;
+          ih *= scale;
+          page.drawImage(img, {
+            x: col[i] + (colW - iw) / 2,
+            y: sigY + 38,
+            width: iw,
+            height: ih
+          });
+        }
+      } catch (e) { /* skip bad image */ }
     }
     page.drawLine({
-      start: { x: col[i], y: sigY + 32 },
-      end: { x: col[i] + 160, y: sigY + 32 },
-      thickness: 0.8,
-      color: muted
+      start: { x: col[i] + 10, y: sigY + 34 },
+      end: { x: col[i] + colW - 10, y: sigY + 34 },
+      thickness: 0.9,
+      color: dark
     });
-    page.drawText(p[0], { x: col[i], y: sigY + 18, size: 10, font: fontBold, color: dark });
-    page.drawText(p[1], { x: col[i], y: sigY + 6, size: 8, font, color: muted });
-    page.drawText(p[2], { x: col[i], y: sigY - 6, size: 8, font, color: muted });
+    const nameW2 = fontBold.widthOfTextAtSize(p[0], 11);
+    page.drawText(p[0], { x: col[i] + (colW - nameW2) / 2, y: sigY + 18, size: 11, font: fontBold, color: dark });
+    const t1w = font.widthOfTextAtSize(p[1], 8);
+    page.drawText(p[1], { x: col[i] + (colW - t1w) / 2, y: sigY + 6, size: 8, font, color: muted });
+    const t2w = font.widthOfTextAtSize(p[2], 8);
+    page.drawText(p[2], { x: col[i] + (colW - t2w) / 2, y: sigY - 6, size: 8, font, color: muted });
   }
+
+  const foot = opts.isCompletion
+    ? 'Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026 · Completion certificate issued after verified finish'
+    : 'Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026 · Participation certificate';
+  drawCentered(foot, 42, 8, font, muted);
 
   return Buffer.from(await doc.save()).toString('base64');
 }
@@ -371,6 +346,10 @@ exports.handler = async (event) => {
         finishTime,
         reason,
         isCompletion: finalCompletion,
+        phone: body.phone || '',
+        email: to,
+        certId: body.certId || '',
+        issued: body.issued || '',
         signatures: mergeSigPayload(body.signatures || {}, await loadStoredSignatures())
       });
       attachments.push({

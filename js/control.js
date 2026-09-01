@@ -1892,12 +1892,18 @@
       '</div>'
     ].join('');
     const sigsP = loadSigs();
+    const phoneP = r.phone || '';
+    const certIdP = 'BT42-PART-' + String(phoneP).replace(/\D/g, '').slice(-8);
     sendAthleteEmail({
       type: 'participation',
       to: to,
       fullName: name,
       distance: dist,
       reason: reason || '',
+      phone: phoneP,
+      email: to,
+      certId: certIdP,
+      issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       subject: 'Certificate of Participation — BT42.195km Race 2026',
       raceDate: '27 September 2026',
       signatures: certSignaturesPayload()
@@ -1935,12 +1941,18 @@
       '</div>'
     ].join('');
     const sigsC = loadSigs();
+    const phoneC = r.phone || '';
+    const certIdC = 'BT42-FIN-' + String(phoneC).replace(/\D/g, '').slice(-8);
     sendAthleteEmail({
       type: 'completion',
       to: to,
       fullName: name,
       distance: dist,
       finishTime: finishTime || '',
+      phone: phoneC,
+      email: to,
+      certId: certIdC,
+      issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       subject: 'Certificate of Completion — BT42.195km Race 2026',
       raceDate: '27 September 2026',
       signatures: certSignaturesPayload()
