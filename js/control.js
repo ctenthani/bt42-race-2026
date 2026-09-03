@@ -215,11 +215,42 @@
       return;
     }
 
+    // Pull shared staff list BEFORE checking password (other phones start empty)
+    if (!getSyncToken()) setSyncToken(COMMITTEE_PIN);
+    try {
+      const pulled = await pullSharedState();
+      if (pulled && pulled.state && Array.isArray(pulled.state.staffUsers)) {
+        saveStaffUsers(pulled.state.staffUsers);
+      }
+    } catch (e) {
+      console.warn('Could not pull staff list before login', e);
+    }
+
     const hash = await sha256(password);
-    const staff = loadStaffUsers();
-    const acc = staff.find((u) => String(u.username || '').toLowerCase() === username);
+    let staff = loadStaffUsers();
+    let acc = staff.find((u) => String(u.username || '').toLowerCase() === username);
     if (!acc || acc.passwordHash !== hash) {
-      alert('Incorrect username or password. Ask the Chair for a login.');
+      // One more direct GET in case pullSharedState used a different shape
+      try {
+        const res = await fetch('/.netlify/functions/oc-sync', {
+          headers: { 'x-oc-token': getSyncToken() || COMMITTEE_PIN, 'x-oc-role': 'committee' }
+        });
+        const data = await res.json().catch(() => ({}));
+        const list = (data.state && data.state.staffUsers) || data.staffUsers || [];
+        if (Array.isArray(list) && list.length) {
+          saveStaffUsers(list);
+          staff = list;
+          acc = staff.find((u) => String(u.username || '').toLowerCase() === username);
+        }
+      } catch (e) {}
+    }
+    if (!acc) {
+      alert('This username is not on the shared staff list yet. On the Chair phone: open Staff logins, confirm the user is there, then Push / wait for sync. Then try again here.');
+      passEl.value = '';
+      return;
+    }
+    if (acc.passwordHash !== hash) {
+      alert('Incorrect password for "' + username + '". Use the exact password the Chair set (spaces and capitals count).');
       passEl.value = '';
       return;
     }
