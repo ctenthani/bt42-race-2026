@@ -1386,6 +1386,12 @@
       const stClass = st === 'verified' ? 'pay-ok' : (st === 'rejected' ? 'pay-no' : 'pay-wait');
       const fLabel = fst === 'finished' ? 'Finished' : (fst === 'dns' ? 'DNS' : (fst === 'dnf' ? 'DNF' : '—'));
       const fClass = fst === 'finished' ? 'pay-ok' : (fst === 'dnf' || fst === 'dns' ? 'pay-no' : 'pay-wait');
+      const hasBib = !!(bibs[key] && bibs[key].number) || Object.keys(bibs).some((bk) => {
+        const b = bibs[bk];
+        return b && b.number && String(b.name || '').trim().toLowerCase() === String(r.fullName || '').trim().toLowerCase();
+      });
+      const finDisabled = !canFinish() || !hasBib;
+      const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
         <td>${i + 1}</td>
         <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : ''}</td>
@@ -1412,8 +1418,8 @@
         <td>
           <span class="pay-status ${fClass}">${fLabel}</span>
           <div class="actions-cell">
-            <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}" ${!canFinish() ? 'disabled title="Need Ops/Chair login"' : ''}>Finish</button>
-            <button type="button" class="btn-mini fin-dnf" data-key="${escapeHtml(key)}" data-i="${i}">DNF</button>
+            <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}" ${finDisabled ? 'disabled title="' + finTitle + '"' : ''}>Finish</button>
+            <button type="button" class="btn-mini fin-dnf" data-key="${escapeHtml(key)}" data-i="${i}" ${finDisabled ? 'disabled title="' + finTitle + '"' : ''}>DNF</button>
           </div>
         </td>
         <td class="actions-cell">
@@ -1807,6 +1813,11 @@
     container.querySelectorAll('.fin-ok').forEach(btn => {
       btn.onclick = () => {
         if (!canFinish()) { alert('Your login cannot enter finish times.'); return; }
+        const bibMap = loadBibs();
+        if (!(bibMap[btn.dataset.key] && bibMap[btn.dataset.key].number)) {
+          alert('Assign a bib before marking Finish. Certificates are only for athletes who raced.');
+          return;
+        }
         const map = loadFinishes();
         const time = prompt('Official finish time (optional, e.g. 3:42:15):', (map[btn.dataset.key] || {}).time || '') || '';
         map[btn.dataset.key] = { status: 'finished', time, finishedAt: new Date().toISOString() };
@@ -1827,6 +1838,11 @@
     container.querySelectorAll('.fin-dnf').forEach(btn => {
       btn.onclick = () => {
         if (!canFinish()) { alert('Your login cannot enter DNF.'); return; }
+        const bibMapD = loadBibs();
+        if (!(bibMapD[btn.dataset.key] && bibMapD[btn.dataset.key].number)) {
+          alert('Assign a bib before marking DNF.');
+          return;
+        }
         const map = loadFinishes();
         map[btn.dataset.key] = { status: 'dnf', finishedAt: new Date().toISOString() };
         saveFinishes(map);

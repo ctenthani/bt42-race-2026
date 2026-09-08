@@ -1519,3 +1519,36 @@ img { max-width: 100%; display: block; }
     padding: 0.45rem 0.3rem;
   }
 }
+
+
+/* Partnership pitch */
+.pitch-hero { background: linear-gradient(135deg,#0E2A44,#1B4F72); color:#fff; border-radius:16px; padding:1.5rem 1.35rem; margin-bottom:1.25rem; }
+.pitch-kicker { letter-spacing:.12em; text-transform:uppercase; font-size:.72rem; opacity:.85; margin:0 0 .5rem; }
+.pitch-hero h2 { margin:0 0 .6rem; font-size:1.45rem; line-height:1.25; }
+.pitch-hero p { margin:0; opacity:.95; }
+.pitch-glance { display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin:1rem 0 1.5rem; }
+.pitch-glance div { background:#f4f7fb; border:1px solid var(--border,#d5dde6); border-radius:12px; padding:.75rem; text-align:center; }
+.pitch-glance strong { display:block; color:#1B4F72; font-size:1.05rem; }
+.pitch-glance span { font-size:.78rem; color:#556; }
+.pitch-h { margin:1.4rem 0 .7rem; color:#1B4F72; }
+.pitch-grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
+.pitch-grid4 article { border:1px solid var(--border,#d5dde6); border-radius:12px; padding:.9rem; background:#fff; }
+.pitch-grid4 span { display:block; font-weight:700; color:#27AE60; margin-bottom:.35rem; }
+.pitch-grid4 h4 { margin:0 0 .35rem; }
+.pitch-grid4 p { margin:0; font-size:.88rem; color:#444; }
+.pitch-tiers { display:grid; grid-template-columns:repeat(4,1fr); gap:.75rem; }
+.ptier { border-radius:14px; padding:1rem; color:#fff; min-height:100%; }
+.ptier h4 { margin:0; letter-spacing:.04em; text-transform:uppercase; }
+.ptier-price { font-size:1.2rem; font-weight:700; margin:.35rem 0 .5rem; }
+.ptier p { margin:0; font-size:.82rem; line-height:1.4; opacity:.95; }
+.ptier.platinum { background:linear-gradient(160deg,#2c3e50,#1B4F72); }
+.ptier.gold { background:linear-gradient(160deg,#B7950B,#7D6608); }
+.ptier.silver { background:linear-gradient(160deg,#5D6D7E,#34495E); }
+.ptier.bronze { background:linear-gradient(160deg,#A04000,#6E2C00); }
+.pitch-cta .pitch-contact { margin: .75rem 0 1rem; }
+@media (max-width:900px) {
+  .pitch-glance, .pitch-grid4, .pitch-tiers { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:560px) {
+  .pitch-glance, .pitch-grid4, .pitch-tiers { grid-template-columns:1fr; }
+}
