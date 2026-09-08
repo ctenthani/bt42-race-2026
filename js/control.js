@@ -1010,6 +1010,31 @@
     return phone || name || ('idx-' + i);
   }
 
+  function paymentKeysFor(r, i) {
+    const keys = [];
+    const main = participantKey(r, i);
+    keys.push(main);
+    const phone = String(r.phone || r.teamContactPhone || '').replace(/\s+/g, '');
+    const name = String(r.fullName || '').trim().toLowerCase();
+    if (phone && name) keys.push(phone + '|' + name);
+    if (phone) keys.push(phone);
+    if (name) keys.push(name);
+    return Array.from(new Set(keys.filter(Boolean)));
+  }
+
+  function paymentRecordFor(r, i, pays) {
+    const map = pays || loadPayments();
+    let best = null;
+    paymentKeysFor(r, i).forEach((k) => {
+      const rec = map[k];
+      if (!rec || !rec.status) return;
+      if (!best) best = rec;
+      if (rec.status === 'verified') best = rec;
+      if (rec.status === 'rejected' && (!best || best.status === 'pending')) best = rec;
+    });
+    return best || { status: 'pending' };
+  }
+
   function normalizeDistanceCode(d) {
     const s = String(d || '').toLowerCase().replace(/\s+/g, '');
     if (s.indexOf('42') >= 0 || s.indexOf('marathon') >= 0) return '42.195';
@@ -1061,7 +1086,18 @@
       } catch (e) {}
     }
     if (s.payments && typeof s.payments === 'object') {
-      localStorage.setItem(PAYMENT_KEY, JSON.stringify(s.payments));
+      const localPay = loadPayments();
+      const mergedPay = Object.assign({}, s.payments);
+      Object.keys(localPay).forEach((k) => {
+        const L = localPay[k] || {};
+        const R = mergedPay[k] || {};
+        if (L.status === 'verified' && R.status !== 'verified' && R.status !== 'rejected') {
+          mergedPay[k] = L;
+        } else if (L.status === 'rejected' && R.status !== 'verified' && R.status !== 'rejected') {
+          mergedPay[k] = L;
+        }
+      });
+      localStorage.setItem(PAYMENT_KEY, JSON.stringify(mergedPay));
     }
     if (s.bibs && typeof s.bibs === 'object') {
       localStorage.setItem(BIB_KEY, JSON.stringify(s.bibs));
@@ -1327,7 +1363,7 @@
       return;
     }
 
-    const verified = rows.filter((r, i) => (pays[participantKey(r, i)] || {}).status === 'verified').length;
+    const verified = rows.filter((r, i) => paymentRecordFor(r, i, pays).status === 'verified').length;
     const finished = rows.filter((r, i) => (finishes[participantKey(r, i)] || {}).status === 'finished').length;
 
     html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;margin:0.75rem 0">
@@ -1340,7 +1376,7 @@
 
     rows.forEach((r, i) => {
       const key = participantKey(r, i);
-      const pay = pays[key] || { status: 'pending' };
+      const pay = paymentRecordFor(r, i, pays);
       const fin = finishes[key] || { status: 'not_started' };
       const st = pay.status || 'pending';
       const fst = fin.status || 'not_started';
@@ -1673,14 +1709,17 @@
         if (note === null) return; // cancelled
         const verifiedAt = new Date().toISOString();
         const verifiedBy = currentUser || (isChair ? 'Chair' : 'Ops');
+        const rec = { status: 'verified', note: note || '', verifiedAt: verifiedAt, verifiedBy: verifiedBy };
         toVerify.forEach((m, idx) => {
-          const k = participantKey(m, rows.indexOf(m) >= 0 ? rows.indexOf(m) : idx);
-          map[k] = { status: 'verified', note: note || '', verifiedAt: verifiedAt, verifiedBy: verifiedBy, teamId: m.teamId || (row && row.teamId) || '' };
+          const iM = rows.indexOf(m) >= 0 ? rows.indexOf(m) : idx;
+          rec.teamId = m.teamId || (row && row.teamId) || '';
+          paymentKeysFor(m, iM).forEach((k) => { map[k] = Object.assign({}, rec); });
         });
-        // Also mark original button key
-        map[payKey] = { status: 'verified', note: note || '', verifiedAt: verifiedAt, verifiedBy: verifiedBy };
+        map[payKey] = Object.assign({}, rec);
         savePayments(map);
-        if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
+        if (getSyncToken()) {
+          livePush({ payments: map, replacePayments: true }).catch(() => {});
+        }
         renderParticipants();
         try {
           const to = teamContactEmail(row || {}, mates);
