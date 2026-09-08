@@ -413,23 +413,7 @@
         form.reset();
         const fp = document.getElementById('fee-preview');
         if (fp) fp.style.display = 'none';
-        // Server sends the official confirmation (includes full team roster for teams).
-        // Skip client duplicate for teams to avoid two emails.
-        const em = (data.email || '').trim();
-        if (em && data.regType !== 'team') {
-          fetch('/.netlify/functions/send-certificate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              type: 'confirmation',
-              to: em,
-              email: em,
-              fullName: data.fullName,
-              distance: data.distance,
-              raceDate: '27 September 2026'
-            })
-          }).catch(() => {});
-        }
+        // Confirmation email is sent only by register.js (avoids two emails).
       })
       .catch((err) => {
         console.error('Shared register failed', err);

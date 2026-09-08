@@ -1167,8 +1167,10 @@
       replaceFinishes: true,
       attendance: loadAttendance()
     };
-    if (isChair) {
+    if (canPayment()) {
       payload.payments = loadPayments();
+    }
+    if (isChair) {
       payload.replacePayments = true;
       payload.signatures = loadSigs();
       payload.staffUsers = loadStaffUsers();
@@ -1392,7 +1394,13 @@
         <td>
           <span class="pay-status ${stClass}">${stLabel}</span>
           <div class="actions-cell">
-            ${canPayment() ? '<button type="button" class="btn-mini pay-verify" data-key="' + escapeHtml(key) + '">Verify</button><button type="button" class="btn-mini pay-reject" data-key="' + escapeHtml(key) + '">Reject</button>' : '<small class="form-note">Ops/Chair verifies</small>'}
+            ${
+              !canPayment()
+                ? '<small class="form-note">Ops/Chair verifies</small>'
+                : (st === 'verified' || st === 'rejected')
+                  ? ''
+                  : '<button type="button" class="btn-mini pay-verify" data-key="' + escapeHtml(key) + '">Verify</button><button type="button" class="btn-mini pay-reject" data-key="' + escapeHtml(key) + '">Reject</button>'
+            }
           </div>
         </td>
         <td>
@@ -1718,7 +1726,7 @@
         map[payKey] = Object.assign({}, rec);
         savePayments(map);
         if (getSyncToken()) {
-          livePush({ payments: map, replacePayments: true }).catch(() => {});
+          livePush({ payments: map }).catch(() => {});
         }
         renderParticipants();
         try {
@@ -1791,7 +1799,7 @@
         });
         map[payKey] = { status: 'rejected', note: reason || '', verifiedAt: verifiedAt };
         savePayments(map);
-        if (getSyncToken()) livePush({ payments: map, replacePayments: true }).catch(() => {});
+        if (getSyncToken()) livePush({ payments: map }).catch(() => {});
         renderParticipants();
         if (toReject.length > 1) alert('Payment rejected for ' + toReject.length + ' team members.');
       };
@@ -1918,10 +1926,18 @@
     }).join('');
   }
 
+  const recentEmail = {};
   function sendAthleteEmail(payload) {
     if (!payload) return Promise.resolve({ ok: false, skipped: true });
     const to = (payload.to || payload.email || '').trim();
     if (!to) return Promise.resolve({ ok: false, skipped: true, error: 'No recipient' });
+    const dedupeKey = [payload.type || '', to.toLowerCase(), payload.bib || '', payload.subject || '', payload.fullName || ''].join('|');
+    const now = Date.now();
+    if (recentEmail[dedupeKey] && now - recentEmail[dedupeKey] < 20000) {
+      console.info('Skipped duplicate email', dedupeKey);
+      return Promise.resolve({ ok: true, skipped: true, deduped: true });
+    }
+    recentEmail[dedupeKey] = now;
     const body = Object.assign({}, payload, { to: to, email: to });
     return fetch('/.netlify/functions/send-certificate', {
       method: 'POST',

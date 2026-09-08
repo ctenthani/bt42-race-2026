@@ -245,6 +245,7 @@ async function buildCertificatePdf(opts) {
   return Buffer.from(await doc.save()).toString('base64');
 }
 
+const recentSends = {};
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
@@ -291,6 +292,12 @@ exports.handler = async (event) => {
   if (!to) {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'Recipient email required' }) };
   }
+  const dedupeKey = [type, to.toLowerCase(), body.bib || '', body.subject || '', body.fullName || ''].join('|');
+  const now = Date.now();
+  if (recentSends[dedupeKey] && now - recentSends[dedupeKey] < 20000) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, skipped: true, deduped: true }) };
+  }
+  recentSends[dedupeKey] = now;
 
   let subject = 'BT42.195km Race 2026';
   let html = '';

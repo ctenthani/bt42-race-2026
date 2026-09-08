@@ -345,18 +345,23 @@ function mergeState(current, body, role) {
   }
   if (body.replacePayments && body.payments && typeof body.payments === 'object') {
     if (role !== 'chair') {
-      const e = new Error('Only Chair can replace payments');
-      e.status = 403;
-      throw e;
+      // Ops may not wipe the whole map — merge instead
+      next.payments = Object.assign({}, current.payments || {}, body.payments);
+    } else {
+      next.payments = body.payments;
     }
-    next.payments = body.payments;
   } else if (body.payments && typeof body.payments === 'object') {
-    if (role !== 'chair') {
-      const e = new Error('Only Chair can update payments');
-      e.status = 403;
-      throw e;
-    }
-    next.payments = Object.assign({}, current.payments || {}, body.payments);
+    // Chair and Ops (committee token) can verify / reject
+    const cur = current.payments || {};
+    const incoming = body.payments || {};
+    const merged = Object.assign({}, cur);
+    Object.keys(incoming).forEach((k) => {
+      const inc = incoming[k] || {};
+      const old = merged[k] || {};
+      if (inc.status === 'verified' || inc.status === 'rejected') merged[k] = inc;
+      else if (!old.status) merged[k] = inc;
+    });
+    next.payments = merged;
   }
   if (body.replaceBibs && body.bibs && typeof body.bibs === 'object') {
     next.bibs = body.bibs;
