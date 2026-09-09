@@ -1,7 +1,7 @@
 /* BT42.195km Race 2026 — App logic (launch version) */
 
 (function () {
-  const RACE_DATE = new Date('2026-09-27T06:30:00+02:00'); // CAT
+  const RACE_DATE = new Date('2026-09-27T06:00:00+02:00'); // CAT
 
   // ---- Navigation ----
   function navigate(pageId, opts) {
@@ -220,6 +220,13 @@
       return false;
     }
 
+        const nameVal = (formData.get('fullName') || '').toString().trim();
+    const isTeam = (formData.get('regType') || document.querySelector('input[name="regType"]:checked') || {}).value === 'team'
+      || (document.getElementById('regTypeTeam') && document.getElementById('regTypeTeam').checked);
+    if (!isTeam && nameVal.length < 3) {
+      alert('Full name is required. This is the name that will appear on the certificate.');
+      return false;
+    }
     const emailVal = (formData.get('email') || '').toString().trim();
     if (!emailVal || emailVal.indexOf('@') < 1) {
       alert('Email address is required so we can send entry confirmation, payment updates, bib numbers and certificates.');
@@ -255,7 +262,7 @@
       for (let i = 0; i < teamMembersDetailed.length; i++) {
         const m = teamMembersDetailed[i];
         if (!m.name || !m.distance || !m.dob) {
-          alert('Each team member needs full name, distance and date of birth.');
+          alert('Each team member needs a full name (as it will appear on the certificate), distance and date of birth.');
           return false;
         }
         if (m.distance === '42.195' && (m.ageOnRaceDay === null || m.ageOnRaceDay < 20)) {

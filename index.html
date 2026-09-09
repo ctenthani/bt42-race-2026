@@ -152,10 +152,10 @@
               <h3>42.195 km Marathon</h3>
               <table class="info-table">
                 <tr><td>Distance</td><td>42.195 km</td></tr>
-                <tr><td>Start (target)</td><td>~06:30</td></tr>
+                <tr><td>Start</td><td>06:00</td></tr>
                 <tr><td>Categories</td><td>Open, Age Groups, Veterans</td></tr>
                 <tr><td>Prizes</td><td>Competitive (details soon)</td></tr>
-                <tr><td>Entry (indicative)</td><td>From K20,000</td></tr>
+                <tr><td>Entry fee</td><td>MK 15,000</td></tr>
               </table>
             </div>
             <div class="info-card">
@@ -165,7 +165,7 @@
                 <tr><td>Start (target)</td><td>~06:45–07:00</td></tr>
                 <tr><td>Categories</td><td>Open + recreational</td></tr>
                 <tr><td>Prizes</td><td>Scaled prizes</td></tr>
-                <tr><td>Entry (indicative)</td><td>From K15,000</td></tr>
+                <tr><td>Entry fee</td><td>MK 10,000</td></tr>
               </table>
             </div>
             <div class="info-card">
@@ -175,7 +175,7 @@
                 <tr><td>Start (target)</td><td>~07:15–07:30</td></tr>
                 <tr><td>Focus</td><td>Community & families</td></tr>
                 <tr><td>Prizes</td><td>Recognition + medals</td></tr>
-                <tr><td>Entry (indicative)</td><td>Affordable / early bird</td></tr>
+                <tr><td>Entry fee</td><td>MK 5,000</td></tr>
               </table>
             </div>
           </div>
@@ -191,10 +191,14 @@
         <div class="page-header">
           <div class="container">
             <h1>Register</h1>
-            <p>Secure your place — registration opens mid-August 2026</p>
+            <p>Sunday 27 September 2026 · Main race starts 06:00</p>
           </div>
         </div>
         <div class="container section">
+          <div class="notice" style="margin-bottom:1rem">
+            <strong>Entry fees:</strong> 42.195 km <strong>MK 15,000</strong> · 10 km <strong>MK 10,000</strong> · 5 km <strong>MK 5,000</strong>.<br>
+            <strong>Main race start:</strong> 06:00. Pay to account <code data-site="bankAccount">782637</code> (reference: full name + mobile).
+          </div>
           <div class="register-layout">
             <form id="regForm" class="reg-form" name="bt42-registration" method="POST" data-netlify="true" netlify-honeypot="bot-field" onsubmit="return handleRegister(event)">
               <input type="hidden" name="form-name" value="bt42-registration" />
@@ -213,7 +217,7 @@
                     <input type="radio" name="regType" value="team" id="regTypeTeam" /> Team
                   </label>
                 </div>
-                <p class="form-note" id="teamHint" style="display:none;margin-top:0.35rem">List every runner with their distance and date of birth. Marathon members must be 20+ on 19 Sep 2026. Total fee is the sum of each member’s race fee. One bank payment (PoP) covers the whole team.</p>
+                <p class="form-note" id="teamHint" style="display:none;margin-top:0.35rem">List every runner with their name exactly as it must appear on the certificate, plus distance and date of birth. Marathon members must be 20+ on 19 Sep 2026. Total fee is the sum of each member’s race fee. One bank payment (PoP) covers the whole team.</p>
               </div>
 
               <div class="form-group" id="teamNameGroup" style="display:none">
@@ -223,7 +227,8 @@
 
               <div class="form-group" id="individualNameGroup">
                 <label for="fullName">Full Name *</label>
-                <input type="text" id="fullName" name="fullName" required placeholder="As on ID / passport" />
+                <input type="text" id="fullName" name="fullName" required minlength="3" placeholder="Name as it must appear on the certificate" />
+                <p class="form-note">This exact name will be printed on your certificate. Check spelling before you submit.</p>
               </div>
 
               <div id="teamMembersBlock" style="display:none">
@@ -403,8 +408,8 @@
           </div>
 
           <div class="pitch-glance">
-            <div><strong>Since 2018</strong><span>Five editions</span></div>
-            <div><strong>1,000+</strong><span>Athletes to date</span></div>
+            <div><strong>8th edition</strong><span>Seven editions before this</span></div>
+            <div><strong>1,000+</strong><span>Athletes on the field</span></div>
             <div><strong>42.195 · 10 · 5 km</strong><span>Three distances</span></div>
             <div><strong>Festival day</strong><span>Race, aerobics, games, music</span></div>
           </div>

@@ -1552,3 +1552,11 @@ img { max-width: 100%; display: block; }
 @media (max-width:560px) {
   .pitch-glance, .pitch-grid4, .pitch-tiers { grid-template-columns:1fr; }
 }
+
+/* Hide verify/reject once payment is decided */
+.pay-status.pay-ok + .actions-cell .pay-verify,
+.pay-status.pay-ok + .actions-cell .pay-reject,
+.pay-status.pay-no + .actions-cell .pay-verify,
+.pay-status.pay-no + .actions-cell .pay-reject {
+  display: none !important;
+}

@@ -347,6 +347,12 @@ exports.handler = async (event) => {
   if (!(body.email && String(body.email).trim() && String(body.email).indexOf('@') > 0)) {
     return json(400, { ok: false, error: 'Email is required so entrants receive confirmation, bib and certificate emails' });
   }
+  if (body.regType !== 'team') {
+    const nm = String(body.fullName || '').trim();
+    if (nm.length < 3) {
+      return json(400, { ok: false, error: 'Full name is required — this is the name printed on the certificate' });
+    }
+  }
   if (body.regType === 'team') {
     if (!(body.teamName && String(body.teamName).trim())) {
       return json(400, { ok: false, error: 'Team name is required' });

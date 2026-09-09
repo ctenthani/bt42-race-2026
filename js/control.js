@@ -1380,7 +1380,7 @@
       const key = participantKey(r, i);
       const pay = paymentRecordFor(r, i, pays);
       const fin = finishes[key] || { status: 'not_started' };
-      const st = pay.status || 'pending';
+      const st = String(pay.status || 'pending').toLowerCase();
       const fst = fin.status || 'not_started';
       const stLabel = st === 'verified' ? 'Verified' : (st === 'rejected' ? 'Rejected' : 'Pending');
       const stClass = st === 'verified' ? 'pay-ok' : (st === 'rejected' ? 'pay-no' : 'pay-wait');
