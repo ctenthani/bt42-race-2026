@@ -1570,4 +1570,31 @@ img { max-width: 100%; display: block; }
 .gis-toolbar { display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap; font-size:.82rem; margin:0 0 .4rem; }
 .kiosk-icon { background:#0b6bd3; color:#fff; border:2px solid #fff; border-radius:4px; width:28px; height:28px; text-align:center; line-height:24px; font-size:14px; box-shadow:0 1px 4px rgba(0,0,0,.4); }
 
-.course-embed { width:100%; height:calc(100vh - 150px); min-height:560px; border:0; border-radius:14px; background:#eef4f8; }
+.course-embed {
+  width: 100%;
+  height: calc(100vh - 148px);
+  min-height: 70vh;
+  border: 0;
+  border-radius: 12px;
+  background: #0b1f2c;
+  display: block;
+}
+body.course-full .footer { display: none; }
+body.course-full #page-course .page-header { padding: 0.45rem 0; }
+body.course-full #page-course .page-header h1 { font-size: 1.05rem; margin: 0; }
+body.course-full #page-course .page-header p { font-size: 0.78rem; margin: 0.15rem 0 0; }
+body.course-full #page-course .container.section { padding: 0.35rem 0.5rem 0; }
+@media (max-width: 800px) {
+  body.course-full .course-embed {
+    position: fixed;
+    left: 0; right: 0;
+    top: 48px;
+    bottom: 56px;
+    width: 100%;
+    height: auto !important;
+    min-height: 0;
+    border-radius: 0;
+    z-index: 20;
+  }
+}
+

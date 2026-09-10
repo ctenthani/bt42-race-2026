@@ -26,6 +26,7 @@
     });
     document.getElementById('nav')?.classList.remove('open');
 
+    document.body.classList.toggle('course-full', pageId === 'course');
     if (pageId === 'control' && window.BT42Control) {
       window.BT42Control.init();
     }

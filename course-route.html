@@ -83,10 +83,21 @@
     .info-panel { box-shadow: none; border: 1px solid #ddd; } .controls { display: none; }
   }
   @media (max-width: 800px) {
-    html, body { overflow: auto; height: auto; }
-    .board { grid-template-columns: 1fr; }
-    .map-container { height: 48vh; min-height: 280px; }
+    html, body { overflow: hidden; height: 100%; }
+    .header { padding: 6px 8px; }
+    .header h1 { font-size: 13px; }
+    .header .subtitle { display: none; }
+    .lap-toolbar { padding: 4px 8px; }
+    .board { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: 100%; }
+    .map-container { height: auto !important; min-height: 0; }
+    .info-panel {
+      max-height: 36%;
+      border-left: 0;
+      border-top: 1px solid #c8dce8;
+    }
     .water-points-grid { grid-template-columns: 1fr 1fr; }
+    .legend { flex-direction: row; flex-wrap: wrap; }
+    .route-stats { display: none; }
   }
 </style>
 </head>
