@@ -1560,3 +1560,14 @@ img { max-width: 100%; display: block; }
 .pay-status.pay-no + .actions-cell .pay-reject {
   display: none !important;
 }
+
+.route-map-wrap { background:#fff; border:1px solid var(--border,#d5dde6); border-radius:16px; overflow:auto; margin-bottom:1.25rem; }
+.route-map { width:100%; height:auto; display:block; min-width:640px; }
+.route-steps { padding-left:1.15rem; }
+.route-steps li { margin:0.35rem 0; }
+
+.gis-map { height: min(72vh, 560px); width:100%; border-radius:14px; border:1px solid #1B4F72; z-index:1; }
+.gis-toolbar { display:flex; justify-content:space-between; gap:.75rem; flex-wrap:wrap; font-size:.82rem; margin:0 0 .4rem; }
+.kiosk-icon { background:#0b6bd3; color:#fff; border:2px solid #fff; border-radius:4px; width:28px; height:28px; text-align:center; line-height:24px; font-size:14px; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+
+.course-embed { width:100%; height:min(85vh, 920px); min-height:640px; border:0; border-radius:14px; background:#eef4f8; }

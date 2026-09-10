@@ -726,3 +726,4 @@
   }
 
 })();
+(function(){ var _n = window.navigate; if (typeof _n === 'function') { window.navigate = function(name){ _n(name); if (name==='course' && window.BT42_initCourseMap) window.BT42_initCourseMap(); }; } })();

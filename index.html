@@ -10,6 +10,7 @@
   <title>BT42.195km Race 2026</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -355,45 +356,20 @@
       </section>
 
       <!-- COURSE -->
-      <section id="page-course" class="page">
+            <section id="page-course" class="page">
         <div class="page-header">
           <div class="container">
             <h1>Course</h1>
-            <p>Blantyre city route — final map to be confirmed with authorities</p>
+            <p>Three-lap 42.195 km · start NBS Ginnery Corner · finish Kamuzu Stadium VIP</p>
           </div>
         </div>
         <div class="container section">
-          <div class="course-placeholder">
-            <div class="map-mock">
-              <p>📍 Course Map</p>
-              <p class="map-note">Interactive map will be embedded here once the official route is locked (historically involving Kamuzu Highway, key Blantyre arteries, and finish at Kamuzu Stadium).</p>
-            </div>
-          </div>
-          <div class="info-grid two-col">
-            <div class="info-card">
-              <h3>Key Points (Indicative)</h3>
-              <ul class="simple-list">
-                <li>Start / Finish area near Kamuzu Stadium</li>
-                <li>Major roads under traffic management</li>
-                <li>Water & medical stations approximately every 5 km</li>
-                <li>Clear kilometre markers</li>
-              </ul>
-            </div>
-            <div class="info-card">
-              <h3>What to Expect</h3>
-              <ul class="simple-list">
-                <li>Urban course with some hills</li>
-                <li>Early morning start (cooler temperatures)</li>
-                <li>Police and marshal support</li>
-                <li>Live tracking / updates via this app (planned)</li>
-              </ul>
-            </div>
-          </div>
+          <iframe class="course-embed" title="BT42.195km Race official route" src="course-route.html" loading="lazy"></iframe>
+          <p class="form-note">Use Lap 1 / 2 / 3 to see cumulative kilometres. Blue kiosks are water points. Purple line on lap 3 is the stadium finish.</p>
         </div>
       </section>
 
-      <!-- SPONSORS -->
-      <section id="page-sponsors" class="page">
+<section id="page-sponsors" class="page">
         <div class="page-header">
           <div class="container">
             <h1>Own the Finish Line</h1>
@@ -704,6 +680,7 @@
 
   <script src="js/control-data.js"></script>
   <script src="js/control.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
