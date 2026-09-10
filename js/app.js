@@ -27,6 +27,19 @@
     document.getElementById('nav')?.classList.remove('open');
 
     document.body.classList.toggle('course-full', pageId === 'course');
+    if (pageId === 'course') {
+      setTimeout(function () {
+        var f = document.querySelector('.course-embed');
+        if (!f) return;
+        var top = 58, bottom = 62;
+        var h = Math.max(420, window.innerHeight - top - bottom);
+        f.style.width = '100%';
+        f.style.height = h + 'px';
+        f.style.minHeight = h + 'px';
+        f.style.display = 'block';
+        f.style.border = '0';
+      }, 50);
+    }
     if (pageId === 'control' && window.BT42Control) {
       window.BT42Control.init();
     }

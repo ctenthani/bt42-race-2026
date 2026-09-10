@@ -83,15 +83,24 @@
     .info-panel { box-shadow: none; border: 1px solid #ddd; } .controls { display: none; }
   }
   @media (max-width: 800px) {
-    html, body { overflow: hidden; height: 100%; }
-    .header { padding: 6px 8px; }
-    .header h1 { font-size: 13px; }
-    .header .subtitle { display: none; }
-    .lap-toolbar { padding: 4px 8px; }
-    .board { grid-template-columns: 1fr; grid-template-rows: 1fr auto; height: 100%; }
-    .map-container { height: auto !important; min-height: 0; }
+    html, body { overflow: hidden; height: 100%; height: 100dvh; }
+    .header { display:flex; padding:8px 10px; }
+    .lap-toolbar { padding: 6px 8px; }
+    .board {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      height: 100dvh;
+    }
+    .map-container {
+      flex: 1 1 auto;
+      height: 62vh !important;
+      min-height: 320px;
+    }
+    #map { min-height: 320px; }
     .info-panel {
-      max-height: 36%;
+      flex: 0 0 auto;
+      max-height: 28vh;
       border-left: 0;
       border-top: 1px solid #c8dce8;
     }
@@ -104,9 +113,9 @@
 <body>
 
 <div class="header">
-  <h1>🏃 BT42.195km Race 2026 Route</h1>
-  <div class="subtitle">Blantyre, Malawi • Three-lap athlete route with stadium finish</div>
-  <div class="distance-badge">📏 Official race distance: 42.195 km</div>
+  <a href="index.html#home" style="color:#fff;text-decoration:none;font-weight:700;font-size:13px">← Site</a>
+  <h1>BT42.195km Race route</h1>
+  <div class="distance-badge">42.195 km</div>
 </div>
 
 <div class="lap-toolbar" aria-label="Select race lap">
