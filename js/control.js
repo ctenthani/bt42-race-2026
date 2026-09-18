@@ -2336,10 +2336,16 @@
         u.canPayment ? 'Payment' : '',
         u.canBibs ? 'Bibs' : '',
         u.canFinish ? 'Finish' : '',
-        u.canVolunteers ? 'Volunteers' : ''
+        u.canVolunteers ? 'Volunteers + certificates' : ''
       ].filter(Boolean).join(', ') || 'View only';
+      const toggles = [
+        ['canPayment', 'Pay', !!u.canPayment],
+        ['canBibs', 'Bibs', !!u.canBibs],
+        ['canFinish', 'Finish', !!u.canFinish],
+        ['canVolunteers', 'Volunteers', !!u.canVolunteers]
+      ].map((x) => '<label style="margin-right:8px;white-space:nowrap"><input type="checkbox" class="staff-perm" data-i="' + i + '" data-perm="' + x[0] + '"' + (x[2] ? ' checked' : '') + ' /> ' + x[1] + '</label>').join('');
       return '<tr><td>' + escapeHtml(u.username) + '</td><td>' + escapeHtml(u.displayName || '') + '</td><td>' +
-        escapeHtml(flags) + '</td><td>' + (u.disabled ? 'Disabled' : 'Active') +
+        toggles + '<div class="form-note">' + escapeHtml(flags) + '</div></td><td>' + (u.disabled ? 'Disabled' : 'Active') +
         '</td><td><button type="button" class="btn-mini staff-disable" data-i="' + i + '">' +
         (u.disabled ? 'Enable' : 'Disable') + '</button> ' +
         '<button type="button" class="btn-mini staff-reset" data-i="' + i + '">Reset password</button> ' +
@@ -2348,8 +2354,8 @@
     if (!rows) rows = '<tr><td colspan="5">No staff accounts yet — create one below and share username/password.</td></tr>';
     box.innerHTML = `
       <div class="card" style="margin-bottom:1rem;padding:0.75rem">
-        <h4 style="margin-top:0">Create Ops login</h4>
-        <p class="form-note">Give this to committee members who should verify payments, assign bibs, or enter finish times.</p>
+        <h4 style="margin-top:0">Create staff login</h4>
+        <p class="form-note">Tick every task this person may do. Volunteers Coordinator must have <strong>Volunteers</strong> ticked so they can select crew and issue e-certificates. Chair always has every permission.</p>
         <div class="form-row">
           <div class="form-group"><label>Username *</label><input type="text" id="staff-new-user" placeholder="e.g. grace.pay" /></div>
           <div class="form-group"><label>Display name</label><input type="text" id="staff-new-name" placeholder="e.g. Grace" /></div>
@@ -2360,7 +2366,7 @@
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-pay" checked /> Can verify / reject payments</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-bibs" checked /> Can assign bibs</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-finish" checked /> Can enter Finish / DNF</label>
-        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-volunteers" /> Volunteers Coordinator (select + issue certificates)</label>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-volunteers" checked /> Volunteers: select crew and issue / email certificates</label>
         <button type="button" class="btn btn-primary" id="staff-create-btn">Create login</button>
       </div>
       <div class="table-wrap"><table class="data-table">
@@ -2402,6 +2408,18 @@
       alert('Created login for "' + username + '". Share username and password with them securely.');
       renderStaffAdmin();
     };
+    box.querySelectorAll('.staff-perm').forEach((cb) => {
+      cb.onchange = () => {
+        const list = loadStaffUsers();
+        const i = Number(cb.dataset.i);
+        const perm = cb.dataset.perm;
+        if (!list[i] || !perm) return;
+        list[i][perm] = !!cb.checked;
+        saveStaffUsers(list);
+        if (getSyncToken()) livePush({ staffUsers: list }).catch(() => {});
+        renderStaffAdmin();
+      };
+    });
     box.querySelectorAll('.staff-disable').forEach((btn) => {
       btn.onclick = () => {
         const list = loadStaffUsers();
@@ -2556,7 +2574,9 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
     const canEdit = canVolunteers();
     const rows = list.map((v, i) => {
       const st = String(v.status || 'applied');
-      const cert = v.certIssued ? ('Issued ' + String(v.issuedAt || '').slice(0, 10)) : '—';
+      const cert = v.certIssued
+        ? ('Issued ' + String(v.issuedAt || '').slice(0, 10) + (v.issuedBy ? ' by ' + v.issuedBy : ''))
+        : '—';
       const actions = canEdit ? (
         '<button type="button" class="btn-mini vol-select" data-i="' + i + '">' + (st === 'selected' || st === 'served' ? 'Selected' : 'Select') + '</button> ' +
         '<button type="button" class="btn-mini vol-decline" data-i="' + i + '">Decline</button> ' +
@@ -2565,7 +2585,8 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
       ) : (st + (v.certIssued ? ' · certificate issued' : ''));
       return '<tr><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
         '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + escapeHtml(v.role || '') +
-        '</td><td>' + escapeHtml(st) + '</td><td>' + escapeHtml(cert) + '</td><td>' + actions + '</td></tr>';
+        '</td><td>' + escapeHtml(st) + '</td><td>' + escapeHtml(cert) +
+        '</td><td>' + escapeHtml(String(v.createdAt || '').slice(0, 10)) + '</td><td>' + actions + '</td></tr>';
     }).join('') || '<tr><td colspan="7">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
     box.innerHTML = (canEdit ? `
       <div class="card" style="padding:0.75rem;margin-bottom:1rem">
@@ -2580,7 +2601,7 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         </div>
         <button type="button" class="btn btn-primary" id="vol-add">Add to list</button>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
-      '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th></th></tr></thead><tbody>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
     const add = $('#vol-add');
     if (add) add.onclick = () => {
