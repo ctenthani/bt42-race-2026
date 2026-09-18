@@ -2656,34 +2656,41 @@
     };
     const w = window.open('', '_blank', 'width=900,height=650');
     if (!w) { alert('Allow pop-ups to view the certificate.'); return; }
-    w.document.write(`<!DOCTYPE html><html><head><title>Volunteer certificate — ${name.replace(/[<>]/g,'')}</title>
+    w.document.write(`<!DOCTYPE html><html><head><title>Certificate of Appreciation — ${name.replace(/[<>]/g,'')}</title>
 <style>
-@page { size: A4 landscape; margin: 12mm; }
-body { font-family: Georgia, serif; margin:0; background:#1B4F72; color:#1B4F72; }
-.sheet { background:#fff; margin:16px auto; width: min(920px, 96vw); min-height: 560px; padding: 36px 48px; box-sizing:border-box; border:10px solid #1B4F72; position:relative; }
-h1 { margin:0; font-size:28px; letter-spacing:0.04em; }
-h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
-.who { font-size:32px; margin:28px 0 8px; }
-.role { font-size:18px; color:#154360; }
-.meta { margin-top:20px; font-size:13px; color:#5d6d7e; }
-.sig { display:flex; justify-content:space-between; gap:16px; margin-top:36px; }
+@page { size: A4 landscape; margin: 0; }
+body { margin:0; font-family: Helvetica, Arial, sans-serif; background:#0c3d24; }
+.sheet { display:flex; width: min(980px,100vw); min-height: 560px; background:#fff; margin:0 auto; position:relative; }
+.rail { width:130px; background:#0c652f; color:#fff; padding:28px 14px; box-sizing:border-box; }
+.rail .brand { font-weight:800; }
+.rail .sub { color:#d6f5a3; font-weight:800; }
+.main { flex:1; padding:36px 48px 28px 36px; position:relative; }
+h1 { margin:0; color:#0c652f; font-size:34px; letter-spacing:.06em; }
+h2 { margin:4px 0 18px; color:#0c652f; font-size:22px; letter-spacing:.08em; }
+.who { font-size:30px; font-weight:800; margin:10px 0 16px; }
+.body { color:#243; max-width:520px; line-height:1.45; }
+.seal { position:absolute; right:40px; top:80px; width:84px; height:84px; border-radius:50%; background:#d4a017; color:#3a2a00; display:flex; align-items:center; justify-content:center; text-align:center; font-weight:800; font-size:12px; }
+.sig { display:flex; gap:18px; margin-top:40px; }
 </style></head><body>
 <div class="sheet">
-  <h1>CERTIFICATE OF VOLUNTEER SERVICE</h1>
-  <h2>BT42.195km Race 2026 · Blantyre · 27 September 2026</h2>
-  <p style="margin-top:28px">This certifies that</p>
-  <div class="who">${name.replace(/[<>]/g,'')}</div>
-  <div class="role">served as <strong>${role.replace(/[<>]/g,'')}</strong></div>
-  <p class="meta">Issued after race day by the Volunteers Coordinator on behalf of the Organising Committee.</p>
-  <div class="sig">
-    ${sigCell(sigs.kalua, 'Jim Kalua', 'Chairman, MNCS')}
-    ${sigCell(sigs.chamwala, 'Kondwani Chamwala', 'President, Athletics Malawi')}
-    ${sigCell(sigs.tenthani, 'Chifundo Tenthani', 'Chair, OC')}
+  <div class="rail"><div class="brand">MALAWI</div><div class="sub">SPORT</div></div>
+  <div class="main">
+    <h1>CERTIFICATE</h1>
+    <h2>OF APPRECIATION</h2>
+    <div>This certificate is presented to</div>
+    <div class="who">${name.replace(/[<>]/g,'')}</div>
+    <div class="body">in appreciation for dedicated volunteerism and service to the Malawi National Council of Sports (BT42.195km Race 2026 · 27 September 2026).<br>Crew role: <strong>${role.replace(/[<>]/g,'')}</strong></div>
+    <div class="seal">8TH<br>EDITION</div>
+    <div class="sig">
+      ${sigCell(sigs.tenthani, 'Chifundo Tenthani', 'Chairperson — BT42.195km Race')}
+      ${sigCell(sigs.chamwala, 'Kondwani Chamwala', 'President — Athletics Malawi')}
+      ${sigCell(sigs.kalua, 'Jim Kalua', 'Chairman — MNCS')}
+    </div>
   </div>
 </div>
 <script>setTimeout(function(){ window.print(); }, 400);<\/script>
 </body></html>`);
-    w.document.close();
+w.document.close();
   }
   function renderVolunteersAdmin() {
     const box = $('#ctrl-volunteers');
@@ -2846,7 +2853,7 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
             role: v.role || 'Race volunteer',
             distance: v.role || 'Race volunteer',
             phone: v.phone || '',
-            subject: 'Certificate of Volunteer Service — BT42.195km Race 2026',
+            subject: 'Certificate of Appreciation — BT42.195km Race 2026',
             raceDate: '27 September 2026',
             certId: 'BT42-VOL-' + String(v.id || '').slice(-8),
             issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),

@@ -17,22 +17,35 @@ function envNonEmpty(name) {
   return v && String(v).trim() ? String(v).trim() : '';
 }
 
+function pickSigs(src, out) {
+  const sigs = src && typeof src === 'object' ? src : {};
+  ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
+    const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
+    if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
+  });
+}
+
 async function loadStoredSignatures() {
   const out = { kalua: '', chamwala: '', tenthani: '' };
-  try {
+  const tryBlobs = async () => {
+    const { getStore } = require('@netlify/blobs');
     const siteID = envNonEmpty('NETLIFY_SITE_ID') || envNonEmpty('SITE_ID');
     const token = envNonEmpty('NETLIFY_BLOBS_TOKEN') || envNonEmpty('NETLIFY_AUTH_TOKEN');
-    if (siteID && token) {
-      const { getStore } = require('@netlify/blobs');
-      const store = getStore({ name: 'bt42-oc-sync', siteID, token, consistency: 'strong' });
+    const store = (siteID && token)
+      ? getStore({ name: 'bt42-oc-sync', siteID, token, consistency: 'strong' })
+      : getStore({ name: 'bt42-oc-sync', consistency: 'strong' });
+    try {
+      const dedicated = await store.get('signatures', { type: 'json' });
+      pickSigs(dedicated, out);
+    } catch (e) { /* ignore */ }
+    if (!out.kalua && !out.chamwala && !out.tenthani) {
       const raw = await store.get('state', { type: 'json' });
-      const sigs = raw && raw.signatures ? raw.signatures : {};
-      ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
-        const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
-        if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
-      });
-      return out;
+      pickSigs(raw && raw.signatures, out);
     }
+  };
+  try {
+    await tryBlobs();
+    if (out.kalua || out.chamwala || out.tenthani) return out;
   } catch (e) { /* ignore */ }
   try {
     const bin = envNonEmpty('JSONBIN_BIN_ID');
@@ -251,6 +264,116 @@ async function buildCertificatePdf(opts) {
   return Buffer.from(await doc.save()).toString('base64');
 }
 
+async function embedDataImage(doc, dataUrl) {
+  if (!dataUrl || dataUrl.indexOf('data:image') !== 0) return null;
+  const m = dataUrl.match(/^data:image\/(png|jpeg|jpg);base64,(.+)$/i);
+  if (!m) return null;
+  const bytes = Buffer.from(m[2], 'base64');
+  try {
+    if (m[1].toLowerCase() === 'png') return await doc.embedPng(bytes);
+    return await doc.embedJpg(bytes);
+  } catch (e) {
+    try { return await doc.embedJpg(bytes); } catch (e2) { return null; }
+  }
+}
+
+async function buildVolunteerAppreciationPdf(opts) {
+  const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([842, 595]);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const fontBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const { width, height } = page.getSize();
+  const green = rgb(0.047, 0.396, 0.208);
+  const darkGreen = rgb(0.02, 0.28, 0.14);
+  const black = rgb(0.08, 0.08, 0.08);
+  const muted = rgb(0.25, 0.35, 0.28);
+  const gold = rgb(0.75, 0.58, 0.12);
+  const red = rgb(0.75, 0.12, 0.12);
+
+  page.drawRectangle({ x: 0, y: 0, width, height, color: rgb(1, 1, 1) });
+  page.drawRectangle({ x: 0, y: 0, width: 118, height, color: green });
+  page.drawRectangle({ x: width - 36, y: 0, width: 36, height, color: rgb(0.95, 0.95, 0.95) });
+  page.drawRectangle({ x: width - 28, y: 0, width: 14, height, color: red });
+  page.drawRectangle({ x: width - 14, y: 0, width: 14, height, color: rgb(0.08, 0.08, 0.08) });
+  page.drawRectangle({ x: 118, y: height - 18, width: width - 118, height: 18, color: green });
+
+  try {
+    const bytes = await fetchLogoBytes('/assets/mncs-logo.png');
+    if (bytes) {
+      let img = null;
+      try { img = await doc.embedPng(bytes); } catch (e) { try { img = await doc.embedJpg(bytes); } catch (e2) {} }
+      if (img) {
+        const w = 78;
+        const h = Math.min(78, (img.height / img.width) * w);
+        page.drawImage(img, { x: 20, y: height - 110, width: w, height: h });
+      }
+    }
+  } catch (e) { /* logo optional */ }
+
+  page.drawText('MALAWI', { x: 22, y: 88, size: 11, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('SPORT', { x: 22, y: 74, size: 11, font: fontBold, color: rgb(0.85, 0.95, 0.4) });
+  page.drawText('BT42.195km', { x: 18, y: 42, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+  page.drawText('RACE 2026', { x: 18, y: 30, size: 9, font: fontBold, color: rgb(1, 1, 1) });
+
+  const cx = (width + 118) / 2;
+  const drawC = (text, y, size, fnt, color) => {
+    const t = String(text || '');
+    const w = fnt.widthOfTextAtSize(t, size);
+    page.drawText(t, { x: cx - w / 2, y, size, font: fnt, color });
+  };
+
+  drawC('CERTIFICATE', height - 92, 32, fontBold, green);
+  drawC('OF APPRECIATION', height - 128, 22, fontBold, green);
+  drawC('This certificate is presented to', height - 168, 13, font, muted);
+
+  const name = String(opts.fullName || 'Volunteer').slice(0, 80);
+  const nameSize = name.length > 28 ? 22 : 28;
+  drawC(name, height - 214, nameSize, fontBold, black);
+
+  const role = String(opts.distance || opts.role || 'Race volunteer');
+  const body1 = 'in appreciation for dedicated volunteerism and service';
+  const body2 = 'to the Malawi National Council of Sports';
+  const body3 = '(BT42.195km Race 2026 · Blantyre · 27 September 2026)';
+  const body4 = role ? ('Crew role: ' + role) : '';
+  drawC(body1, height - 258, 13, font, black);
+  drawC(body2, height - 276, 13, font, black);
+  drawC(body3, height - 296, 12, fontBold, darkGreen);
+  if (body4) drawC(body4, height - 316, 11, font, muted);
+
+  page.drawCircle({ x: width - 118, y: height - 168, size: 36, color: gold, borderColor: rgb(0.55, 0.4, 0.05), borderWidth: 2 });
+  page.drawText('8TH', { x: width - 132, y: height - 162, size: 10, font: fontBold, color: rgb(0.25, 0.16, 0) });
+  page.drawText('EDITION', { x: width - 140, y: height - 174, size: 8, font: fontBold, color: rgb(0.25, 0.16, 0) });
+
+  const sigs = opts.signatures || {};
+  const people = [
+    { key: 'tenthani', name: 'Chifundo Tenthani', title: 'Chairperson — BT42.195km Race' },
+    { key: 'chamwala', name: 'Kondwani Chamwala', title: 'President — Athletics Malawi' },
+    { key: 'kalua', name: 'Jim Kalua', title: 'Chairman — MNCS' }
+  ];
+  const colW = 175;
+  const startX = 150;
+  const sigY = 78;
+  for (let i = 0; i < people.length; i++) {
+    const p = people[i];
+    const x = startX + i * (colW + 18);
+    const img = await embedDataImage(doc, sigs[p.key]);
+    if (img) {
+      const maxW = 150, maxH = 40;
+      const scale = Math.min(maxW / img.width, maxH / img.height, 1);
+      const iw = img.width * scale, ih = img.height * scale;
+      page.drawImage(img, { x: x + (colW - iw) / 2, y: sigY + 36, width: iw, height: ih });
+    }
+    page.drawLine({ start: { x: x + 8, y: sigY + 30 }, end: { x: x + colW - 8, y: sigY + 30 }, thickness: 0.8, color: green });
+    const nw = fontBold.widthOfTextAtSize(p.name, 9);
+    page.drawText(p.name, { x: x + (colW - nw) / 2, y: sigY + 16, size: 9, font: fontBold, color: black });
+    const tw = font.widthOfTextAtSize(p.title, 7);
+    page.drawText(p.title, { x: x + (colW - tw) / 2, y: sigY + 4, size: 7, font, color: muted });
+  }
+
+  return Buffer.from(await doc.save()).toString('base64');
+}
+
 const recentSends = {};
 exports.handler = async (event) => {
   const headers = {
@@ -381,7 +504,7 @@ exports.handler = async (event) => {
     }
   } else if (type === 'volunteer') {
     const role = body.role || body.distance || 'Race volunteer';
-    subject = body.subject || 'Certificate of Volunteer Service — BT42.195km Race 2026';
+    subject = body.subject || 'Certificate of Appreciation — BT42.195km Race 2026';
     html = body.html || `<p>Dear ${esc(fullName)},</p>
 <p>Thank you for serving as a volunteer at the <strong>BT42.195km Race 2026</strong>.</p>
 <p>Role: <strong>${esc(role)}</strong></p>
@@ -389,18 +512,16 @@ exports.handler = async (event) => {
 <p>Race day: <strong>${esc(raceDate)}</strong> · Blantyre</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
     try {
-      const pdfB64 = await buildCertificatePdf({
+      const storedSigs = await loadStoredSignatures();
+      const pdfB64 = await buildVolunteerAppreciationPdf({
         fullName,
         distance: role,
-        finishTime: '',
-        reason: 'Volunteer service',
-        isCompletion: false,
-        volunteer: true,
+        role,
         phone: body.phone || '',
         email: to,
         certId: body.certId || '',
         issued: body.issued || '',
-        signatures: mergeSigPayload(body.signatures || {}, await loadStoredSignatures())
+        signatures: mergeSigPayload(body.signatures || {}, storedSigs)
       });
       attachments.push({
         filename: 'BT42-Volunteer-Certificate.pdf',

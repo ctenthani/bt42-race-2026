@@ -108,6 +108,17 @@ async function blobsWrite(state) {
     store = getStore({ name: STORE_NAME, consistency: 'strong' });
   }
   await store.setJSON(STATE_KEY, state);
+  if (state && state.signatures && typeof state.signatures === 'object') {
+    const slim = {};
+    ['kalua', 'chamwala', 'tenthani', 'chinangwa'].forEach((k) => {
+      if (typeof state.signatures[k] === 'string' && state.signatures[k].indexOf('data:image') === 0) {
+        slim[k] = state.signatures[k];
+      }
+    });
+    if (Object.keys(slim).length) {
+      await store.setJSON('signatures', slim);
+    }
+  }
 }
 
 function jsonbinConfigured() {
