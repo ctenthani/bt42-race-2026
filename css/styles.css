@@ -1739,3 +1739,43 @@ body.course-full #page-course .container.section { padding: 0.35rem 0.5rem 0; }
   .org-group-partner { border-left: 0; padding-left: 0; }
   .org-logo-official { height: 42px; }
 }
+
+.hero-brands {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  align-items: flex-end;
+  margin-top: 1.35rem;
+}
+.hero-brand-group span {
+  display: block;
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  opacity: 0.8;
+  margin-bottom: 0.35rem;
+}
+.hero-brand-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.hero-brand-row img {
+  height: 48px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+.hero-brand-partner {
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255,255,255,0.25);
+}
+.hero-brand-partner img { height: 44px; max-width: 170px; }
+@media (max-width: 700px) {
+  .hero-brand-partner { border-left: 0; padding-left: 0; }
+  .hero-brand-row img { height: 40px; }
+}
