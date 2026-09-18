@@ -940,6 +940,94 @@
     return normalizeSigMap(loadSigs());
   }
 
+  async function signaturesForEmail() {
+    const src = certSignaturesPayload();
+    const out = { kalua: '', chamwala: '', tenthani: '' };
+    for (const k of Object.keys(out)) {
+      if (!src[k]) continue;
+      try {
+        out[k] = await compressSigImage(src[k], 220, 0.52);
+      } catch (e) {
+        out[k] = src[k];
+      }
+    }
+    return out;
+  }
+
+  function buildClientCertificatePdf(opts) {
+    const jsPDF = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
+    if (!jsPDF) return '';
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    doc.setDrawColor(27, 79, 114);
+    doc.setLineWidth(14);
+    doc.rect(10, 10, W - 20, H - 20);
+    doc.setDrawColor(212, 175, 55);
+    doc.setLineWidth(2);
+    doc.rect(22, 22, W - 44, H - 44);
+    doc.setTextColor(27, 79, 114);
+    doc.setFont('times', 'bold');
+    doc.setFontSize(11);
+    doc.text('MALAWI NATIONAL COUNCIL OF SPORTS  ·  ATHLETICS MALAWI', W / 2, 58, { align: 'center' });
+    doc.setFontSize(16);
+    doc.text('BT42.195km Race 2026', W / 2, 78, { align: 'center' });
+    doc.setFont('times', 'normal');
+    doc.setFontSize(10);
+    doc.text('Blantyre · Sunday, 27 September 2026', W / 2, 94, { align: 'center' });
+    const title = opts.volunteer
+      ? 'CERTIFICATE OF VOLUNTEER SERVICE'
+      : (opts.isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION');
+    doc.setFont('times', 'bold');
+    doc.setFontSize(22);
+    doc.setTextColor(184, 148, 31);
+    doc.text(title, W / 2, 140, { align: 'center' });
+    doc.setTextColor(30, 30, 30);
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12);
+    doc.text(opts.volunteer ? 'This is to certify that' : 'This is to certify that', W / 2, 175, { align: 'center' });
+    doc.setFont('times', 'bold');
+    doc.setFontSize(26);
+    doc.text(String(opts.fullName || 'Name'), W / 2, 210, { align: 'center' });
+    doc.setFont('times', 'normal');
+    doc.setFontSize(12);
+    const body = opts.volunteer
+      ? ('served as a volunteer (' + (opts.distance || opts.role || 'Race volunteer') + ') at the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.')
+      : (opts.isCompletion
+        ? ('has successfully completed the ' + (opts.distance || '') + ' of the BT42.195km Race 2026.')
+        : ('was a registered participant in the ' + (opts.distance || '') + ' of the BT42.195km Race 2026.'));
+    const lines = doc.splitTextToSize(body, 620);
+    doc.text(lines, W / 2, 250, { align: 'center' });
+    const sigs = opts.signatures || {};
+    const people = [
+      { k: 'kalua', n: 'Jim Kalua', t: 'Chairman of the Council' },
+      { k: 'chamwala', n: 'Kondwani Chamwala', t: 'President of Athletics Malawi' },
+      { k: 'tenthani', n: 'Chifundo Tenthani', t: 'Chair, Organising Committee' }
+    ];
+    const col = [90, 310, 530];
+    people.forEach((p, i) => {
+      const x = col[i];
+      const data = sigs[p.k];
+      if (data && data.indexOf('data:image') === 0) {
+        try {
+          const fmt = data.indexOf('png') >= 0 ? 'PNG' : 'JPEG';
+          doc.addImage(data, fmt, x + 10, 360, 150, 42);
+        } catch (e) { /* skip */ }
+      }
+      doc.setDrawColor(30, 30, 30);
+      doc.setLineWidth(0.8);
+      doc.line(x, 412, x + 170, 412);
+      doc.setFont('times', 'bold');
+      doc.setFontSize(10);
+      doc.text(p.n, x + 85, 428, { align: 'center' });
+      doc.setFont('times', 'normal');
+      doc.setFontSize(8);
+      doc.text(p.t, x + 85, 440, { align: 'center' });
+    });
+    const raw = doc.output('datauristring');
+    return raw.split(',')[1] || '';
+  }
+
   function compressSigImage(dataUrl, maxW, quality) {
     return new Promise((resolve) => {
       try {
@@ -2834,6 +2922,14 @@ w.document.close();
         let mailed = false;
         let mailErr = '';
         try {
+          const sigs = await signaturesForEmail();
+          const pdfBase64 = buildClientCertificatePdf({
+            volunteer: true,
+            fullName: v.fullName,
+            distance: v.role || 'Race volunteer',
+            role: v.role || 'Race volunteer',
+            signatures: sigs
+          });
           const j = await sendAthleteEmail({
             type: 'volunteer',
             to: to,
@@ -2842,11 +2938,12 @@ w.document.close();
             role: v.role || 'Race volunteer',
             distance: v.role || 'Race volunteer',
             phone: v.phone || '',
-            subject: 'Certificate of Appreciation — BT42.195km Race 2026',
+            subject: 'Certificate of Volunteer Service — BT42.195km Race 2026',
             raceDate: '27 September 2026',
             certId: 'BT42-VOL-' + String(v.id || '').slice(-8),
             issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-            signatures: typeof certSignaturesPayload === 'function' ? certSignaturesPayload() : {}
+            signatures: sigs,
+            pdfBase64: pdfBase64
           });
           mailed = !!(j && j.ok);
           mailErr = (j && (j.error || j.detail && j.detail.message)) || '';

@@ -512,8 +512,12 @@ exports.handler = async (event) => {
 <p>Race day: <strong>${esc(raceDate)}</strong> · Blantyre</p>
 <p>— Organising Committee, BT42.195km Race</p>`;
     try {
+      let pdfB64 = '';
+      if (typeof body.pdfBase64 === 'string' && body.pdfBase64.length > 80) {
+        pdfB64 = body.pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+      } else {
       const storedSigs = await loadStoredSignatures();
-      const pdfB64 = await buildCertificatePdf({
+      pdfB64 = await buildCertificatePdf({
         fullName,
         distance: role,
         finishTime: '',
@@ -526,6 +530,7 @@ exports.handler = async (event) => {
         issued: body.issued || '',
         signatures: mergeSigPayload(body.signatures || {}, storedSigs)
       });
+      }
       attachments.push({
         filename: 'BT42-Volunteer-Certificate.pdf',
         content: pdfB64
