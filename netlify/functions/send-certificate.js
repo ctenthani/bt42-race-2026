@@ -152,7 +152,9 @@ async function buildCertificatePdf(opts) {
   drawCentered('BT42.195km Race 2026', height - 98, 18, fontBold, navy);
   drawCentered('Blantyre · Sunday, 27 September 2026', height - 118, 11, font, muted);
 
-  const title = opts.isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION';
+  const title = opts.volunteer
+    ? 'CERTIFICATE OF VOLUNTEER SERVICE'
+    : (opts.isCompletion ? 'CERTIFICATE OF COMPLETION' : 'CERTIFICATE OF PARTICIPATION');
   drawCentered(title, height - 168, 26, fontBold, gold);
   drawCentered('This is to certify that', height - 200, 13, font, dark);
 
@@ -169,7 +171,9 @@ async function buildCertificatePdf(opts) {
 
   const distance = String(opts.distance || 'race');
   const finishTime = opts.finishTime ? String(opts.finishTime) : '';
-  const body = opts.isCompletion
+  const body = opts.volunteer
+    ? ('served as a volunteer (' + distance + ') at the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.')
+    : opts.isCompletion
     ? ('has successfully completed the ' + distance + ' of the BT42.195km Race 2026' +
        (finishTime ? ' in a time of ' + finishTime : '') +
        ', organised under the auspices of the Malawi National Council of Sports.')
@@ -281,6 +285,7 @@ exports.handler = async (event) => {
   if (type === 'payment_verified') type = 'payment';
   if (type === 'participation_certificate') type = 'participation';
   if (type === 'completion_certificate') type = 'completion';
+  if (type === 'volunteer_certificate') type = 'volunteer';
   const to = (body.to || body.email || '').trim();
   const fullName = body.fullName || 'Athlete';
   const distance = body.distance || '';
@@ -363,6 +368,40 @@ exports.handler = async (event) => {
         filename: finalCompletion
           ? 'BT42-Completion-Certificate.pdf'
           : 'BT42-Participation-Certificate.pdf',
+        content: pdfB64
+      });
+    } catch (e) {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: false, error: 'PDF generation failed: ' + (e.message || e) })
+      };
+    }
+  } else if (type === 'volunteer') {
+    const role = body.role || body.distance || 'Race volunteer';
+    subject = body.subject || 'Certificate of Volunteer Service — BT42.195km Race 2026';
+    html = body.html || `<p>Dear ${esc(fullName)},</p>
+<p>Thank you for serving as a volunteer at the <strong>BT42.195km Race 2026</strong>.</p>
+<p>Role: <strong>${esc(role)}</strong></p>
+<p>Your official certificate of volunteer service is attached as a PDF.</p>
+<p>Race day: <strong>${esc(raceDate)}</strong> · Blantyre</p>
+<p>— Organising Committee, BT42.195km Race</p>`;
+    try {
+      const pdfB64 = await buildCertificatePdf({
+        fullName,
+        distance: role,
+        finishTime: '',
+        reason: 'Volunteer service',
+        isCompletion: false,
+        volunteer: true,
+        phone: body.phone || '',
+        email: to,
+        certId: body.certId || '',
+        issued: body.issued || '',
+        signatures: mergeSigPayload(body.signatures || {}, await loadStoredSignatures())
+      });
+      attachments.push({
+        filename: 'BT42-Volunteer-Certificate.pdf',
         content: pdfB64
       });
     } catch (e) {

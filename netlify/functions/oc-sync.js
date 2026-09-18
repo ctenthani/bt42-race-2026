@@ -14,6 +14,7 @@ const emptyState = () => ({
   attendance: {},
   signatures: {},
   staffUsers: [],
+  volunteers: [],
   siteContent: null,
   suppressedKeys: [],
   updatedAt: null,
@@ -383,6 +384,9 @@ function mergeState(current, body, role) {
       throw e;
     }
     next.siteContent = body.siteContent;
+  }
+  if (body.volunteers && Array.isArray(body.volunteers)) {
+    next.volunteers = body.volunteers;
   }
   if (body.staffUsers && Array.isArray(body.staffUsers)) {
     if (role !== 'chair') {

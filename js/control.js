@@ -23,6 +23,7 @@
   const BIB_KEY = 'bt42_bib_numbers';
   const SYNC_TOKEN_KEY = 'bt42_oc_sync_token';
   const SYNC_META_KEY = 'bt42_oc_sync_meta';
+  const VOL_KEY = 'bt42_volunteers';
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -31,11 +32,12 @@
     payment: sessionStorage.getItem('bt42_perm_payment') === '1',
     bibs: sessionStorage.getItem('bt42_perm_bibs') === '1',
     finish: sessionStorage.getItem('bt42_perm_finish') === '1',
+    volunteers: sessionStorage.getItem('bt42_perm_volunteers') === '1',
     manageStaff: sessionStorage.getItem('bt42_perm_staff') === '1'
   };
   // Chair always has all perms
   if (isChair) {
-    perms = { payment: true, bibs: true, finish: true, manageStaff: true };
+    perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true };
   }
 
   async function sha256(text) {
@@ -65,6 +67,7 @@
   function canBibs() { return isChair || !!perms.bibs; }
   function canFinish() { return isChair || !!perms.finish; }
   function canManageStaff() { return isChair || !!perms.manageStaff; }
+  function canVolunteers() { return isChair || !!perms.volunteers; }
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
@@ -94,11 +97,12 @@
       let label = 'Committee (view)';
       let cls = 'role-badge committee';
       if (isChair) { label = 'Chair' + (currentUser ? ' · ' + currentUser : ''); cls = 'role-badge chair'; }
-      else if (canPayment() || canBibs() || canFinish()) {
+      else if (canPayment() || canBibs() || canFinish() || canVolunteers()) {
         const bits = [];
         if (canPayment()) bits.push('pay');
         if (canBibs()) bits.push('bibs');
         if (canFinish()) bits.push('finish');
+        if (canVolunteers()) bits.push('volunteers');
         label = (currentUser || 'Ops') + ' · ' + bits.join('/');
         cls = 'role-badge chair';
       } else if (currentUser) {
@@ -135,16 +139,17 @@
     isChair = role === 'chair';
     currentUser = user || (isChair ? 'chair' : 'committee');
     if (isChair) {
-      perms = { payment: true, bibs: true, finish: true, manageStaff: true };
+      perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true };
     } else if (userPerms) {
       perms = {
         payment: !!userPerms.payment,
         bibs: !!userPerms.bibs,
         finish: !!userPerms.finish,
+        volunteers: !!userPerms.volunteers,
         manageStaff: !!userPerms.manageStaff
       };
     } else {
-      perms = { payment: false, bibs: false, finish: false, manageStaff: false };
+      perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false };
     }
     sessionStorage.setItem('bt42_control_unlocked', '1');
     sessionStorage.setItem('bt42_control_role', isChair ? 'chair' : 'committee');
@@ -152,6 +157,7 @@
     sessionStorage.setItem('bt42_perm_payment', perms.payment ? '1' : '0');
     sessionStorage.setItem('bt42_perm_bibs', perms.bibs ? '1' : '0');
     sessionStorage.setItem('bt42_perm_finish', perms.finish ? '1' : '0');
+    sessionStorage.setItem('bt42_perm_volunteers', perms.volunteers ? '1' : '0');
     sessionStorage.setItem('bt42_perm_staff', perms.manageStaff ? '1' : '0');
     const gate = $('#control-gate');
     const room = $('#control-room');
@@ -265,6 +271,7 @@
         payment: !!acc.canPayment,
         bibs: !!acc.canBibs,
         finish: !!acc.canFinish,
+        volunteers: !!acc.canVolunteers,
         manageStaff: false
       });
     }
@@ -277,11 +284,12 @@
     sessionStorage.removeItem('bt42_perm_payment');
     sessionStorage.removeItem('bt42_perm_bibs');
     sessionStorage.removeItem('bt42_perm_finish');
+    sessionStorage.removeItem('bt42_perm_volunteers');
     sessionStorage.removeItem('bt42_perm_staff');
     unlocked = false;
     isChair = false;
     currentUser = '';
-    perms = { payment: false, bibs: false, finish: false, manageStaff: false };
+    perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false };
     showGate();
     const input = $('#control-pin');
     if (input) input.value = '';
@@ -1111,6 +1119,9 @@
     if (Array.isArray(s.staffUsers)) {
       try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
     }
+    if (Array.isArray(s.volunteers)) {
+      try { localStorage.setItem(VOL_KEY, JSON.stringify(s.volunteers)); } catch (e) {}
+    }
     if (s.siteContent && typeof s.siteContent === 'object') {
       try {
         localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(s.siteContent));
@@ -1169,6 +1180,9 @@
     };
     if (canPayment()) {
       payload.payments = loadPayments();
+    }
+    if (canVolunteers()) {
+      payload.volunteers = loadVolunteers();
     }
     if (isChair) {
       payload.replacePayments = true;
@@ -1268,6 +1282,7 @@
         if (at && at !== lastKnownUpdatedAt) {
           lastKnownUpdatedAt = at;
           renderParticipants();
+          renderVolunteersAdmin();
           renderAttendance();
           renderDashboard();
           renderSyncBar();
@@ -2320,7 +2335,8 @@
       const flags = [
         u.canPayment ? 'Payment' : '',
         u.canBibs ? 'Bibs' : '',
-        u.canFinish ? 'Finish' : ''
+        u.canFinish ? 'Finish' : '',
+        u.canVolunteers ? 'Volunteers' : ''
       ].filter(Boolean).join(', ') || 'View only';
       return '<tr><td>' + escapeHtml(u.username) + '</td><td>' + escapeHtml(u.displayName || '') + '</td><td>' +
         escapeHtml(flags) + '</td><td>' + (u.disabled ? 'Disabled' : 'Active') +
@@ -2344,6 +2360,7 @@
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-pay" checked /> Can verify / reject payments</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-bibs" checked /> Can assign bibs</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-finish" checked /> Can enter Finish / DNF</label>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-volunteers" /> Volunteers Coordinator (select + issue certificates)</label>
         <button type="button" class="btn btn-primary" id="staff-create-btn">Create login</button>
       </div>
       <div class="table-wrap"><table class="data-table">
@@ -2376,6 +2393,7 @@
         canPayment: !!($('#staff-can-pay') || {}).checked,
         canBibs: !!($('#staff-can-bibs') || {}).checked,
         canFinish: !!($('#staff-can-finish') || {}).checked,
+        canVolunteers: !!($('#staff-can-volunteers') || {}).checked,
         disabled: false,
         createdAt: new Date().toISOString()
       });
@@ -2488,6 +2506,183 @@
     });
   }
 
+  function loadVolunteers() {
+    try {
+      const list = JSON.parse(localStorage.getItem(VOL_KEY) || '[]');
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
+  }
+  function saveVolunteers(list) {
+    localStorage.setItem(VOL_KEY, JSON.stringify(list || []));
+  }
+  function volunteerId() {
+    return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+  function openVolunteerCertificate(v) {
+    const name = String(v.fullName || '').trim() || 'Volunteer';
+    const role = String(v.role || 'Race volunteer').trim();
+    const w = window.open('', '_blank', 'width=900,height=650');
+    if (!w) { alert('Allow pop-ups to view the certificate.'); return; }
+    w.document.write(`<!DOCTYPE html><html><head><title>Volunteer certificate — ${name.replace(/[<>]/g,'')}</title>
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+body { font-family: Georgia, serif; margin:0; background:#1B4F72; color:#1B4F72; }
+.sheet { background:#fff; margin:16px auto; width: min(920px, 96vw); min-height: 560px; padding: 36px 48px; box-sizing:border-box; border:10px solid #1B4F72; position:relative; }
+h1 { margin:0; font-size:28px; letter-spacing:0.04em; }
+h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
+.who { font-size:32px; margin:28px 0 8px; }
+.role { font-size:18px; color:#154360; }
+.meta { margin-top:28px; font-size:13px; color:#5d6d7e; }
+.sig { display:flex; justify-content:space-between; margin-top:48px; font-size:13px; }
+.sig span { border-top:1px solid #1B4F72; padding-top:6px; min-width:180px; text-align:center; }
+</style></head><body>
+<div class="sheet">
+  <h1>CERTIFICATE OF VOLUNTEER SERVICE</h1>
+  <h2>BT42.195km Race 2026 · Blantyre · 27 September 2026</h2>
+  <p style="margin-top:28px">This certifies that</p>
+  <div class="who">${name.replace(/[<>]/g,'')}</div>
+  <div class="role">served as <strong>${role.replace(/[<>]/g,'')}</strong></div>
+  <p class="meta">Issued after race day by the Volunteers Coordinator on behalf of the Organising Committee.</p>
+  <div class="sig"><span>Volunteers Coordinator</span><span>Chair · BT42.195km Race</span></div>
+</div>
+<script>setTimeout(function(){ window.print(); }, 400);<\/script>
+</body></html>`);
+    w.document.close();
+  }
+  function renderVolunteersAdmin() {
+    const box = $('#ctrl-volunteers');
+    if (!box) return;
+    const list = loadVolunteers();
+    const canEdit = canVolunteers();
+    const rows = list.map((v, i) => {
+      const st = String(v.status || 'applied');
+      const cert = v.certIssued ? ('Issued ' + String(v.issuedAt || '').slice(0, 10)) : '—';
+      const actions = canEdit ? (
+        '<button type="button" class="btn-mini vol-select" data-i="' + i + '">' + (st === 'selected' || st === 'served' ? 'Selected' : 'Select') + '</button> ' +
+        '<button type="button" class="btn-mini vol-decline" data-i="' + i + '">Decline</button> ' +
+        '<button type="button" class="btn-mini vol-cert" data-i="' + i + '"' + (st === 'selected' || st === 'served' ? '' : ' disabled title="Select first"') + '>Issue certificate</button> ' +
+        '<button type="button" class="btn-mini vol-del" data-i="' + i + '" style="color:#C0392B">Remove</button>'
+      ) : (st + (v.certIssued ? ' · certificate issued' : ''));
+      return '<tr><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
+        '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + escapeHtml(v.role || '') +
+        '</td><td>' + escapeHtml(st) + '</td><td>' + escapeHtml(cert) + '</td><td>' + actions + '</td></tr>';
+    }).join('') || '<tr><td colspan="7">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
+    box.innerHTML = (canEdit ? `
+      <div class="card" style="padding:0.75rem;margin-bottom:1rem">
+        <h4 style="margin-top:0">Add volunteer from the form</h4>
+        <div class="form-row">
+          <div class="form-group"><label>Full name *</label><input id="vol-name" type="text" /></div>
+          <div class="form-group"><label>Email *</label><input id="vol-email" type="email" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Phone</label><input id="vol-phone" type="tel" /></div>
+          <div class="form-group"><label>Role / area</label><input id="vol-role" type="text" placeholder="Water kiosk, marshal…" /></div>
+        </div>
+        <button type="button" class="btn btn-primary" id="vol-add">Add to list</button>
+      </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
+      '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th></th></tr></thead><tbody>' +
+      rows + '</tbody></table></div>';
+    const add = $('#vol-add');
+    if (add) add.onclick = () => {
+      if (!canVolunteers()) return;
+      const fullName = (($('#vol-name') || {}).value || '').trim();
+      const email = (($('#vol-email') || {}).value || '').trim();
+      if (!fullName || !email) { alert('Name and email required (certificate + send).'); return; }
+      const next = loadVolunteers();
+      next.push({
+        id: volunteerId(),
+        fullName,
+        email,
+        phone: (($('#vol-phone') || {}).value || '').trim(),
+        role: (($('#vol-role') || {}).value || '').trim() || 'Race volunteer',
+        status: 'applied',
+        certIssued: false,
+        createdAt: new Date().toISOString()
+      });
+      saveVolunteers(next);
+      if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+      renderVolunteersAdmin();
+    };
+    box.querySelectorAll('.vol-select').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canVolunteers()) return;
+        const next = loadVolunteers();
+        const i = Number(btn.dataset.i);
+        if (!next[i]) return;
+        next[i].status = 'selected';
+        saveVolunteers(next);
+        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        renderVolunteersAdmin();
+      };
+    });
+    box.querySelectorAll('.vol-decline').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canVolunteers()) return;
+        const next = loadVolunteers();
+        const i = Number(btn.dataset.i);
+        if (!next[i]) return;
+        next[i].status = 'declined';
+        saveVolunteers(next);
+        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        renderVolunteersAdmin();
+      };
+    });
+    box.querySelectorAll('.vol-cert').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canVolunteers()) return;
+        const next = loadVolunteers();
+        const i = Number(btn.dataset.i);
+        const v = next[i];
+        if (!v) return;
+        if (v.status !== 'selected' && v.status !== 'served') {
+          alert('Mark as Selected before issuing a certificate.');
+          return;
+        }
+        v.status = 'served';
+        v.certIssued = true;
+        v.issuedAt = new Date().toISOString();
+        v.issuedBy = currentUser || 'coordinator';
+        saveVolunteers(next);
+        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        openVolunteerCertificate(v);
+        const to = String(v.email || '').trim();
+        if (!to || to.indexOf('@') < 0) {
+          alert('Certificate opened. No valid email on file — nothing was emailed.');
+        } else {
+          sendAthleteEmail({
+            type: 'volunteer',
+            to: to,
+            email: to,
+            fullName: v.fullName,
+            role: v.role || 'Race volunteer',
+            distance: v.role || 'Race volunteer',
+            phone: v.phone || '',
+            subject: 'Certificate of Volunteer Service — BT42.195km Race 2026',
+            raceDate: '27 September 2026',
+            certId: 'BT42-VOL-' + String(v.id || '').slice(-8),
+            issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+            signatures: typeof certSignaturesPayload === 'function' ? certSignaturesPayload() : {}
+          }).then((j) => {
+            if (j && j.ok) alert('Certificate emailed to ' + to);
+            else alert('Certificate opened, but email failed: ' + ((j && j.error) || 'unknown'));
+          });
+        }
+        renderVolunteersAdmin();
+      };
+    });
+    box.querySelectorAll('.vol-del').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canVolunteers()) return;
+        if (!confirm('Remove this volunteer from the list?')) return;
+        const next = loadVolunteers();
+        next.splice(Number(btn.dataset.i), 1);
+        saveVolunteers(next);
+        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        renderVolunteersAdmin();
+      };
+    });
+  }
+
   function renderAll() {
     renderDashboard();
     renderChecklist();
@@ -2499,6 +2694,7 @@
     renderTargets();
     renderSyncBar();
     renderParticipants();
+    renderVolunteersAdmin();
     renderAttendance();
     renderDeadlines();
     if (isChair) renderChairNotes();
@@ -2516,6 +2712,7 @@
       pullSharedState().then(r => {
         if (r.ok) {
           renderParticipants();
+          renderVolunteersAdmin();
           renderAttendance();
           renderDashboard();
         }

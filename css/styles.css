@@ -1599,3 +1599,6 @@ body.course-full #page-course .container.section { padding: 0.35rem 0.5rem 0; }
   }
 }
 
+
+.form-embed-wrap { background:#fff; border-radius:14px; overflow:hidden; border:1px solid var(--border,#d5dde6); }
+.gform-embed { width:100%; height:min(80vh, 820px); border:0; display:block; background:#fff; }
