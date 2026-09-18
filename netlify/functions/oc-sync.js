@@ -548,10 +548,19 @@ exports.handler = async (event) => {
       try {
         next = mergeState(current, body, role);
       } catch (e) {
-        return json(e.status || 400, { ok: false, error: e.message });
+        return json(e.status || e.statusCode || 400, { ok: false, error: e.message });
       }
       const backend = await writeState(next);
-      return json(200, { ok: true, backend, state: next });
+      const publicState = Object.assign({}, next);
+      if (role !== 'chair' && publicState.signatures) {
+        publicState.signatures = {
+          kalua: !!(next.signatures && next.signatures.kalua && String(next.signatures.kalua).indexOf('data:image') === 0),
+          chamwala: !!(next.signatures && next.signatures.chamwala && String(next.signatures.chamwala).indexOf('data:image') === 0),
+          tenthani: !!(next.signatures && next.signatures.tenthani && String(next.signatures.tenthani).indexOf('data:image') === 0),
+          _presentOnly: true
+        };
+      }
+      return json(200, { ok: true, backend, state: publicState, signaturesStored: !!(next.signatures && (next.signatures.kalua || next.signatures.chamwala || next.signatures.tenthani)) });
     }
 
     return json(405, { ok: false, error: 'Method Not Allowed' });

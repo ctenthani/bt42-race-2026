@@ -513,10 +513,13 @@ exports.handler = async (event) => {
 <p>— Organising Committee, BT42.195km Race</p>`;
     try {
       const storedSigs = await loadStoredSignatures();
-      const pdfB64 = await buildVolunteerAppreciationPdf({
+      const pdfB64 = await buildCertificatePdf({
         fullName,
         distance: role,
-        role,
+        finishTime: '',
+        reason: 'Volunteer service',
+        isCompletion: false,
+        volunteer: true,
         phone: body.phone || '',
         email: to,
         certId: body.certId || '',
