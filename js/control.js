@@ -1120,7 +1120,25 @@
       try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
     }
     if (Array.isArray(s.volunteers)) {
-      try { localStorage.setItem(VOL_KEY, JSON.stringify(s.volunteers)); } catch (e) {}
+      try {
+        const rank = (v) => {
+          const st = String((v && v.status) || 'applied');
+          if (st === 'served' || (v && v.certIssued)) return 4;
+          if (st === 'selected') return 3;
+          if (st === 'declined') return 2;
+          return 1;
+        };
+        const keyOf = (v) => String((v && (v.id || v.email || v.fullName)) || '').trim().toLowerCase();
+        const map = new Map();
+        loadVolunteers().forEach((v) => { const k = keyOf(v); if (k) map.set(k, v); });
+        s.volunteers.forEach((v) => {
+          const k = keyOf(v);
+          if (!k) return;
+          const cur = map.get(k);
+          if (!cur || rank(v) >= rank(cur)) map.set(k, Object.assign({}, cur || {}, v));
+        });
+        localStorage.setItem(VOL_KEY, JSON.stringify(Array.from(map.values())));
+      } catch (e) {}
     }
     if (s.siteContent && typeof s.siteContent === 'object') {
       try {
@@ -1288,6 +1306,7 @@
           renderSyncBar();
           setLiveStatus('Live · updated ' + new Date(at).toLocaleTimeString(), true);
         } else {
+          renderVolunteersAdmin();
           setLiveStatus('Live · in sync', true);
         }
         // Restore normal poll after recovery
@@ -2533,6 +2552,27 @@
   function saveVolunteers(list) {
     localStorage.setItem(VOL_KEY, JSON.stringify(list || []));
   }
+  async function syncVolunteers(list) {
+    saveVolunteers(list);
+    if (!getSyncToken()) {
+      console.warn('No sync token — volunteer list is only on this device');
+      return { ok: false, error: 'No sync token' };
+    }
+    try {
+      const r = await livePush({ volunteers: list });
+      if (!r || !r.ok) {
+        console.warn('Volunteer sync failed', r && r.error);
+        return r || { ok: false };
+      }
+      if (r.state && Array.isArray(r.state.volunteers)) {
+        try { localStorage.setItem(VOL_KEY, JSON.stringify(r.state.volunteers)); } catch (e) {}
+      }
+      return r;
+    } catch (e) {
+      console.warn('Volunteer sync error', e);
+      return { ok: false, error: String(e) };
+    }
+  }
   function volunteerId() {
     return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
@@ -2601,8 +2641,15 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         </div>
         <button type="button" class="btn btn-primary" id="vol-add">Add to list</button>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
+      '<p class="form-note"><button type="button" class="btn-mini" id="vol-refresh">Refresh shared list</button> Volunteer records sync to every signed-in gadget.</p>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
+    const refresh = $('#vol-refresh');
+    if (refresh) refresh.onclick = async () => {
+      refresh.disabled = true;
+      await pullSharedState().catch(() => {});
+      renderVolunteersAdmin();
+    };
     const add = $('#vol-add');
     if (add) add.onclick = () => {
       if (!canVolunteers()) return;
@@ -2621,7 +2668,7 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         createdAt: new Date().toISOString()
       });
       saveVolunteers(next);
-      if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+      syncVolunteers(next);
       renderVolunteersAdmin();
     };
     box.querySelectorAll('.vol-select').forEach((btn) => {
@@ -2632,7 +2679,7 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         if (!next[i]) return;
         next[i].status = 'selected';
         saveVolunteers(next);
-        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        syncVolunteers(next);
         renderVolunteersAdmin();
       };
     });
@@ -2644,12 +2691,12 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         if (!next[i]) return;
         next[i].status = 'declined';
         saveVolunteers(next);
-        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        syncVolunteers(next);
         renderVolunteersAdmin();
       };
     });
     box.querySelectorAll('.vol-cert').forEach((btn) => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         if (!canVolunteers()) return;
         const next = loadVolunteers();
         const i = Number(btn.dataset.i);
@@ -2659,18 +2706,17 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
           alert('Mark as Selected before issuing a certificate.');
           return;
         }
-        v.status = 'served';
-        v.certIssued = true;
-        v.issuedAt = new Date().toISOString();
-        v.issuedBy = currentUser || 'coordinator';
-        saveVolunteers(next);
-        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
-        openVolunteerCertificate(v);
         const to = String(v.email || '').trim();
         if (!to || to.indexOf('@') < 0) {
-          alert('Certificate opened. No valid email on file — nothing was emailed.');
-        } else {
-          sendAthleteEmail({
+          alert('Add a valid email before issuing. The certificate is emailed to the volunteer.');
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = 'Sending…';
+        let mailed = false;
+        let mailErr = '';
+        try {
+          const j = await sendAthleteEmail({
             type: 'volunteer',
             to: to,
             email: to,
@@ -2683,11 +2729,22 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
             certId: 'BT42-VOL-' + String(v.id || '').slice(-8),
             issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
             signatures: typeof certSignaturesPayload === 'function' ? certSignaturesPayload() : {}
-          }).then((j) => {
-            if (j && j.ok) alert('Certificate emailed to ' + to);
-            else alert('Certificate opened, but email failed: ' + ((j && j.error) || 'unknown'));
           });
+          mailed = !!(j && j.ok);
+          mailErr = (j && (j.error || j.detail && j.detail.message)) || '';
+        } catch (e) {
+          mailErr = String(e);
         }
+        v.status = 'served';
+        v.certIssued = mailed;
+        v.issuedAt = new Date().toISOString();
+        v.issuedBy = currentUser || 'coordinator';
+        v.emailResult = mailed ? 'sent' : ('failed: ' + mailErr);
+        saveVolunteers(next);
+        await syncVolunteers(next);
+        openVolunteerCertificate(v);
+        if (mailed) alert('Certificate emailed to ' + to);
+        else alert('Print window opened, but email failed: ' + (mailErr || 'unknown') + '. Check EMAIL_API_KEY / RESEND_API_KEY on Netlify.');
         renderVolunteersAdmin();
       };
     });
@@ -2698,7 +2755,7 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         const next = loadVolunteers();
         next.splice(Number(btn.dataset.i), 1);
         saveVolunteers(next);
-        if (getSyncToken()) livePush({ volunteers: next }).catch(() => {});
+        syncVolunteers(next);
         renderVolunteersAdmin();
       };
     });

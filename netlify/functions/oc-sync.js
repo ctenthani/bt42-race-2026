@@ -386,7 +386,30 @@ function mergeState(current, body, role) {
     next.siteContent = body.siteContent;
   }
   if (body.volunteers && Array.isArray(body.volunteers)) {
-    next.volunteers = body.volunteers;
+    if (body.replaceVolunteers) {
+      next.volunteers = body.volunteers;
+    } else {
+      const rank = (v) => {
+        const s = String((v && v.status) || 'applied');
+        if (s === 'served' || v && v.certIssued) return 4;
+        if (s === 'selected') return 3;
+        if (s === 'declined') return 2;
+        return 1;
+      };
+      const keyOf = (v) => String((v && (v.id || v.email || v.fullName)) || '').trim().toLowerCase();
+      const map = new Map();
+      (current.volunteers || []).forEach((v) => {
+        const k = keyOf(v);
+        if (k) map.set(k, v);
+      });
+      body.volunteers.forEach((v) => {
+        const k = keyOf(v);
+        if (!k) return;
+        const cur = map.get(k);
+        if (!cur || rank(v) >= rank(cur)) map.set(k, Object.assign({}, cur || {}, v));
+      });
+      next.volunteers = Array.from(map.values());
+    }
   }
   if (body.staffUsers && Array.isArray(body.staffUsers)) {
     if (role !== 'chair') {

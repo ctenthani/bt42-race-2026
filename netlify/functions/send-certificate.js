@@ -241,7 +241,9 @@ async function buildCertificatePdf(opts) {
     page.drawText(p[2], { x: col[i] + (colW - t2w) / 2, y: sigY - 6, size: 8, font, color: muted });
   }
 
-  const foot = opts.isCompletion
+  const foot = opts.volunteer
+    ? 'Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026 · Volunteer service'
+    : opts.isCompletion
     ? 'Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026 · Completion certificate issued after verified finish'
     : 'Official certificate · MNCS · Athletics Malawi · BT42.195km Race 2026 · Participation certificate';
   drawCentered(foot, 42, 8, font, muted);
