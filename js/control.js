@@ -1207,25 +1207,7 @@
       try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
     }
     if (Array.isArray(s.volunteers)) {
-      try {
-        const rank = (v) => {
-          const st = String((v && v.status) || 'applied');
-          if (st === 'served' || (v && v.certIssued)) return 4;
-          if (st === 'selected') return 3;
-          if (st === 'declined') return 2;
-          return 1;
-        };
-        const keyOf = (v) => String((v && (v.id || v.email || v.fullName)) || '').trim().toLowerCase();
-        const map = new Map();
-        loadVolunteers().forEach((v) => { const k = keyOf(v); if (k) map.set(k, v); });
-        s.volunteers.forEach((v) => {
-          const k = keyOf(v);
-          if (!k) return;
-          const cur = map.get(k);
-          if (!cur || rank(v) >= rank(cur)) map.set(k, Object.assign({}, cur || {}, v));
-        });
-        localStorage.setItem(VOL_KEY, JSON.stringify(Array.from(map.values())));
-      } catch (e) {}
+      try { localStorage.setItem(VOL_KEY, JSON.stringify(s.volunteers)); } catch (e) {}
     }
     if (s.siteContent && typeof s.siteContent === 'object') {
       try {
@@ -1990,36 +1972,42 @@
 
   function wireSigUploads() {
     $$('.sig-file').forEach(input => {
+      input.setAttribute('accept', 'image/*,.heic,.heif');
       input.onchange = async () => {
         if (!isChair) { alert('Only the Chair can upload e-signatures.'); return; }
         const file = input.files && input.files[0];
         if (!file) return;
-        if (file.size > 8 * 1024 * 1024) {
-          alert('File is too large. Use a PNG/JPG under 8 MB.');
+        if (file.size > 12 * 1024 * 1024) {
+          alert('Photo is too large. Choose a smaller PNG/JPG (crop to the ink only).');
           return;
         }
-        const reader = new FileReader();
-        reader.onerror = () => alert('Could not read that file.');
-        reader.onload = async () => {
-          try {
-            const compressed = await compressSigImage(reader.result, 400, 0.75);
-            const map = loadSigs();
-            map[input.dataset.sig] = compressed;
-            map[input.dataset.sig + '_updated'] = new Date().toISOString();
-            const ok = saveSigs(map);
-            renderSigPreviews();
-            if (!ok) return;
-            const push = await pushSignaturesToServer(map);
-            if (push && push.ok) {
-              alert('Signature saved and synced.');
-            } else {
-              alert('Signature saved on this device. Sync to server failed — keep this browser until sync works. ' + ((push && push.error) || ''));
-            }
-          } catch (e) {
-            alert('Signature upload failed: ' + (e.message || e));
+        try {
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error('Could not read that photo'));
+            reader.onload = () => resolve(reader.result);
+            reader.readAsDataURL(file);
+          });
+          const compressed = await compressSigImage(dataUrl, 280, 0.55);
+          if (!compressed || compressed.indexOf('data:image') !== 0) {
+            alert('This phone could not convert that photo. Save it as JPG in Photos, then choose the JPG.');
+            return;
           }
-        };
-        reader.readAsDataURL(file);
+          const map = loadSigs();
+          map[input.dataset.sig] = compressed;
+          map[input.dataset.sig + '_updated'] = new Date().toISOString();
+          const ok = saveSigs(map);
+          renderSigPreviews();
+          if (!ok) return;
+          const push = await pushSignaturesToServer(map);
+          if (push && push.ok) {
+            alert('Signature saved from this phone and synced.');
+          } else {
+            alert('Saved on this phone only. Sync failed: ' + ((push && push.error) || 'network') + '. Try Wi‑Fi, then Push signatures.');
+          }
+        } catch (e) {
+          alert('Signature upload failed on this phone: ' + (e.message || e));
+        }
       };
     });
     const pushBtn = $('#sig-push-now');
@@ -2660,7 +2648,7 @@
       return { ok: false, error: 'No sync token' };
     }
     try {
-      const r = await livePush({ volunteers: list });
+      const r = await livePush({ volunteers: list, replaceVolunteers: true });
       if (!r || !r.ok) {
         console.warn('Volunteer sync failed', r && r.error);
         return r || { ok: false };
@@ -2964,13 +2952,14 @@ w.document.close();
       };
     });
     box.querySelectorAll('.vol-del').forEach((btn) => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         if (!canVolunteers()) return;
-        if (!confirm('Remove this volunteer from the list?')) return;
+        if (!confirm('Remove this volunteer from the shared list?')) return;
         const next = loadVolunteers();
         next.splice(Number(btn.dataset.i), 1);
         saveVolunteers(next);
-        syncVolunteers(next);
+        const r = await syncVolunteers(next);
+        if (r && r.ok === false) alert('Removed on this phone, but shared list failed: ' + (r.error || 'sync'));
         renderVolunteersAdmin();
       };
     });
