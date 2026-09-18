@@ -80,13 +80,16 @@
     if (room) room.classList.add('hidden');
   }
 
+  function staffCanSee(panel) {
+    if (isChair) return true;
+    if (panel === 'dash') return true;
+    if (panel === 'participants') return canPayment() || canBibs() || canFinish();
+    if (panel === 'volunteers') return canVolunteers();
+    if (panel === 'staff') return canManageStaff();
+    return false;
+  }
+
   function applyRoleUI() {
-    // Chair notes tab & panel: chair only
-    $$('.ctrl-tab[data-panel="chair"], #panel-chair').forEach(el => {
-      if (isChair) el.classList.remove('chair-only-hidden');
-      else el.classList.add('chair-only-hidden');
-    });
-    // Chair-editable metrics block
     const dashEdit = $('#ctrl-dash-edit');
     if (dashEdit) {
       if (isChair) dashEdit.classList.remove('chair-only-hidden');
@@ -111,26 +114,22 @@
       badge.textContent = 'Signed in as ' + label;
       badge.className = cls;
     }
-    // Staff tab: chair only
-    $$('.ctrl-tab[data-panel="staff"], #panel-staff').forEach((el) => {
-      if (canManageStaff()) el.classList.remove('chair-only-hidden');
+    $$('.ctrl-tab[data-panel], .ctrl-panel[id^="panel-"]').forEach((el) => {
+      const panel = el.getAttribute('data-panel') || String(el.id || '').replace(/^panel-/, '');
+      if (!panel) return;
+      if (staffCanSee(panel)) el.classList.remove('chair-only-hidden');
       else el.classList.add('chair-only-hidden');
     });
-    $$('.ctrl-tab[data-panel="site"], #panel-site').forEach((el) => {
-      if (isChair) el.classList.remove('chair-only-hidden');
-      else el.classList.add('chair-only-hidden');
-    });
-    // If non-chair is on chair panel, switch to dashboard
-    if (!isChair) {
-      const chairPanel = $('#panel-chair');
-      if (chairPanel && chairPanel.classList.contains('active')) {
-        $$('.ctrl-tab').forEach(t => t.classList.remove('active'));
-        $$('.ctrl-panel').forEach(p => p.classList.remove('active'));
-        const dashTab = $('.ctrl-tab[data-panel="dash"]');
-        const dashPanel = $('#panel-dash');
-        if (dashTab) dashTab.classList.add('active');
-        if (dashPanel) dashPanel.classList.add('active');
-      }
+    const activeTab = $('.ctrl-tab.active');
+    const activePanel = activeTab && activeTab.getAttribute('data-panel');
+    if (activePanel && !staffCanSee(activePanel)) {
+      $$('.ctrl-tab').forEach((t) => t.classList.remove('active'));
+      $$('.ctrl-panel').forEach((p) => p.classList.remove('active'));
+      const first = ['dash', 'participants', 'volunteers', 'staff'].find(staffCanSee);
+      const tab = first && $('.ctrl-tab[data-panel="' + first + '"]');
+      const panel = first && $('#panel-' + first);
+      if (tab) tab.classList.add('active');
+      if (panel) panel.classList.add('active');
     }
   }
 
