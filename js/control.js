@@ -1382,7 +1382,8 @@
 
     ${isChair ? `<div class="sig-upload-box">
       <h4 style="margin:0 0 0.5rem">Electronic signatures (Chair only)</h4>
-      <p class="form-note" style="margin-bottom:0.5rem">Upload clear PNG/JPG signature images for each official. Stored on this device only until a server store is connected.</p>
+      <p class="form-note" style="margin-bottom:0.5rem">Upload PNG/JPG for Kalua, Chamwala and Tenthani. These are embedded on athlete <strong>and volunteer</strong> certificates. After upload you should see “Signature saved and synced.” Use <strong>Push signatures</strong> if a certificate went out unsigned.</p>
+      <button type="button" class="btn-mini" id="sig-push-now">Push signatures to shared store</button>
       <div class="sig-upload-grid">
         <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" /></label>
         <label>Kondwani Chamwala (President, Athletics Malawi)<input type="file" accept="image/*" data-sig="chamwala" class="sig-file" /></label>
@@ -1934,6 +1935,19 @@
         reader.readAsDataURL(file);
       };
     });
+    const pushBtn = $('#sig-push-now');
+    if (pushBtn) {
+      pushBtn.onclick = async () => {
+        if (!isChair) return;
+        const map = loadSigs();
+        if (!map.kalua && !map.chamwala && !map.tenthani) {
+          alert('Upload the three signature images first.');
+          return;
+        }
+        const push = await pushSignaturesToServer(map);
+        alert((push && push.ok) ? 'Signatures synced. Volunteer and athlete certificates will include them.' : ('Sync failed: ' + ((push && push.error) || 'unknown')));
+      };
+    }
   }
 
   function renderSigPreviews() {
@@ -2576,9 +2590,70 @@
   function volunteerId() {
     return 'v' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
+  function parseVolunteerCsv(text) {
+    const lines = String(text || '').replace(/^\uFEFF/, '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return [];
+    const split = (line) => {
+      const out = [];
+      let cur = '';
+      let q = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"') { q = !q; continue; }
+        if ((c === ',' || c === ';' || c === '\t') && !q) { out.push(cur.trim()); cur = ''; continue; }
+        cur += c;
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    const header = split(lines[0]).map((h) => h.toLowerCase().replace(/\s+/g, ''));
+    const idx = (names) => {
+      for (const n of names) {
+        const i = header.indexOf(n);
+        if (i >= 0) return i;
+      }
+      return -1;
+    };
+    const iName = idx(['fullname', 'name', 'volunteer', 'volunteername']);
+    const iEmail = idx(['email', 'e-mail', 'mail']);
+    const iPhone = idx(['phone', 'mobile', 'tel', 'cellphone']);
+    const iRole = idx(['role', 'area', 'duty', 'station']);
+    const iStatus = idx(['status', 'selected', 'state']);
+    const start = (iName >= 0 || iEmail >= 0) ? 1 : 0;
+    const rows = [];
+    for (let r = start; r < lines.length; r++) {
+      const cols = split(lines[r]);
+      const fullName = (iName >= 0 ? cols[iName] : cols[0] || '').trim();
+      const email = (iEmail >= 0 ? cols[iEmail] : cols[1] || '').trim();
+      if (!fullName) continue;
+      let status = (iStatus >= 0 ? cols[iStatus] : 'selected') || 'selected';
+      status = String(status).toLowerCase();
+      if (status === 'yes' || status === 'true' || status === '1') status = 'selected';
+      if (!['applied', 'selected', 'served', 'declined'].includes(status)) status = 'selected';
+      rows.push({
+        id: volunteerId() + r,
+        fullName,
+        email,
+        phone: (iPhone >= 0 ? cols[iPhone] : cols[2] || '').trim(),
+        role: (iRole >= 0 ? cols[iRole] : cols[3] || '').trim() || 'Race volunteer',
+        status,
+        certIssued: false,
+        createdAt: new Date().toISOString()
+      });
+    }
+    return rows;
+  }
   function openVolunteerCertificate(v) {
     const name = String(v.fullName || '').trim() || 'Volunteer';
     const role = String(v.role || 'Race volunteer').trim();
+    const sigs = loadSigs();
+    const sigCell = (src, label, sub) => {
+      const img = (src && src.indexOf('data:image') === 0)
+        ? '<img src="' + src + '" alt="" style="height:48px;max-width:180px;object-fit:contain;display:block;margin:0 auto 6px" />'
+        : '<div style="height:48px"></div>';
+      return '<div style="text-align:center;min-width:180px">' + img +
+        '<div style="border-top:1px solid #1B4F72;padding-top:6px;font-size:12px"><strong>' + label + '</strong><br>' + sub + '</div></div>';
+    };
     const w = window.open('', '_blank', 'width=900,height=650');
     if (!w) { alert('Allow pop-ups to view the certificate.'); return; }
     w.document.write(`<!DOCTYPE html><html><head><title>Volunteer certificate — ${name.replace(/[<>]/g,'')}</title>
@@ -2590,9 +2665,8 @@ h1 { margin:0; font-size:28px; letter-spacing:0.04em; }
 h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
 .who { font-size:32px; margin:28px 0 8px; }
 .role { font-size:18px; color:#154360; }
-.meta { margin-top:28px; font-size:13px; color:#5d6d7e; }
-.sig { display:flex; justify-content:space-between; margin-top:48px; font-size:13px; }
-.sig span { border-top:1px solid #1B4F72; padding-top:6px; min-width:180px; text-align:center; }
+.meta { margin-top:20px; font-size:13px; color:#5d6d7e; }
+.sig { display:flex; justify-content:space-between; gap:16px; margin-top:36px; }
 </style></head><body>
 <div class="sheet">
   <h1>CERTIFICATE OF VOLUNTEER SERVICE</h1>
@@ -2601,7 +2675,11 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
   <div class="who">${name.replace(/[<>]/g,'')}</div>
   <div class="role">served as <strong>${role.replace(/[<>]/g,'')}</strong></div>
   <p class="meta">Issued after race day by the Volunteers Coordinator on behalf of the Organising Committee.</p>
-  <div class="sig"><span>Volunteers Coordinator</span><span>Chair · BT42.195km Race</span></div>
+  <div class="sig">
+    ${sigCell(sigs.kalua, 'Jim Kalua', 'Chairman, MNCS')}
+    ${sigCell(sigs.chamwala, 'Kondwani Chamwala', 'President, Athletics Malawi')}
+    ${sigCell(sigs.tenthani, 'Chifundo Tenthani', 'Chair, OC')}
+  </div>
 </div>
 <script>setTimeout(function(){ window.print(); }, 400);<\/script>
 </body></html>`);
@@ -2640,6 +2718,12 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
           <div class="form-group"><label>Role / area</label><input id="vol-role" type="text" placeholder="Water kiosk, marshal…" /></div>
         </div>
         <button type="button" class="btn btn-primary" id="vol-add">Add to list</button>
+        <div style="margin-top:1rem;padding-top:0.75rem;border-top:1px solid #e6eef4">
+          <h4 style="margin:0 0 0.35rem">Upload selected list</h4>
+          <p class="form-note">CSV with headers: <code>fullName,email,phone,role,status</code>. Status may be applied, selected or served. One volunteer per row.</p>
+          <input type="file" id="vol-csv" accept=".csv,text/csv,text/plain" />
+          <button type="button" class="btn-mini" id="vol-mark-selected">Mark all listed as Selected</button>
+        </div>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
       '<p class="form-note"><button type="button" class="btn-mini" id="vol-refresh">Refresh shared list</button> Volunteer records sync to every signed-in gadget.</p>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
@@ -2666,6 +2750,44 @@ h2 { margin:8px 0 0; font-size:15px; font-weight:600; color:#2980b9; }
         status: 'applied',
         certIssued: false,
         createdAt: new Date().toISOString()
+      });
+      saveVolunteers(next);
+      syncVolunteers(next);
+      renderVolunteersAdmin();
+    };
+    const csvInput = $('#vol-csv');
+    if (csvInput) csvInput.onchange = () => {
+      const file = csvInput.files && csvInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const incoming = parseVolunteerCsv(reader.result);
+        if (!incoming.length) {
+          alert('No rows found. Use headers fullName,email,phone,role,status');
+          return;
+        }
+        const next = loadVolunteers();
+        const keyOf = (v) => String(v.email || v.fullName || '').trim().toLowerCase();
+        const map = new Map();
+        next.forEach((v) => map.set(keyOf(v), v));
+        incoming.forEach((v) => {
+          const k = keyOf(v);
+          const cur = map.get(k);
+          map.set(k, Object.assign({}, cur || {}, v, { id: (cur && cur.id) || v.id }));
+        });
+        const merged = Array.from(map.values());
+        saveVolunteers(merged);
+        syncVolunteers(merged);
+        alert('Loaded ' + incoming.length + ' volunteers from the file. They are on the shared list.');
+        renderVolunteersAdmin();
+      };
+      reader.readAsText(file);
+    };
+    const markAll = $('#vol-mark-selected');
+    if (markAll) markAll.onclick = () => {
+      const next = loadVolunteers().map((v) => {
+        if (v.status === 'declined') return v;
+        return Object.assign({}, v, { status: v.status === 'served' ? 'served' : 'selected' });
       });
       saveVolunteers(next);
       syncVolunteers(next);
