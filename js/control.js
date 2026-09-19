@@ -24,6 +24,121 @@
   const SYNC_TOKEN_KEY = 'bt42_oc_sync_token';
   const SYNC_META_KEY = 'bt42_oc_sync_meta';
   const VOL_KEY = 'bt42_volunteers';
+  const APPROVALS_KEY = 'bt42_chair_approvals';
+  const APPROVALS_SEED = [
+    {
+      id: 'ap-tents-145',
+      requested: '2026-09-18',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'KC Investments / clinic & tents',
+      bank: '',
+      account: '',
+      items: 'Tent + 200 chairs; tent clinic (mobile toilet / transport / attendants as quoted)',
+      amount: 145000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-toilet-640',
+      requested: '2026-09-18',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Toilet hire (Paws Printing and Allied Works)',
+      bank: 'National Bank of Malawi',
+      account: '1000841494',
+      items: 'Mobile toilet hire MK450,000; transport hire MK100,000; attendants allowance MK90,000',
+      amount: 640000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-omega-340750',
+      requested: '2026-09-16',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Omega Signs and Graphics',
+      bank: 'National Bank of Malawi',
+      account: '1006551347',
+      items: 'Hanging banners — 5 m × 2 @ MK145,000',
+      amount: 290000,
+      vat: 50750,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-mphatso-590',
+      requested: '2026-09-16',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Mphatso Chakhadza',
+      bank: 'National Bank of Malawi',
+      account: '100035106',
+      items: '20 promotion posters MK15,000; victory stand MK20,000; main poster MK30,000; 2 start/finish arches MK50,000; 3 dummy cheques MK60,000; direction arrow MK20,000; 3 T-shirt chest numbers MK60,000; backdrop banner MK50,000',
+      amount: 590000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-medals-456',
+      requested: '2026-09-18',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Phatafuli medals',
+      bank: '',
+      account: '',
+      items: '18 winning medals (6 gold, 6 silver, 6 bronze) @ MK9,500 = MK171,000; 30 participation medals (42.195 km) MK285,000',
+      amount: 456000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-paws-810',
+      requested: '2026-09-16',
+      approvedOn: '2026-09-19',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Paws Printing and Allied Works',
+      bank: 'National Bank of Malawi',
+      account: '1000841494',
+      items: '600 vinyl chest numbers @ MK750 = MK450,000; 9 dummy cheques (3 races) @ MK40,000 = MK360,000',
+      amount: 810000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'approved',
+      comment: 'Approved by Chair — Chifundo Tenthani',
+      ref: 'As per quotations'
+    },
+    {
+      id: 'ap-gazette-5500',
+      requested: '2026-09-16',
+      approvedOn: '',
+      requestedBy: 'Marketing Organizing Subcommittee (Makawa)',
+      payee: 'Gazette Media',
+      bank: 'National Bank of Malawi',
+      account: '1687514',
+      items: '250 branded pilot T-shirts @ MK22,000',
+      amount: 5500000,
+      vat: 0,
+      mode: 'Cash',
+      status: 'pending',
+      comment: 'Requisition received — Chair signature line on the form was blank',
+      ref: 'As per quotations'
+    }
+  ];
 
   let unlocked = sessionStorage.getItem('bt42_control_unlocked') === '1';
   let isChair = sessionStorage.getItem('bt42_control_role') === 'chair';
@@ -33,11 +148,12 @@
     bibs: sessionStorage.getItem('bt42_perm_bibs') === '1',
     finish: sessionStorage.getItem('bt42_perm_finish') === '1',
     volunteers: sessionStorage.getItem('bt42_perm_volunteers') === '1',
-    manageStaff: sessionStorage.getItem('bt42_perm_staff') === '1'
+    manageStaff: sessionStorage.getItem('bt42_perm_staff') === '1',
+    requisitions: sessionStorage.getItem('bt42_perm_requisitions') === '1'
   };
   // Chair always has all perms
   if (isChair) {
-    perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true };
+    perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true, requisitions: true };
   }
 
   async function sha256(text) {
@@ -68,6 +184,7 @@
   function canFinish() { return isChair || !!perms.finish; }
   function canManageStaff() { return isChair || !!perms.manageStaff; }
   function canVolunteers() { return isChair || !!perms.volunteers; }
+  function canRequisitions() { return isChair || !!perms.requisitions; }
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
   function $$(sel, ctx) { return Array.from((ctx || document).querySelectorAll(sel)); }
@@ -86,6 +203,7 @@
     if (panel === 'participants') return canPayment() || canBibs() || canFinish();
     if (panel === 'volunteers') return canVolunteers();
     if (panel === 'staff') return canManageStaff();
+    if (panel === 'approvals') return canRequisitions();
     return false;
   }
 
@@ -106,6 +224,7 @@
         if (canBibs()) bits.push('bibs');
         if (canFinish()) bits.push('finish');
         if (canVolunteers()) bits.push('volunteers');
+        if (canRequisitions()) bits.push('requisitions');
         label = (currentUser || 'Ops') + ' · ' + bits.join('/');
         cls = 'role-badge chair';
       } else if (currentUser) {
@@ -138,17 +257,18 @@
     isChair = role === 'chair';
     currentUser = user || (isChair ? 'chair' : 'committee');
     if (isChair) {
-      perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true };
+      perms = { payment: true, bibs: true, finish: true, volunteers: true, manageStaff: true, requisitions: true };
     } else if (userPerms) {
       perms = {
         payment: !!userPerms.payment,
         bibs: !!userPerms.bibs,
         finish: !!userPerms.finish,
         volunteers: !!userPerms.volunteers,
-        manageStaff: !!userPerms.manageStaff
+        manageStaff: !!userPerms.manageStaff,
+        requisitions: !!userPerms.requisitions
       };
     } else {
-      perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false };
+      perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false, requisitions: false };
     }
     sessionStorage.setItem('bt42_control_unlocked', '1');
     sessionStorage.setItem('bt42_control_role', isChair ? 'chair' : 'committee');
@@ -158,6 +278,7 @@
     sessionStorage.setItem('bt42_perm_finish', perms.finish ? '1' : '0');
     sessionStorage.setItem('bt42_perm_volunteers', perms.volunteers ? '1' : '0');
     sessionStorage.setItem('bt42_perm_staff', perms.manageStaff ? '1' : '0');
+    sessionStorage.setItem('bt42_perm_requisitions', perms.requisitions ? '1' : '0');
     const gate = $('#control-gate');
     const room = $('#control-room');
     if (gate) gate.classList.add('hidden');
@@ -271,6 +392,7 @@
         bibs: !!acc.canBibs,
         finish: !!acc.canFinish,
         volunteers: !!acc.canVolunteers,
+        requisitions: !!acc.canRequisitions,
         manageStaff: false
       });
     }
@@ -285,10 +407,11 @@
     sessionStorage.removeItem('bt42_perm_finish');
     sessionStorage.removeItem('bt42_perm_volunteers');
     sessionStorage.removeItem('bt42_perm_staff');
+    sessionStorage.removeItem('bt42_perm_requisitions');
     unlocked = false;
     isChair = false;
     currentUser = '';
-    perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false };
+    perms = { payment: false, bibs: false, finish: false, volunteers: false, manageStaff: false, requisitions: false };
     showGate();
     const input = $('#control-pin');
     if (input) input.value = '';
@@ -1209,6 +1332,9 @@
     if (Array.isArray(s.volunteers)) {
       try { localStorage.setItem(VOL_KEY, JSON.stringify(s.volunteers)); } catch (e) {}
     }
+    if ((isChair || canRequisitions()) && Array.isArray(s.approvals)) {
+      try { localStorage.setItem(APPROVALS_KEY, JSON.stringify(s.approvals)); } catch (e) {}
+    }
     if (s.siteContent && typeof s.siteContent === 'object') {
       try {
         localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(s.siteContent));
@@ -1276,6 +1402,7 @@
       payload.signatures = loadSigs();
       payload.staffUsers = loadStaffUsers();
       payload.siteContent = loadSiteContent();
+      payload.approvals = loadApprovals();
     }
     return pushSharedState(payload);
   }
@@ -2444,13 +2571,15 @@
         u.canPayment ? 'Payment' : '',
         u.canBibs ? 'Bibs' : '',
         u.canFinish ? 'Finish' : '',
-        u.canVolunteers ? 'Volunteers + certificates' : ''
+        u.canVolunteers ? 'Volunteers + certificates' : '',
+        u.canRequisitions ? 'GS requisitions' : ''
       ].filter(Boolean).join(', ') || 'View only';
       const toggles = [
         ['canPayment', 'Pay', !!u.canPayment],
         ['canBibs', 'Bibs', !!u.canBibs],
         ['canFinish', 'Finish', !!u.canFinish],
-        ['canVolunteers', 'Volunteers', !!u.canVolunteers]
+        ['canVolunteers', 'Volunteers', !!u.canVolunteers],
+        ['canRequisitions', 'GS / requisitions', !!u.canRequisitions]
       ].map((x) => '<label style="margin-right:8px;white-space:nowrap"><input type="checkbox" class="staff-perm" data-i="' + i + '" data-perm="' + x[0] + '"' + (x[2] ? ' checked' : '') + ' /> ' + x[1] + '</label>').join('');
       return '<tr><td>' + escapeHtml(u.username) + '</td><td>' + escapeHtml(u.displayName || '') + '</td><td>' +
         toggles + '<div class="form-note">' + escapeHtml(flags) + '</div></td><td>' + (u.disabled ? 'Disabled' : 'Active') +
@@ -2475,6 +2604,7 @@
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-bibs" checked /> Can assign bibs</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-finish" checked /> Can enter Finish / DNF</label>
         <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-volunteers" checked /> Volunteers: select crew and issue / email certificates</label>
+        <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-req" /> GS: upload requisitions for Chair approval</label>
         <button type="button" class="btn btn-primary" id="staff-create-btn">Create login</button>
       </div>
       <div class="table-wrap"><table class="data-table">
@@ -2508,6 +2638,7 @@
         canBibs: !!($('#staff-can-bibs') || {}).checked,
         canFinish: !!($('#staff-can-finish') || {}).checked,
         canVolunteers: !!($('#staff-can-volunteers') || {}).checked,
+        canRequisitions: !!($('#staff-can-req') || {}).checked,
         disabled: false,
         createdAt: new Date().toISOString()
       });
@@ -2965,6 +3096,158 @@ w.document.close();
     });
   }
 
+  function mk(n) {
+    const v = Number(n) || 0;
+    return 'MK' + v.toLocaleString('en-MW');
+  }
+  function loadApprovals() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(APPROVALS_KEY) || 'null');
+      if (Array.isArray(raw) && raw.length) return raw;
+    } catch (e) {}
+    return APPROVALS_SEED.slice();
+  }
+  function saveApprovals(list, opts) {
+    localStorage.setItem(APPROVALS_KEY, JSON.stringify(list || []));
+    if (!getSyncToken()) return;
+    if (isChair) livePush({ approvals: list }).catch(() => {});
+    else if (opts && opts.added) livePush({ newApprovals: opts.added }).catch(() => {});
+  }
+  function fileToDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve(null);
+      if (file.size > 2.5 * 1024 * 1024) return reject(new Error('File must be under 2.5 MB'));
+      const r = new FileReader();
+      r.onerror = () => reject(new Error('Could not read file'));
+      r.onload = () => resolve({ name: file.name, type: file.type || 'application/octet-stream', data: r.result });
+      r.readAsDataURL(file);
+    });
+  }
+  function renderApprovals() {
+    const box = $('#ctrl-approvals');
+    if (!box || !canRequisitions()) return;
+    const rows = loadApprovals();
+    const approved = rows.filter((r) => r.status === 'approved');
+    const pending = rows.filter((r) => r.status !== 'approved');
+    const sum = (list) => list.reduce((a, r) => a + Number(r.amount || 0) + Number(r.vat || 0), 0);
+    const line = (r, i) => {
+      const total = Number(r.amount || 0) + Number(r.vat || 0);
+      const st = r.status === 'approved' ? 'pay-ok' : (r.status === 'rejected' ? 'pay-no' : 'pay-wait');
+      const fileLink = (r.fileData && r.fileName)
+        ? '<a href="' + r.fileData + '" download="' + escapeHtml(r.fileName) + '">' + escapeHtml(r.fileName) + '</a>'
+        : '—';
+      const actions = isChair
+        ? ('<button type="button" class="btn-mini ap-toggle" data-i="' + i + '">' + (r.status === 'approved' ? 'Mark pending' : 'Approve') + '</button> ' +
+           (r.status === 'pending' ? '<button type="button" class="btn-mini ap-reject" data-i="' + i + '">Reject</button> ' : '') +
+           '<button type="button" class="btn-mini ap-del" data-i="' + i + '" style="color:#C0392B">Remove</button>')
+        : '<span class="form-note">Waiting on Chair</span>';
+      return '<tr>' +
+        '<td>' + escapeHtml(r.approvedOn || r.requested || '') + '</td>' +
+        '<td><strong>' + escapeHtml(r.payee || '') + '</strong><br><span class="form-note">' + escapeHtml(r.items || '') + '</span><br>' + fileLink + '</td>' +
+        '<td>' + escapeHtml([r.bank, r.account].filter(Boolean).join(' · ') || '—') + '</td>' +
+        '<td>' + mk(r.amount) + (r.vat ? '<br><span class="form-note">VAT ' + mk(r.vat) + '</span>' : '') + '</td>' +
+        '<td><strong>' + mk(total) + '</strong></td>' +
+        '<td><span class="pay-status ' + st + '">' + escapeHtml(r.status || '') + '</span></td>' +
+        '<td>' + escapeHtml(r.comment || r.requestedBy || '') + '</td>' +
+        '<td>' + actions + '</td></tr>';
+    };
+    box.innerHTML =
+      '<div class="notice"><strong>' + approved.length + '</strong> approved · <strong>' + pending.length + '</strong> pending · ' +
+      'Approved total <strong>' + mk(sum(approved)) + '</strong> · All listed <strong>' + mk(sum(rows)) + '</strong></div>' +
+      '<div class="table-wrap"><table class="ctrl-table"><thead><tr>' +
+      '<th>Date</th><th>Payee / file</th><th>Bank</th><th>Amount</th><th>Total</th><th>Status</th><th>Note</th><th></th>' +
+      '</tr></thead><tbody>' + rows.map(line).join('') + '</tbody></table></div>' +
+      '<h4 style="margin:1.2rem 0 0.4rem">' + (isChair ? 'Add or capture an approval' : 'Submit a requisition for Chair approval') + '</h4>' +
+      '<div class="form-row"><div class="form-group"><label>Payee</label><input id="ap-payee" /></div>' +
+      '<div class="form-group"><label>Amount MK</label><input id="ap-amount" type="number" min="0" step="1" /></div></div>' +
+      '<div class="form-row"><div class="form-group"><label>Items</label><input id="ap-items" /></div>' +
+      '<div class="form-group"><label>Bank / account</label><input id="ap-bank" placeholder="Bank · account number" /></div></div>' +
+      '<div class="form-row"><div class="form-group"><label>VAT MK</label><input id="ap-vat" type="number" min="0" value="0" /></div>' +
+      '<div class="form-group"><label>Requisition file (pdf/doc/jpg, under 2.5 MB)</label><input id="ap-file" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx" /></div></div>' +
+      (isChair ? '<div class="form-group"><label>Note</label><input id="ap-note" value="Approved by Chair — Chifundo Tenthani" /></div>' : '') +
+      '<button type="button" class="btn btn-primary" id="ap-add">' + (isChair ? 'Save as approved' : 'Send to Chair') + '</button>';
+    const add = $('#ap-add');
+    if (add) add.onclick = async () => {
+      const payee = (($('#ap-payee') || {}).value || '').trim();
+      const amount = Number((($('#ap-amount') || {}).value) || 0);
+      if (!payee || !amount) { alert('Payee and amount required.'); return; }
+      let fileMeta = null;
+      try {
+        const inp = $('#ap-file');
+        fileMeta = await fileToDataUrl(inp && inp.files && inp.files[0]);
+      } catch (e) {
+        alert(e.message || e);
+        return;
+      }
+      const bankLine = (($('#ap-bank') || {}).value || '').trim();
+      const parts = bankLine.split('·').map((s) => s.trim());
+      const rec = {
+        id: 'ap-' + Date.now().toString(36),
+        requested: new Date().toISOString().slice(0, 10),
+        approvedOn: isChair ? new Date().toISOString().slice(0, 10) : '',
+        requestedBy: currentUser || (isChair ? 'Chair entry' : 'GS'),
+        payee,
+        bank: parts[0] || bankLine,
+        account: parts[1] || '',
+        items: (($('#ap-items') || {}).value || '').trim(),
+        amount,
+        vat: Number((($('#ap-vat') || {}).value) || 0),
+        mode: 'Cash',
+        status: isChair ? 'approved' : 'pending',
+        comment: isChair ? ((($('#ap-note') || {}).value || '').trim()) : 'Submitted for Chair approval',
+        ref: isChair ? 'Chair capture' : 'GS upload',
+        fileName: fileMeta && fileMeta.name || '',
+        fileType: fileMeta && fileMeta.type || '',
+        fileData: fileMeta && fileMeta.data || ''
+      };
+      const next = loadApprovals();
+      next.unshift(rec);
+      saveApprovals(next, { added: [rec] });
+      renderApprovals();
+      alert(isChair ? 'Saved as approved.' : 'Sent to the Chair. Status: pending.');
+    };
+    box.querySelectorAll('.ap-toggle').forEach((btn) => {
+      btn.onclick = () => {
+        if (!isChair) return;
+        const next = loadApprovals();
+        const r = next[Number(btn.dataset.i)];
+        if (!r) return;
+        if (r.status === 'approved') {
+          r.status = 'pending';
+          r.approvedOn = '';
+        } else {
+          r.status = 'approved';
+          r.approvedOn = new Date().toISOString().slice(0, 10);
+          r.comment = 'Approved by Chair — Chifundo Tenthani';
+        }
+        saveApprovals(next);
+        renderApprovals();
+      };
+    });
+    box.querySelectorAll('.ap-reject').forEach((btn) => {
+      btn.onclick = () => {
+        if (!isChair) return;
+        const next = loadApprovals();
+        const r = next[Number(btn.dataset.i)];
+        if (!r) return;
+        r.status = 'rejected';
+        r.comment = 'Rejected by Chair';
+        saveApprovals(next);
+        renderApprovals();
+      };
+    });
+    box.querySelectorAll('.ap-del').forEach((btn) => {
+      btn.onclick = () => {
+        if (!isChair) return;
+        if (!confirm('Remove this requisition from the Chair list?')) return;
+        const next = loadApprovals();
+        next.splice(Number(btn.dataset.i), 1);
+        saveApprovals(next);
+        renderApprovals();
+      };
+    });
+  }
+
   function renderAll() {
     renderDashboard();
     renderChecklist();
@@ -2980,6 +3263,7 @@ w.document.close();
     renderAttendance();
     renderDeadlines();
     if (isChair) renderChairNotes();
+    if (canRequisitions()) renderApprovals();
     if (canManageStaff()) renderStaffAdmin();
     if (isChair) renderSiteContentAdmin();
     applySiteContentToPublic();

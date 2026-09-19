@@ -15,6 +15,7 @@ const emptyState = () => ({
   signatures: {},
   staffUsers: [],
   volunteers: [],
+  approvals: [],
   siteContent: null,
   suppressedKeys: [],
   updatedAt: null,
@@ -395,6 +396,25 @@ function mergeState(current, body, role) {
       throw e;
     }
     next.siteContent = body.siteContent;
+  }
+  if (body.approvals && Array.isArray(body.approvals)) {
+    if (role !== 'chair') {
+      const e = new Error('Only Chair can replace the approvals register');
+      e.statusCode = 403;
+      throw e;
+    }
+    next.approvals = body.approvals;
+  }
+  if (body.newApprovals && Array.isArray(body.newApprovals) && body.newApprovals.length) {
+    const cur = Array.isArray(next.approvals) ? next.approvals.slice() : [];
+    const ids = new Set(cur.map((r) => r && r.id));
+    body.newApprovals.forEach((r) => {
+      if (!r || !r.id || ids.has(r.id)) return;
+      const copy = Object.assign({}, r, { status: 'pending' });
+      cur.unshift(copy);
+      ids.add(r.id);
+    });
+    next.approvals = cur;
   }
   if (body.volunteers && Array.isArray(body.volunteers)) {
     if (body.replaceVolunteers) {
