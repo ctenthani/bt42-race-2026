@@ -222,7 +222,7 @@ async function sendConfirmationEmail(reg) {
 ${roster}${fee}${pop}
 <p>Your place is confirmed once payment is received:</p>
 <ul>
-<li>Bank transfer to account <strong>782637</strong></li>
+<li>Bank transfer to National Bank of Malawi account <strong>782637</strong></li>
 <li>Reference: <strong>your full name + mobile number</strong> (one transfer can cover a whole team)</li>
 </ul>
 <p>You will receive <strong>one email per stage</strong> (payment verified, bibs) for the whole team. Certificates are issued per athlete after the race.</p>

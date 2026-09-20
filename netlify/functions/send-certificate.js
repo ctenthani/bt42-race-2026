@@ -440,7 +440,7 @@ exports.handler = async (event) => {
 <p>Race day: <strong>${esc(raceDate)}</strong>, Blantyre.</p>
 <p>Your place is confirmed once payment is received:</p>
 <ul>
-<li>Bank transfer to account <strong>782637</strong></li>
+<li>Bank transfer to National Bank of Malawi account <strong>782637</strong></li>
 <li>Reference: <strong>your full name + mobile number</strong></li>
 </ul>
 <p>You will receive further email when payment is verified and when your bib is assigned.</p>

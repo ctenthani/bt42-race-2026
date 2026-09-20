@@ -496,18 +496,18 @@
         <div class="mpamba-confirm-card">
           <p class="mpamba-confirm-title">Pay by bank transfer</p>
           <ol class="mpamba-steps">
-            <li>Transfer the entry fee to account <code>782637</code></li>
+            <li>Transfer the entry fee to National Bank of Malawi account <code>782637</code></li>
             <li>Use reference: <strong>your full name + mobile number</strong>${(lastReg && lastReg.regType === 'team') ? ' (one transfer for the whole team)' : ''}</li>
             <li>Keep your deposit slip or transfer confirmation (one PoP for the team)</li>
           </ol>
-          <p class="form-note" style="margin-top:0.75rem">Account: <code>782637</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
+          <p class="form-note" style="margin-top:0.75rem">National Bank of Malawi account <code>782637</code> — reference: your name + mobile${phone ? ' (' + escapeHtml(phone) + ')' : ''}.</p>
         </div>
 
         <div class="post-pay-info">
           <p><strong>How payment is shared with the organisers</strong></p>
           <ul>
             <li>You already submitted a <strong>PoP reference</strong> on this form (transaction ID). That is what the committee uses to match your payment.</li>
-            <li>Pay to account <code>782637</code> using <strong>name + mobile</strong> as the bank reference (same as on the form).</li>
+            <li>Pay to National Bank of Malawi account <code>782637</code> using <strong>name + mobile</strong> as the bank reference (same as on the form).</li>
             <li>If you pay later or the reference changes, email or WhatsApp the OC with: your name, mobile, team name (if any), amount, and the new transaction ID.</li>
             <li>Organisers verify payment in Control, then assign <strong>bib numbers</strong> and email you if an address was provided.</li>
             <li>Certificates: participation (DNF) or completion (finishers) — emailed when results are marked.</li>
@@ -555,7 +555,7 @@
     if (!el || !distSel) return;
     const d = distSel.value;
     if (d && ENTRY_FEES[d] != null) {
-      el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
+      el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to National Bank of Malawi account <code>782637</code> (ref: name + mobile)';
       el.style.display = 'block';
     } else {
       el.style.display = 'none';
@@ -692,14 +692,14 @@
       });
       el.style.display = '';
       el.innerHTML = total > 0
-        ? 'Team total: <strong>' + formatMwk(total) + '</strong> (' + members.filter(function(m){return m.distance;}).length + ' runners) — one transfer to account <code>782637</code> (ref: team/contact name + mobile)'
-        : 'Add each member’s distance to see the team total — pay to account <code>782637</code>';
+        ? 'Team total: <strong>' + formatMwk(total) + '</strong> (' + members.filter(function(m){return m.distance;}).length + ' runners) — one transfer to National Bank of Malawi account <code>782637</code> (ref: team/contact name + mobile)'
+        : 'Add each member’s distance to see the team total — pay to National Bank of Malawi account <code>782637</code>';
     } else {
       const sel = document.getElementById('distance');
       const d = sel && sel.value;
       if (d && ENTRY_FEES[d] != null) {
         el.style.display = '';
-        el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to account <code>782637</code> (ref: name + mobile)';
+        el.innerHTML = 'Entry fee: <strong>' + formatMwk(ENTRY_FEES[d]) + '</strong> — pay to National Bank of Malawi account <code>782637</code> (ref: name + mobile)';
       } else {
         el.style.display = 'none';
       }

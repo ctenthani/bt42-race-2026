@@ -1572,7 +1572,7 @@
       <strong>Participant list</strong> — visible to all committee members.<br>
       <strong>Payment verification (Verify / Reject)</strong> — <em>Chair only</em>.
       ${canPayment() ? '' : '<br><span class="pay-status pay-wait">Payment verify requires an Ops or Chair login.</span>'}
-      <br>Pay to bank account <code>782637</code> (reference: name + mobile).
+      <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -2523,7 +2523,7 @@
           <div class="form-group"><label>5 km fee (MWK)</label>
             <input type="number" id="sc-fee5" value="${Number(c.fees5) || 5000}" min="0" step="500" /></div>
         </div>
-        <div class="form-group"><label>Bank account number</label>
+        <div class="form-group"><label>National Bank of Malawi account number</label>
           <input type="text" id="sc-bank" value="${escapeHtml(c.bankAccount || '782637')}" /></div>
         <div class="form-group"><label>Footer note</label>
           <input type="text" id="sc-footer" value="${escapeHtml(c.footerNote)}" /></div>
