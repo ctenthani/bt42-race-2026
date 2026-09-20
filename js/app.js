@@ -409,13 +409,6 @@
       });
     }
 
-    // Netlify Forms backup (do not block on this)
-    fetch('/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams(formData).toString()
-    }).catch(() => null);
-
     readProofAsDataUrl(proofFile).then((proofData) => {
       if (proofData) payload.paymentProof = proofData;
       payload.paymentRef = paymentRefVal;

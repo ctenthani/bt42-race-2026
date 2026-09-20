@@ -437,6 +437,11 @@ exports.handler = async (event) => {
 
     // One confirmation email (team = full roster in a single message)
     try {
+      const mailKey = String(body.email || '').trim().toLowerCase() + '|' + String(body.fullName || body.teamName || '').trim().toLowerCase();
+      const sent = Array.isArray(state.confirmationSent) ? state.confirmationSent : [];
+      if (sent.includes(mailKey)) {
+        // already mailed this entry
+      } else {
       await sendConfirmationEmail({
         fullName: isTeam
           ? (body.teamName ? String(body.teamName) + ' (team contact)' : 'Team contact')
@@ -450,6 +455,10 @@ exports.handler = async (event) => {
           name: r.fullName, distance: r.distance, feeMwk: r.feeMwk
         }))) : null
       });
+      sent.push(mailKey);
+      state.confirmationSent = sent.slice(-400);
+      try { await writeState(state); } catch (e2) {}
+      }
     } catch (e) {}
 
     return json(200, {

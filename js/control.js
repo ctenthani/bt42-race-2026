@@ -1963,7 +1963,7 @@
         map[payKey] = Object.assign({}, rec);
         savePayments(map);
         if (getSyncToken()) {
-          livePush({ payments: map }).catch(() => {});
+          livePush({ payments: map }).catch((e) => console.warn('payment sync', e));
         }
         renderParticipants();
         try {
@@ -2205,15 +2205,19 @@
     }
     recentEmail[dedupeKey] = now;
     const body = Object.assign({}, payload, { to: to, email: to });
-    return fetch('/.netlify/functions/send-certificate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(async (res) => {
-      const j = await res.json().catch(() => ({}));
-      if (!j.ok) console.warn('Email send failed', j.error || j, body.type, to);
-      return j;
-    }).catch((e) => ({ ok: false, error: String(e) }));
+    function once() {
+      return fetch('/.netlify/functions/send-certificate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(async (res) => {
+        const j = await res.json().catch(() => ({}));
+        if (!j.ok) console.warn('Email send failed', j.error || j, body.type, to);
+        return j;
+      });
+    }
+    return once().catch(() => new Promise((r) => setTimeout(r, 900)).then(once))
+      .catch((e) => ({ ok: false, error: String(e && e.message ? e.message : e) }));
   }
 
 
