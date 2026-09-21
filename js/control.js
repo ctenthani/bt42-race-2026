@@ -1663,7 +1663,7 @@
       const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : ''}</td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button></td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
         <td><small>${escapeHtml(entryStamp(r))}</small></td>
@@ -1696,7 +1696,7 @@
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
           <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
-        <td class="actions-cell"><button type="button" class="btn-mini entry-edit" data-i="${i}">Edit name</button>${isChair ? ' <button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
+        <td class="actions-cell">${isChair ? '<button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
       </tr>`;
     });
     html += '</tbody></table></div>';
@@ -1785,6 +1785,38 @@
       };
     }
 
+    container.querySelectorAll('.entry-email').forEach((btn) => {
+      btn.onclick = async () => {
+        if (!(isChair || canPayment() || canBibs() || canFinish())) {
+          alert('Sign in as staff to correct an email.');
+          return;
+        }
+        const i = Number(btn.dataset.i);
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+        const r = list[i];
+        if (!r) return;
+        const nextEmail = window.prompt('Correct email for ' + (r.fullName || 'athlete') + ' (race emails go here):', r.email || r.teamContactEmail || '');
+        if (nextEmail === null) return;
+        const cleaned = String(nextEmail).trim().toLowerCase();
+        if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/.test(cleaned) || /gamil\.com|gmial\.com|gnail\.com|gmail\.con|gmail\.cm$/.test(cleaned)) {
+          alert('That is not a valid email. Use a real inbox such as name@gmail.com.');
+          return;
+        }
+        r.email = cleaned;
+        if (r.teamContactEmail) r.teamContactEmail = cleaned;
+        r.emailCorrectedAt = new Date().toISOString();
+        r.emailCorrectedBy = currentUser || (isChair ? 'chair' : 'staff');
+        list[i] = r;
+        localStorage.setItem('bt42_registrations', JSON.stringify(list));
+        if (getSyncToken()) {
+          await livePush({ registrations: list, replaceRegistrations: true }).catch(() => {});
+        }
+        renderParticipants();
+        alert('Email updated to ' + cleaned + '.');
+      };
+    });
+
     container.querySelectorAll('.entry-edit').forEach((btn) => {
       btn.onclick = async () => {
         if (!(isChair || canPayment() || canBibs() || canFinish())) {
@@ -1796,7 +1828,7 @@
         try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
         const r = list[i];
         if (!r) return;
-        const nextName = prompt('Correct the name as it should appear on the bib and certificate:', r.fullName || '');
+        const nextName = window.prompt('Correct the name as it should appear on the bib and certificate:\n\nCurrent: ' + (r.fullName || ''), r.fullName || '');
         if (nextName === null) return;
         const cleaned = String(nextName).trim().replace(/\s+/g, ' ');
         if (cleaned.length < 3) {
