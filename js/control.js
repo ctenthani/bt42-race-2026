@@ -1555,6 +1555,21 @@
   }
 
 
+  function entryStamp(r) {
+    const raw = r && (r.submittedAt || r.createdAt || r.registeredAt || '');
+    if (!raw) return '—';
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return String(raw).replace('T', ' ').slice(0, 16);
+    return d.toLocaleString('en-GB', {
+      timeZone: 'Africa/Blantyre',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
@@ -1599,15 +1614,38 @@
     const verified = rows.filter((r, i) => paymentRecordFor(r, i, pays).status === 'verified').length;
     const finished = rows.filter((r, i) => (finishes[participantKey(r, i)] || {}).status === 'finished').length;
 
+    const raceFilter = sessionStorage.getItem('bt42_part_race') || 'all';
+    const raceMatch = (r) => {
+      const c = normalizeDistanceCode(r.distance);
+      if (raceFilter === 'all') return true;
+      if (raceFilter === '42') return c === '42.195';
+      if (raceFilter === '10') return c === '10';
+      if (raceFilter === '5') return c === '5';
+      return true;
+    };
+    const visible = [];
+    rows.forEach((r, i) => { if (raceMatch(r)) visible.push({ r, i }); });
+    const n42 = rows.filter((r) => normalizeDistanceCode(r.distance) === '42.195').length;
+    const n10 = rows.filter((r) => normalizeDistanceCode(r.distance) === '10').length;
+    const n5 = rows.filter((r) => normalizeDistanceCode(r.distance) === '5').length;
+    const chip = (id, label) =>
+      '<button type="button" class="btn-mini race-filter' + (raceFilter === id ? ' active' : '') + '" data-race="' + id + '">' + label + '</button>';
+
     html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;margin:0.75rem 0">
         <p style="font-size:0.85rem;margin:0"><strong>${rows.length}</strong> shared entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
         <button type="button" class="btn-mini" id="sync-local-shared">Upload this phone's local entries to shared list</button>
         ${isChair ? '<button type="button" class="btn-mini" id="clear-all-entries" style="border-color:#C0392B;color:#C0392B">Clear all entries</button>' : ''}
       </div>
+      <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0 0 0.75rem">
+        ${chip('all', 'All (' + rows.length + ')')}
+        ${chip('42', '42.195 km (' + n42 + ')')}
+        ${chip('10', '10 km (' + n10 + ')')}
+        ${chip('5', '5 km (' + n5 + ')')}
+      </div>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Distance</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th>${isChair ? '<th></th>' : ''}</tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Race</th><th>Entered</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th>${isChair ? '<th></th>' : ''}</tr></thead><tbody>`;
 
-    rows.forEach((r, i) => {
+    visible.forEach(({ r, i }) => {
       const key = participantKey(r, i);
       const pay = paymentRecordFor(r, i, pays);
       const fin = finishes[key] || { status: 'not_started' };
@@ -1628,6 +1666,7 @@
         <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : ''}</td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
+        <td><small>${escapeHtml(entryStamp(r))}</small></td>
         <td>
           <span class="pay-status ${stClass}">${stLabel}</span>
           <div class="actions-cell">
@@ -1664,6 +1703,12 @@
     container.innerHTML = html;
     wireSigUploads();
     renderSigPreviews();
+    container.querySelectorAll('.race-filter').forEach((btn) => {
+      btn.onclick = () => {
+        sessionStorage.setItem('bt42_part_race', btn.dataset.race || 'all');
+        renderParticipants();
+      };
+    });
 
 
 
@@ -2197,6 +2242,9 @@
     if (!payload) return Promise.resolve({ ok: false, skipped: true });
     const to = (payload.to || payload.email || '').trim();
     if (!to) return Promise.resolve({ ok: false, skipped: true, error: 'No recipient' });
+    if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i.test(to) || /gamil\.com|gmial\.com|gnail\.com|gmail\.con|gmail\.cm$/i.test(to)) {
+      return Promise.resolve({ ok: false, skipped: true, error: 'Invalid email — not sent' });
+    }
     const dedupeKey = [payload.type || '', to.toLowerCase(), payload.bib || '', payload.subject || '', payload.fullName || ''].join('|');
     const now = Date.now();
     if (recentEmail[dedupeKey] && now - recentEmail[dedupeKey] < 20000) {

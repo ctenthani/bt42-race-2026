@@ -3,6 +3,16 @@
  * POST /.netlify/functions/register
  */
 
+function isValidRaceEmail(raw) {
+  const s = String(raw || '').trim().toLowerCase();
+  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/.test(s)) return false;
+  if (s.indexOf('..') >= 0) return false;
+  const bad = ['gamil.com','gmial.com','gnail.com','gmal.com','gmail.co','gmail.con','gmail.cm','yahooo.com','yaho.com','hotmial.com'];
+  const domain = s.split('@')[1] || '';
+  if (bad.indexOf(domain) >= 0) return false;
+  return true;
+}
+
 const STORE_NAME = 'bt42-oc-sync';
 const STATE_KEY = 'state';
 
@@ -197,7 +207,7 @@ async function writeState(state) {
 
 async function sendConfirmationEmail(reg) {
   const to = (reg.email || '').trim();
-  if (!to) return;
+  if (!to || !isValidRaceEmail(to)) return;
   const apiKey = process.env.EMAIL_API_KEY || process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM || 'BT42.195km Race <onboarding@resend.dev>';
   if (!apiKey) return;
@@ -344,8 +354,8 @@ exports.handler = async (event) => {
   if (!body.distance && !hasTeamDetails) {
     return json(400, { ok: false, error: 'phone and distance are required' });
   }
-  if (!(body.email && String(body.email).trim() && String(body.email).indexOf('@') > 0)) {
-    return json(400, { ok: false, error: 'Email is required so entrants receive confirmation, bib and certificate emails' });
+  if (!isValidRaceEmail(body.email)) {
+    return json(400, { ok: false, error: 'Enter a valid email address (for example name@gmail.com). Race emails will not send to a mistyped inbox.' });
   }
   if (body.regType !== 'team') {
     const nm = String(body.fullName || '').trim();

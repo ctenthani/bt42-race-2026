@@ -422,6 +422,9 @@ exports.handler = async (event) => {
   if (!to) {
     return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'Recipient email required' }) };
   }
+  if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i.test(to) || /gamil\.com|gmial\.com|gnail\.com|gmail\.con|gmail\.cm|gmail\.co$/i.test(to)) {
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: false, skipped: true, error: 'Invalid recipient email — not sent' }) };
+  }
   const dedupeKey = [type, to.toLowerCase(), body.bib || '', body.subject || '', body.fullName || ''].join('|');
   const now = Date.now();
   if (recentSends[dedupeKey] && now - recentSends[dedupeKey] < 20000) {

@@ -3,6 +3,29 @@
 (function () {
   const RACE_DATE = new Date('2026-09-27T06:00:00+02:00'); // CAT
 
+  const EMAIL_TYPOS = {
+    'gamil.com': 'gmail.com',
+    'gmial.com': 'gmail.com',
+    'gnail.com': 'gmail.com',
+    'gmal.com': 'gmail.com',
+    'gmail.co': 'gmail.com',
+    'gmail.con': 'gmail.com',
+    'gmail.cm': 'gmail.com',
+    'yahooo.com': 'yahoo.com',
+    'yaho.com': 'yahoo.com',
+    'hotmial.com': 'hotmail.com',
+    'outllok.com': 'outlook.com'
+  };
+  function isValidRaceEmail(raw) {
+    const s = String(raw || '').trim().toLowerCase();
+    if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/.test(s)) return { ok: false, email: s };
+    if (s.indexOf('..') >= 0 || s.indexOf('@.') >= 0 || s.indexOf('.@') >= 0) return { ok: false, email: s };
+    const domain = s.split('@')[1] || '';
+    const hint = EMAIL_TYPOS[domain];
+    if (hint) return { ok: false, email: s, hint: s.split('@')[0] + '@' + hint };
+    return { ok: true, email: s };
+  }
+
   // ---- Navigation ----
   function navigate(pageId, opts) {
     opts = opts || {};
@@ -242,8 +265,13 @@
       return false;
     }
     const emailVal = (formData.get('email') || '').toString().trim();
-    if (!emailVal || emailVal.indexOf('@') < 1) {
-      alert('Email address is required so we can send entry confirmation, payment updates, bib numbers and certificates.');
+    const emailCheck = isValidRaceEmail(emailVal);
+    if (!emailCheck.ok) {
+      alert(emailCheck.hint
+        ? ('That email looks mistyped. Did you mean ' + emailCheck.hint + '? Please correct it so race emails can be delivered.')
+        : 'Enter a real email address (e.g. name@gmail.com). We use it for entry confirmation, payment, bib and certificates.');
+      const em = document.getElementById('email');
+      if (em) em.focus();
       return false;
     }
     const emPhone = (formData.get('emergencyPhone') || '').toString();
@@ -293,8 +321,11 @@
       }
       const emailEl = document.getElementById('email');
       const emailVal = (emailEl && emailEl.value || '').trim();
-      if (!emailVal || emailVal.indexOf('@') < 1) {
-        alert('A valid email address is required for team registration (confirmation and updates are sent there).');
+      const teamMail = isValidRaceEmail(emailVal);
+      if (!teamMail.ok) {
+        alert(teamMail.hint
+          ? ('Team email looks mistyped. Did you mean ' + teamMail.hint + '?')
+          : 'A valid team contact email is required so confirmation, payment and bib emails can be delivered.');
         if (emailEl) emailEl.focus();
         return false;
       }

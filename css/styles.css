@@ -1806,3 +1806,9 @@ body.course-full #page-course .container.section { padding: 0.35rem 0.5rem 0; }
   margin: 0 auto 0.6rem;
   display:block;
 }
+
+.btn-mini.race-filter.active {
+  background: #1B4F72;
+  color: #fff;
+  border-color: #1B4F72;
+}
