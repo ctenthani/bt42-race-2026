@@ -1696,7 +1696,7 @@
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
           <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
-        <td class="actions-cell">${isChair ? '<button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
+        <td class="actions-cell"><button type="button" class="btn-mini entry-delete" data-i="${i}" style="border-color:#C0392B;color:#C0392B">Delete</button></td>
       </tr>`;
     });
     html += '</tbody></table></div>';
@@ -1859,23 +1859,28 @@
         const pays = remap(loadPayments()); savePayments(pays);
         const bibsMap = remap(loadBibs()); saveBibs(bibsMap);
         const fins = remap(loadFinishes()); saveFinishes(fins);
+        const oldIdentity = String(r.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String((oldKeys[0] || '').split('|').pop() || '');
+        const suppressOld = String((r.phone || '')).replace(/\s+/g, '').toLowerCase() + '|' + String(oldKey.split('|').slice(1).join('|') || '');
+        // oldKey is phone|oldname — rebuild from values before we overwrote name
+        const oldNameKey = oldKey;
         if (getSyncToken()) {
           await livePush({
             registrations: list,
             replaceRegistrations: true,
             payments: pays,
             bibs: bibsMap,
-            finishes: fins
-          }).catch(() => {});
+            finishes: fins,
+            suppressedKeys: oldNameKey ? [oldNameKey] : []
+          }).catch((e) => alert('Name changed here but sync failed: ' + (e.message || e)));
         }
         renderParticipants();
-        alert('Name updated to “' + cleaned + '”.');
+        alert('Name updated to “' + cleaned + '”. The old spelling is removed.');
       };
     });
 
     container.querySelectorAll('.entry-delete').forEach(btn => {
       btn.onclick = async () => {
-        if (!isChair) { alert('Only the Chair can delete entries.'); return; }
+        if (!(isChair || canPayment() || canBibs())) { alert('Sign in as Chair or Ops to delete an entry.'); return; }
         const i = Number(btn.dataset.i);
         let list = [];
         try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
@@ -1883,24 +1888,29 @@
         if (!r) return;
         if (!confirm('Delete entry for ' + (r.fullName || 'this athlete') + '?')) return;
         const key = participantKey(r, i);
+        const delKey = String(r.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(r.fullName || '').trim().toLowerCase();
         const next = list.filter((_, idx) => idx !== i);
         localStorage.setItem('bt42_registrations', JSON.stringify(next));
         const pays = loadPayments(); delete pays[key]; savePayments(pays);
         const bibsMap = loadBibs(); delete bibsMap[key]; saveBibs(bibsMap);
         const fins = loadFinishes(); delete fins[key]; saveFinishes(fins);
         if (getSyncToken()) {
-          const delKey = String(row.phone || '').replace(/\s+/g, '').toLowerCase() + '|' + String(row.fullName || '').trim().toLowerCase();
-          await livePush({
-            registrations: next,
-            replaceRegistrations: true,
-            payments: pays,
-            replacePayments: true,
-            bibs: bibsMap,
-            replaceBibs: true,
-            finishes: fins,
-            replaceFinishes: true,
-            suppressedKeys: delKey ? [delKey] : []
-          }).catch(() => {});
+          try {
+            const pushed = await livePush({
+              registrations: next,
+              replaceRegistrations: true,
+              payments: pays,
+              replacePayments: true,
+              bibs: bibsMap,
+              replaceBibs: true,
+              finishes: fins,
+              replaceFinishes: true,
+              suppressedKeys: delKey ? [delKey] : []
+            });
+            if (pushed && pushed.ok === false) alert('Deleted here but shared list failed: ' + (pushed.error || ''));
+          } catch (e) {
+            alert('Deleted here but shared list failed: ' + (e.message || e));
+          }
         }
         renderParticipants();
         renderDashboard();
