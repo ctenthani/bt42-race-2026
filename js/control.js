@@ -1745,7 +1745,7 @@
       const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button>${isChair ? ' <button type="button" class="btn-mini entry-full" data-i="'+i+'">Edit all details</button>' : ''}</td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button>${isChair ? ' <label class="form-note">Edit one field <select class="entry-field" data-i="'+i+'"><option value="">Choose…</option><option value="fullName">Name</option><option value="phone">Phone</option><option value="email">Email</option><option value="distance">Race</option><option value="dob">Date of birth</option><option value="gender">Gender</option><option value="club">Club / team</option><option value="emergencyName">Emergency name</option><option value="emergencyPhone">Emergency phone</option><option value="paymentRef">Payment reference</option></select></label> <button type="button" class="btn-mini entry-one" data-i="'+i+'">Save field</button>' : ''}</td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
         <td><small>${escapeHtml(entryStamp(r))}</small></td>
@@ -1867,39 +1867,49 @@
       };
     }
 
-    container.querySelectorAll('.entry-full').forEach((btn) => {
+    container.querySelectorAll('.entry-one').forEach((btn) => {
       btn.onclick = async () => {
         if (!isChair) return;
         const i = Number(btn.dataset.i);
+        const sel = container.querySelector('.entry-field[data-i="' + i + '"]');
+        const field = sel && sel.value;
+        const labels = {
+          fullName: 'Name', phone: 'Phone', email: 'Email', distance: 'Race (42.195 / 10 / 5)',
+          dob: 'Date of birth (YYYY-MM-DD)', gender: 'Gender', club: 'Club / team',
+          emergencyName: 'Emergency contact name', emergencyPhone: 'Emergency phone', paymentRef: 'Payment reference'
+        };
+        if (!field || !labels[field]) {
+          alert('Choose one field to edit.');
+          return;
+        }
         let list = [];
         try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
         const r = list[i];
         if (!r) return;
-        const next = {
-          fullName: prompt('Full name', r.fullName || ''),
-          phone: prompt('Phone', r.phone || ''),
-          email: prompt('Email', r.email || ''),
-          distance: prompt('Race (42.195 / 10 / 5)', r.distance || ''),
-          dob: prompt('Date of birth (YYYY-MM-DD)', r.dob || ''),
-          gender: prompt('Gender', r.gender || ''),
-          club: prompt('Club / team', r.club || r.teamName || ''),
-          emergencyName: prompt('Emergency contact name', r.emergencyName || ''),
-          emergencyPhone: prompt('Emergency phone', r.emergencyPhone || ''),
-          paymentRef: prompt('Payment reference', r.paymentRef || '')
-        };
-        if (next.fullName === null) return;
-        Object.keys(next).forEach((k) => {
-          if (next[k] === null) return;
-          r[k] = String(next[k]).trim();
-        });
-        if (r.distance === '42' || r.distance === 'marathon') r.distance = '42.195';
+        const current = field === 'club' ? (r.club || r.teamName || '') : (r[field] || '');
+        const typed = prompt('New ' + labels[field] + ':', current);
+        if (typed === null) return;
+        const value = String(typed).trim();
+        if (field === 'email' && value && !/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i.test(value)) {
+          alert('That email is not valid.');
+          return;
+        }
+        if (field === 'distance') {
+          const c = normalizeDistanceCode(value);
+          r.distance = c === '42.195' || c === '10' || c === '5' ? c : value;
+        } else if (field === 'club') {
+          r.club = value;
+        } else {
+          r[field] = value;
+        }
         r.editedAt = new Date().toISOString();
         r.editedBy = currentUser || 'chair';
+        r.editedField = field;
         list[i] = r;
         localStorage.setItem('bt42_registrations', JSON.stringify(list));
         if (getSyncToken()) await livePush({ registrations: list, replaceRegistrations: true }).catch(() => {});
         renderParticipants();
-        alert('Participant details saved.');
+        alert(labels[field] + ' updated.');
       };
     });
 
