@@ -821,6 +821,50 @@
     ]
   };
 
+  function renderPublicResults() {
+    const root = document.getElementById('public-results');
+    if (!root) return;
+    root.innerHTML = '<p class="form-note">Loading live board…</p>';
+    function paint(rows) {
+      const groups = [
+        { id: '42.195', title: '42.195 km Marathon' },
+        { id: '10', title: '10 km' },
+        { id: '5', title: '5 km Fun Run' }
+      ];
+      function secs(t) {
+        const p = String(t || '').split(':').map(Number);
+        if (p.some(isNaN)) return 9e15;
+        if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+        if (p.length === 2) return p[0] * 60 + p[1];
+        return 9e15;
+      }
+      let html = '<p class="form-note">Official times appear when the finish team records them. This board refreshes every 20 seconds.</p>';
+      groups.forEach((g) => {
+        const list = (rows || []).filter((r) => r.distance === g.id);
+        const done = list.filter((r) => r.status === 'finished').sort((a, b) => secs(a.time) - secs(b.time));
+        html += '<h2>' + g.title + '</h2>';
+        if (!done.length) {
+          html += '<p class="form-note">No finishers recorded yet.</p>';
+          return;
+        }
+        html += '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Pos</th><th>Bib</th><th>Name</th><th>Time</th></tr></thead><tbody>';
+        done.forEach((r, i) => {
+          html += '<tr><td>' + (i + 1) + '</td><td>' + (r.bib || '—') + '</td><td>' + String(r.name || '').replace(/</g, '') + '</td><td>' + String(r.time || '—').replace(/</g, '') + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+      });
+      root.innerHTML = html;
+    }
+    fetch('/.netlify/functions/results').then((r) => r.json()).then((j) => paint((j && j.rows) || [])).catch(() => {
+      root.innerHTML = '<p class="form-note">Results board will go live when the finish team is online.</p>';
+    });
+    if (window._bt42ResultsTimer) clearInterval(window._bt42ResultsTimer);
+    window._bt42ResultsTimer = setInterval(function () {
+      if (!(location.hash || '').replace('#', '').startsWith('results')) return;
+      fetch('/.netlify/functions/results').then((r) => r.json()).then((j) => paint((j && j.rows) || [])).catch(() => {});
+    }, 20000);
+  }
+
   function renderPublicSurvey() {
     const root = document.getElementById('survey-root');
     if (!root) return;
@@ -888,6 +932,7 @@
     window.navigate = function (pageId, opts) {
       _nav(pageId, opts);
       if (pageId === 'survey') renderPublicSurvey();
+      if (pageId === 'results') renderPublicResults();
     };
   }
 
@@ -895,6 +940,7 @@
     document.addEventListener('DOMContentLoaded', function () {
       initTeamRegistrationUI();
       if ((location.hash || '').indexOf('survey') >= 0) renderPublicSurvey();
+      if ((location.hash || '').indexOf('results') >= 0) renderPublicResults();
     });
   } else {
     initTeamRegistrationUI();

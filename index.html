@@ -35,6 +35,7 @@
           <a href="course-route.html">Course</a>
           <a href="#volunteers" data-page="volunteers">Volunteers</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
+          <a href="#results" data-page="results">Results</a>
           <a href="#survey" data-page="survey">Survey</a>
           <a href="#info" data-page="info">Info</a>
           <a href="#control" data-page="control" class="nav-control">Control</a>
@@ -581,6 +582,10 @@
         <span class="tab-icon">🗺️</span>
         <span>Course</span>
       </a>
+      <a href="#results" data-page="results" class="tab">
+        <span class="tab-icon">🏁</span>
+        <span>Results</span>
+      </a>
       <a href="#survey" data-page="survey" class="tab">
         <span class="tab-icon">📋</span>
         <span>Survey</span>
@@ -591,6 +596,16 @@
       </a>
     </nav>
 
+
+      <section id="page-results" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Live results</h1>
+            <p>BT42.195km Race · 27 September 2026 · updates as athletes finish</p>
+          </div>
+        </div>
+        <div class="container" id="public-results"></div>
+      </section>
 
       <section id="page-survey" class="page">
         <div class="page-header">
@@ -638,7 +653,8 @@
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
               <button class="ctrl-tab" data-panel="chair">Chair notes</button>
               <button class="ctrl-tab" data-panel="approvals">Approvals</button>
-              <button class="ctrl-tab" data-panel="survey">Survey results</button>
+              <button class="ctrl-tab" data-panel="survey">Survey</button>
+              <button class="ctrl-tab" data-panel="results">Live results</button>
               <button class="ctrl-tab" data-panel="staff">Staff logins</button>
               <button class="ctrl-tab" data-panel="site">Site content</button>
               <button class="ctrl-tab" data-panel="participants">Participants</button>
@@ -679,9 +695,15 @@
               <div id="ctrl-approvals"></div>
             </div>
             <div id="panel-survey" class="ctrl-panel">
-              <h3 class="ctrl-section-title">Race-day feedback — results</h3>
-              <p class="form-note">Chair only. Responses open to the public from 27 September 2026, 12:00 CAT.</p>
+              <h3 class="ctrl-section-title">Race-day feedback — preview and results</h3>
+              <p class="form-note">Chair only. Preview questions now. Public form opens 27 September 2026, 12:00 CAT. Results appear below as they arrive.</p>
+              <div id="ctrl-survey-preview"></div>
               <div id="ctrl-survey-results"></div>
+            </div>
+            <div id="panel-results" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Live race results</h3>
+              <p class="form-note">Updates as Finish / DNF is entered. Public page: #results</p>
+              <div id="ctrl-live-results"></div>
             </div>
 
             <!-- Checklist -->
@@ -787,9 +809,9 @@
   </div>
 
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="js/control-data.js?v=20260921h"></script>
-  <script src="js/control.js?v=20260921h"></script>
+  <script src="js/control-data.js?v=20260921i"></script>
+  <script src="js/control.js?v=20260921i"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.js?v=20260921h"></script>
+  <script src="js/app.js?v=20260921i"></script>
 </body>
 </html>

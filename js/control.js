@@ -201,6 +201,7 @@
     if (isChair) return true;
     if (panel === 'dash') return true;
     if (panel === 'participants') return canPayment() || canBibs() || canFinish();
+    if (panel === 'results') return canFinish() || isChair;
     if (panel === 'volunteers') return canVolunteers();
     if (panel === 'staff') return canManageStaff();
     if (panel === 'approvals') return canRequisitions();
@@ -2328,6 +2329,7 @@
           }
         }
         renderParticipants();
+        renderLiveResults();
       };
     });
     container.querySelectorAll('.fin-dnf').forEach(btn => {
@@ -3519,6 +3521,134 @@ w.document.close();
     });
   }
 
+  const SURVEY_PREVIEW = {
+    Participants: [
+      'Which race did you take part in?',
+      'How easy was online registration and payment?',
+      'How clear was pre-race information?',
+      'How was bib collection and the start area?',
+      'How well was the course marked and marshalled?',
+      'How adequate were water stations?',
+      'Medical and safety support',
+      'Finish, results and medals/certificates',
+      'Would you enter again?',
+      'What should we improve next year?'
+    ],
+    Volunteers: [
+      'Main duty',
+      'Briefing before race day',
+      'Kit and supplies at post',
+      'Morning coordination',
+      'Safety at your post',
+      'Length of shift',
+      'Committee support',
+      'Would you volunteer again?',
+      'Overall volunteer experience',
+      'What should change for volunteers?'
+    ],
+    Committee: [
+      'Main OC role',
+      'Planning meetings',
+      'Website / Control Room',
+      'Money and approvals',
+      'Race-morning command',
+      'Partners (MNCS / AM)',
+      'Handling problems on the day',
+      'Serve on the OC again?',
+      'Overall committee experience',
+      'Priority fix next edition'
+    ],
+    Media: [
+      'Outlet type',
+      'Accreditation / access',
+      'Information pack',
+      'Start / finish / course access',
+      'OC spokespersons',
+      'Facilities',
+      'Results and name spellings',
+      'Cover the race again?',
+      'Overall media experience',
+      'What would help coverage?'
+    ],
+    Public: [
+      'How did you follow the race?',
+      'How did you hear about it?',
+      'Atmosphere on the route',
+      'Road closures and diversions',
+      'Welcome for spectators',
+      'Where-to-watch information',
+      'Impact on movement in Blantyre',
+      'Recommend watching?',
+      'Overall public impression',
+      'One thing to do differently'
+    ]
+  };
+
+  function parseRaceTime(t) {
+    const s = String(t || '').trim();
+    const p = s.split(':').map(Number);
+    if (p.some((n) => isNaN(n))) return 9e15;
+    if (p.length === 3) return p[0] * 3600 + p[1] * 60 + p[2];
+    if (p.length === 2) return p[0] * 60 + p[1];
+    return 9e15;
+  }
+
+  function buildResultRows() {
+    let regs = [];
+    try { regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { regs = []; }
+    const fins = loadFinishes();
+    const bibs = loadBibs();
+    return regs.map((r, i) => {
+      const k = participantKey(r, i);
+      const fin = fins[k] || {};
+      return {
+        name: r.fullName || '',
+        distance: normalizeDistanceCode(r.distance),
+        bib: (bibs[k] && bibs[k].number) || '',
+        status: fin.status || 'on_course',
+        time: fin.time || '',
+        sort: fin.status === 'finished' ? parseRaceTime(fin.time) : (fin.status === 'dnf' ? 8e15 : 9e15)
+      };
+    });
+  }
+
+  function renderLiveResults() {
+    const box = $('#ctrl-live-results');
+    if (!box) return;
+    const rows = buildResultRows();
+    const groups = [
+      { id: '42.195', title: '42.195 km Marathon' },
+      { id: '10', title: '10 km' },
+      { id: '5', title: '5 km Fun Run' }
+    ];
+    let html = '<p class="form-note">Board refreshes when you mark Finish. Public view updates from the shared list.</p>';
+    groups.forEach((g) => {
+      const list = rows.filter((r) => r.distance === g.id).sort((a, b) => a.sort - b.sort);
+      const fin = list.filter((r) => r.status === 'finished').length;
+      html += '<h4>' + g.title + ' — ' + fin + ' finished / ' + list.length + ' entered</h4>';
+      html += '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Pos</th><th>Bib</th><th>Name</th><th>Time</th><th>Status</th></tr></thead><tbody>';
+      let pos = 0;
+      list.forEach((r) => {
+        if (r.status === 'finished') pos += 1;
+        html += '<tr><td>' + (r.status === 'finished' ? pos : '—') + '</td><td>' + escapeHtml(String(r.bib || '—')) + '</td><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.time || '—') + '</td><td>' + escapeHtml(r.status) + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    box.innerHTML = html;
+  }
+
+  function renderSurveyPreview() {
+    const box = $('#ctrl-survey-preview');
+    if (!box || !isChair) return;
+    let html = '<h4>Question preview (public form)</h4>';
+    Object.keys(SURVEY_PREVIEW).forEach((k) => {
+      html += '<details open style="margin:0.5rem 0"><summary><strong>' + k + '</strong> — ' + SURVEY_PREVIEW[k].length + ' questions</summary><ol>';
+      SURVEY_PREVIEW[k].forEach((q) => { html += '<li>' + escapeHtml(q) + '</li>'; });
+      html += '</ol></details>';
+    });
+    box.innerHTML = html;
+  }
+
   function renderSurveyResults() {
     const box = $('#ctrl-survey-results');
     if (!box || !isChair) return;
@@ -3579,7 +3709,9 @@ w.document.close();
     renderDeadlines();
     if (isChair) renderChairNotes();
     if (canRequisitions()) renderApprovals();
+    if (isChair) renderSurveyPreview();
     if (isChair) renderSurveyResults();
+    renderLiveResults();
     if (canManageStaff()) renderStaffAdmin();
     if (isChair) renderSiteContentAdmin();
     applySiteContentToPublic();
