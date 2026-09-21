@@ -16,6 +16,7 @@ const emptyState = () => ({
   staffUsers: [],
   volunteers: [],
   approvals: [],
+  surveyResponses: [],
   siteContent: null,
   suppressedKeys: [],
   updatedAt: null,

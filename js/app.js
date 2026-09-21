@@ -757,10 +757,148 @@
     } catch (e) {}
   }
 
+  const SURVEY_OPEN_AT = Date.parse('2026-09-27T12:00:00+02:00');
+  const SURVEY = {
+    participant: [
+      { id: 'p1', q: 'Which race did you take part in?', type: 'choice', opts: ['42.195 km', '10 km', '5 km', 'Did not finish / DNS'] },
+      { id: 'p2', q: 'How easy was online registration and payment?', type: 'scale' },
+      { id: 'p3', q: 'How clear was pre-race information (start time, kit, course)?', type: 'scale' },
+      { id: 'p4', q: 'How was bib collection and the start area?', type: 'scale' },
+      { id: 'p5', q: 'How well was the course marked and marshalled?', type: 'scale' },
+      { id: 'p6', q: 'How adequate were water stations?', type: 'scale' },
+      { id: 'p7', q: 'How would you rate medical and safety support?', type: 'scale' },
+      { id: 'p8', q: 'How was the finish, results and medals/certificates?', type: 'scale' },
+      { id: 'p9', q: 'Would you enter BT42.195km Race again?', type: 'choice', opts: ['Yes', 'Maybe', 'No'] },
+      { id: 'p10', q: 'What should we improve next year?', type: 'text' }
+    ],
+    volunteer: [
+      { id: 'v1', q: 'What was your main duty?', type: 'choice', opts: ['Water / course', 'Registration / bibs', 'Medical', 'Security / protocol', 'Other'] },
+      { id: 'v2', q: 'How useful was the briefing before race day?', type: 'scale' },
+      { id: 'v3', q: 'Did you have what you needed (kit, water, signs)?', type: 'scale' },
+      { id: 'v4', q: 'How clear was coordination on the morning?', type: 'scale' },
+      { id: 'v5', q: 'How safe did you feel at your post?', type: 'scale' },
+      { id: 'v6', q: 'Was the length of your shift reasonable?', type: 'scale' },
+      { id: 'v7', q: 'How well did the committee support volunteers?', type: 'scale' },
+      { id: 'v8', q: 'Would you volunteer again?', type: 'choice', opts: ['Yes', 'Maybe', 'No'] },
+      { id: 'v9', q: 'Overall volunteer experience', type: 'scale' },
+      { id: 'v10', q: 'What should change for volunteers next year?', type: 'text' }
+    ],
+    committee: [
+      { id: 'c1', q: 'Your main OC role', type: 'choice', opts: ['Chair / vice', 'Finance', 'Protocol / logistics', 'Medical', 'Marketing', 'Other'] },
+      { id: 'c2', q: 'How effective were planning meetings?', type: 'scale' },
+      { id: 'c3', q: 'How well did the website / Control Room help you?', type: 'scale' },
+      { id: 'c4', q: 'How clear was money and approvals handling?', type: 'scale' },
+      { id: 'c5', q: 'How smooth was race-morning command?', type: 'scale' },
+      { id: 'c6', q: 'How well did we work with MNCS / Athletics Malawi / partners?', type: 'scale' },
+      { id: 'c7', q: 'How well did we handle problems on the day?', type: 'scale' },
+      { id: 'c8', q: 'Would you serve on the OC again?', type: 'choice', opts: ['Yes', 'Maybe', 'No'] },
+      { id: 'c9', q: 'Overall committee experience', type: 'scale' },
+      { id: 'c10', q: 'Priority fix for the next edition', type: 'text' }
+    ],
+    media: [
+      { id: 'm1', q: 'Your outlet type', type: 'choice', opts: ['Print', 'Radio / TV', 'Online / social', 'Photographer', 'Other'] },
+      { id: 'm2', q: 'How easy was accreditation / access?', type: 'scale' },
+      { id: 'm3', q: 'How useful was the information pack (start list, route, times)?', type: 'scale' },
+      { id: 'm4', q: 'Access to start, finish and course for coverage', type: 'scale' },
+      { id: 'm5', q: 'Availability of OC / spokespersons', type: 'scale' },
+      { id: 'm6', q: 'Facilities (power, space, connectivity)', type: 'scale' },
+      { id: 'm7', q: 'Results and name spellings provided in time?', type: 'scale' },
+      { id: 'm8', q: 'Would you cover the race again?', type: 'choice', opts: ['Yes', 'Maybe', 'No'] },
+      { id: 'm9', q: 'Overall media experience', type: 'scale' },
+      { id: 'm10', q: 'What would help coverage next year?', type: 'text' }
+    ],
+    public: [
+      { id: 'u1', q: 'How did you follow the race?', type: 'choice', opts: ['Spectator on course', 'At the stadium', 'Online / radio', 'Resident affected by roads', 'Other'] },
+      { id: 'u2', q: 'How did you hear about the race?', type: 'choice', opts: ['Social media', 'Radio / TV', 'Friend / club', 'Poster', 'Other'] },
+      { id: 'u3', q: 'Atmosphere along the route', type: 'scale' },
+      { id: 'u4', q: 'Clarity of road closures and diversions', type: 'scale' },
+      { id: 'u5', q: 'How welcome did spectators feel?', type: 'scale' },
+      { id: 'u6', q: 'Information on start times and where to watch', type: 'scale' },
+      { id: 'u7', q: 'Impact of the event on your movement in Blantyre', type: 'scale' },
+      { id: 'u8', q: 'Would you recommend others to come and watch?', type: 'choice', opts: ['Yes', 'Maybe', 'No'] },
+      { id: 'u9', q: 'Overall public impression', type: 'scale' },
+      { id: 'u10', q: 'One thing the city / OC should do differently', type: 'text' }
+    ]
+  };
+
+  function renderPublicSurvey() {
+    const root = document.getElementById('survey-root');
+    if (!root) return;
+    const open = Date.now() >= SURVEY_OPEN_AT;
+    if (!open) {
+      root.innerHTML = '<div class="notice"><p>This survey opens on <strong>Sunday 27 September 2026 at 12:00 noon</strong> (CAT), after the main race is underway.</p><p>There will be a short form for participants, volunteers, committee, media and the public.</p></div>';
+      return;
+    }
+    const scale = '<option value="">Select</option><option value="1">1 Poor</option><option value="2">2</option><option value="3">3 Fair</option><option value="4">4</option><option value="5">5 Excellent</option>';
+    function fields(list) {
+      return list.map((item) => {
+        if (item.type === 'scale') {
+          return '<div class="form-group"><label>' + item.q + '</label><select name="' + item.id + '" required>' + scale + '</select></div>';
+        }
+        if (item.type === 'choice') {
+          return '<div class="form-group"><label>' + item.q + '</label><select name="' + item.id + '" required>' +
+            '<option value="">Select</option>' + item.opts.map((o) => '<option value="' + o + '">' + o + '</option>').join('') + '</select></div>';
+        }
+        return '<div class="form-group"><label>' + item.q + '</label><textarea name="' + item.id + '" rows="3" maxlength="800"></textarea></div>';
+      }).join('');
+    }
+    root.innerHTML =
+      '<p class="form-note">Pick who you are. Ten short questions. Results go only to the OC Chair.</p>' +
+      '<form id="surveyForm" class="reg-form">' +
+      '<div class="form-group"><label>I am completing this as</label>' +
+      '<select id="surveyAudience" name="audience" required>' +
+      '<option value="">Select</option>' +
+      '<option value="participant">Race participant</option>' +
+      '<option value="volunteer">Volunteer</option>' +
+      '<option value="committee">Committee / official</option>' +
+      '<option value="media">Media</option>' +
+      '<option value="public">General public / spectator</option>' +
+      '</select></div>' +
+      '<div id="surveyFields"></div>' +
+      '<button type="submit" class="btn btn-primary">Send feedback</button></form>' +
+      '<p id="surveyThanks" class="notice" style="display:none">Thank you. Your feedback has been sent to the Chair.</p>';
+    const aud = document.getElementById('surveyAudience');
+    const box = document.getElementById('surveyFields');
+    function paint() {
+      const key = aud.value;
+      box.innerHTML = SURVEY[key] ? fields(SURVEY[key]) : '';
+    }
+    aud.addEventListener('change', paint);
+    document.getElementById('surveyForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const audience = aud.value;
+      if (!SURVEY[audience]) return;
+      const fd = new FormData(e.target);
+      const answers = {};
+      SURVEY[audience].forEach((item) => { answers[item.id] = String(fd.get(item.id) || ''); });
+      fetch('/.netlify/functions/survey', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ audience: audience, answers: answers })
+      }).then((r) => r.json()).then((j) => {
+        if (!j || !j.ok) throw new Error((j && j.error) || 'Could not send');
+        e.target.style.display = 'none';
+        document.getElementById('surveyThanks').style.display = '';
+      }).catch((err) => alert(err.message || err));
+    });
+  }
+
+  const _nav = window.navigate;
+  if (typeof _nav === 'function') {
+    window.navigate = function (pageId, opts) {
+      _nav(pageId, opts);
+      if (pageId === 'survey') renderPublicSurvey();
+    };
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initTeamRegistrationUI);
+    document.addEventListener('DOMContentLoaded', function () {
+      initTeamRegistrationUI();
+      if ((location.hash || '').indexOf('survey') >= 0) renderPublicSurvey();
+    });
   } else {
     initTeamRegistrationUI();
+    if ((location.hash || '').indexOf('survey') >= 0) renderPublicSurvey();
   }
 
 })();

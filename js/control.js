@@ -1336,6 +1336,9 @@
     if ((isChair || canRequisitions()) && Array.isArray(s.approvals)) {
       try { localStorage.setItem(APPROVALS_KEY, JSON.stringify(s.approvals)); } catch (e) {}
     }
+    if (Array.isArray(s.surveyResponses)) {
+      try { localStorage.setItem('bt42_survey_responses', JSON.stringify(s.surveyResponses)); } catch (e) {}
+    }
     if (s.siteContent && typeof s.siteContent === 'object') {
       try {
         localStorage.setItem(SITE_CONTENT_KEY, JSON.stringify(s.siteContent));
@@ -1741,7 +1744,7 @@
       const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button></td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button>${isChair ? ' <button type="button" class="btn-mini entry-full" data-i="'+i+'">Edit all details</button>' : ''}</td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
         <td><small>${escapeHtml(entryStamp(r))}</small></td>
@@ -1862,6 +1865,42 @@
         renderDashboard();
       };
     }
+
+    container.querySelectorAll('.entry-full').forEach((btn) => {
+      btn.onclick = async () => {
+        if (!isChair) return;
+        const i = Number(btn.dataset.i);
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+        const r = list[i];
+        if (!r) return;
+        const next = {
+          fullName: prompt('Full name', r.fullName || ''),
+          phone: prompt('Phone', r.phone || ''),
+          email: prompt('Email', r.email || ''),
+          distance: prompt('Race (42.195 / 10 / 5)', r.distance || ''),
+          dob: prompt('Date of birth (YYYY-MM-DD)', r.dob || ''),
+          gender: prompt('Gender', r.gender || ''),
+          club: prompt('Club / team', r.club || r.teamName || ''),
+          emergencyName: prompt('Emergency contact name', r.emergencyName || ''),
+          emergencyPhone: prompt('Emergency phone', r.emergencyPhone || ''),
+          paymentRef: prompt('Payment reference', r.paymentRef || '')
+        };
+        if (next.fullName === null) return;
+        Object.keys(next).forEach((k) => {
+          if (next[k] === null) return;
+          r[k] = String(next[k]).trim();
+        });
+        if (r.distance === '42' || r.distance === 'marathon') r.distance = '42.195';
+        r.editedAt = new Date().toISOString();
+        r.editedBy = currentUser || 'chair';
+        list[i] = r;
+        localStorage.setItem('bt42_registrations', JSON.stringify(list));
+        if (getSyncToken()) await livePush({ registrations: list, replaceRegistrations: true }).catch(() => {});
+        renderParticipants();
+        alert('Participant details saved.');
+      };
+    });
 
     container.querySelectorAll('.entry-email').forEach((btn) => {
       btn.onclick = async () => {
@@ -3480,6 +3519,50 @@ w.document.close();
     });
   }
 
+  function renderSurveyResults() {
+    const box = $('#ctrl-survey-results');
+    if (!box || !isChair) return;
+    let rows = [];
+    try { rows = JSON.parse(localStorage.getItem('bt42_survey_responses') || '[]'); } catch { rows = []; }
+    const labels = { participant: 'Participants', volunteer: 'Volunteers', committee: 'Committee', media: 'Media', public: 'Public' };
+    const groups = {};
+    Object.keys(labels).forEach((k) => { groups[k] = rows.filter((r) => r.audience === k); });
+    let html = '<p><strong>' + rows.length + '</strong> responses received.</p>';
+    Object.keys(labels).forEach((k) => {
+      const list = groups[k];
+      html += '<h4 style="margin:1rem 0 0.35rem">' + labels[k] + ' — ' + list.length + '</h4>';
+      if (!list.length) {
+        html += '<p class="form-note">No responses yet.</p>';
+        return;
+      }
+      const keys = {};
+      list.forEach((r) => {
+        Object.keys(r.answers || {}).forEach((qid) => {
+          const val = String((r.answers || {})[qid] || '').trim();
+          if (!val) return;
+          if (!keys[qid]) keys[qid] = {};
+          keys[qid][val] = (keys[qid][val] || 0) + 1;
+        });
+      });
+      html += '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Question</th><th>Summary</th></tr></thead><tbody>';
+      Object.keys(keys).forEach((qid) => {
+        const counts = keys[qid];
+        const nums = Object.keys(counts).filter((v) => /^\d+$/.test(v)).map(Number);
+        let summary;
+        if (nums.length) {
+          let tot = 0, n = 0;
+          nums.forEach((v) => { tot += v * counts[String(v)]; n += counts[String(v)]; });
+          summary = 'Average ' + (n ? (tot / n).toFixed(1) : '—') + ' / 5 · ' + Object.keys(counts).map((v) => v + ': ' + counts[v]).join(', ');
+        } else {
+          summary = Object.keys(counts).map((v) => escapeHtml(v.slice(0, 80)) + ' (' + counts[v] + ')').join('<br>');
+        }
+        html += '<tr><td>' + escapeHtml(qid) + '</td><td>' + summary + '</td></tr>';
+      });
+      html += '</tbody></table></div>';
+    });
+    box.innerHTML = html;
+  }
+
   function renderAll() {
     renderDashboard();
     renderChecklist();
@@ -3496,6 +3579,7 @@ w.document.close();
     renderDeadlines();
     if (isChair) renderChairNotes();
     if (canRequisitions()) renderApprovals();
+    if (isChair) renderSurveyResults();
     if (canManageStaff()) renderStaffAdmin();
     if (isChair) renderSiteContentAdmin();
     applySiteContentToPublic();

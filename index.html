@@ -35,6 +35,7 @@
           <a href="course-route.html">Course</a>
           <a href="#volunteers" data-page="volunteers">Volunteers</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
+          <a href="#survey" data-page="survey">Survey</a>
           <a href="#info" data-page="info">Info</a>
           <a href="#control" data-page="control" class="nav-control">Control</a>
         </nav>
@@ -580,12 +581,26 @@
         <span class="tab-icon">🗺️</span>
         <span>Course</span>
       </a>
+      <a href="#survey" data-page="survey" class="tab">
+        <span class="tab-icon">📋</span>
+        <span>Survey</span>
+      </a>
       <a href="#info" data-page="info" class="tab">
         <span class="tab-icon">ℹ️</span>
         <span>Info</span>
       </a>
     </nav>
 
+
+      <section id="page-survey" class="page">
+        <div class="page-header">
+          <div class="container">
+            <h1>Race-day feedback</h1>
+            <p>BT42.195km Race · opens 27 September 2026 at 12:00 CAT</p>
+          </div>
+        </div>
+        <div class="container" id="survey-root"></div>
+      </section>
 
       <!-- CONTROL ROOM -->
       <section id="page-control" class="page">
@@ -623,6 +638,7 @@
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
               <button class="ctrl-tab" data-panel="chair">Chair notes</button>
               <button class="ctrl-tab" data-panel="approvals">Approvals</button>
+              <button class="ctrl-tab" data-panel="survey">Survey results</button>
               <button class="ctrl-tab" data-panel="staff">Staff logins</button>
               <button class="ctrl-tab" data-panel="site">Site content</button>
               <button class="ctrl-tab" data-panel="participants">Participants</button>
@@ -661,6 +677,11 @@
               <h3 class="ctrl-section-title">Chair approvals — cash requisitions</h3>
               <p class="form-note">Private to the Chair. Record each requisition you approve. Seeded with the 19 September 2026 batch from Marketing.</p>
               <div id="ctrl-approvals"></div>
+            </div>
+            <div id="panel-survey" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Race-day feedback — results</h3>
+              <p class="form-note">Chair only. Responses open to the public from 27 September 2026, 12:00 CAT.</p>
+              <div id="ctrl-survey-results"></div>
             </div>
 
             <!-- Checklist -->
@@ -766,9 +787,9 @@
   </div>
 
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="js/control-data.js?v=20260921g"></script>
-  <script src="js/control.js?v=20260921g"></script>
+  <script src="js/control-data.js?v=20260921h"></script>
+  <script src="js/control.js?v=20260921h"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.js?v=20260921g"></script>
+  <script src="js/app.js?v=20260921h"></script>
 </body>
 </html>
