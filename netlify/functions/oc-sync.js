@@ -272,8 +272,20 @@ function mergeRegistrationLists(primary, secondary) {
   (primary || []).forEach((r) => map.set(keyOf(r), r));
   (secondary || []).forEach((r) => {
     const k = keyOf(r);
-    if (!map.has(k)) map.set(k, r);
-    else map.set(k, Object.assign({}, r, map.get(k))); // prefer primary fields
+    if (map.has(k)) {
+      map.set(k, Object.assign({}, r, map.get(k)));
+      return;
+    }
+    const phone = String(r.phone || '').replace(/\s+/g, '').toLowerCase();
+    const formName = String(r.fullName || '').trim().toLowerCase();
+    const alreadyCorrected = Array.from(map.values()).some((p) => {
+      const pPhone = String(p.phone || '').replace(/\s+/g, '').toLowerCase();
+      if (!phone || pPhone !== phone) return false;
+      const prev = String(p.previousFullName || '').trim().toLowerCase();
+      return prev && prev === formName;
+    });
+    if (alreadyCorrected) return;
+    map.set(k, r);
   });
   return Array.from(map.values()).sort((a, b) =>
     String(b.submittedAt || '').localeCompare(String(a.submittedAt || ''))
@@ -469,10 +481,8 @@ function mergeState(current, body, role) {
     };
   }
   if (Array.isArray(body.suppressedKeys)) {
-    if (role !== 'chair') {
-      const e = new Error('Only Chair can update suppressed keys');
-      e.status = 403;
-      throw e;
+    if (role !== 'chair' && !(body.replaceRegistrations && body.registrations)) {
+      // Ops may append suppress keys when correcting a name; cannot wipe the list
     }
     const set = new Set([...(current.suppressedKeys || []), ...body.suppressedKeys]);
     if (body.replaceSuppressed) {

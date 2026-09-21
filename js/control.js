@@ -1838,6 +1838,8 @@
         if (cleaned === String(r.fullName || '').trim()) return;
         const oldKeys = paymentKeysFor(r, i);
         const oldKey = participantKey(r, i);
+        const previousFullName = String(r.fullName || '').trim();
+        r.previousFullName = previousFullName;
         r.fullName = cleaned;
         r.nameCorrectedAt = new Date().toISOString();
         r.nameCorrectedBy = currentUser || (isChair ? 'chair' : 'staff');
@@ -1864,14 +1866,16 @@
         // oldKey is phone|oldname — rebuild from values before we overwrote name
         const oldNameKey = oldKey;
         if (getSyncToken()) {
-          await livePush({
+          const pushed = await livePush({
             registrations: list,
             replaceRegistrations: true,
             payments: pays,
             bibs: bibsMap,
-            finishes: fins,
-            suppressedKeys: oldNameKey ? [oldNameKey] : []
-          }).catch((e) => alert('Name changed here but sync failed: ' + (e.message || e)));
+            finishes: fins
+          }).catch((e) => ({ ok: false, error: String(e && e.message ? e.message : e) }));
+          if (!pushed || pushed.ok === false) {
+            alert('Name changed on this phone, but the shared list failed: ' + ((pushed && pushed.error) || 'sync') + '. Use Push/Upload this phone’s local entries.');
+          }
         }
         renderParticipants();
         alert('Name updated to “' + cleaned + '”. The old spelling is removed.');
