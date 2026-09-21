@@ -1643,7 +1643,7 @@
         ${chip('5', '5 km (' + n5 + ')')}
       </div>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
-      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Race</th><th>Entered</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th>${isChair ? '<th></th>' : ''}</tr></thead><tbody>`;
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Race</th><th>Entered</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th><th></th></tr></thead><tbody>`;
 
     visible.forEach(({ r, i }) => {
       const key = participantKey(r, i);
@@ -1696,7 +1696,7 @@
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
           <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
-        ${isChair ? '<td class="actions-cell"><button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button></td>' : ''}
+        <td class="actions-cell"><button type="button" class="btn-mini entry-edit" data-i="${i}">Edit name</button>${isChair ? ' <button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
       </tr>`;
     });
     html += '</tbody></table></div>';
@@ -1784,6 +1784,62 @@
         renderDashboard();
       };
     }
+
+    container.querySelectorAll('.entry-edit').forEach((btn) => {
+      btn.onclick = async () => {
+        if (!(isChair || canPayment() || canBibs() || canFinish())) {
+          alert('Sign in as staff to correct a name.');
+          return;
+        }
+        const i = Number(btn.dataset.i);
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+        const r = list[i];
+        if (!r) return;
+        const nextName = prompt('Correct the name as it should appear on the bib and certificate:', r.fullName || '');
+        if (nextName === null) return;
+        const cleaned = String(nextName).trim().replace(/\s+/g, ' ');
+        if (cleaned.length < 3) {
+          alert('Enter the full name (at least 3 characters).');
+          return;
+        }
+        if (cleaned === String(r.fullName || '').trim()) return;
+        const oldKeys = paymentKeysFor(r, i);
+        const oldKey = participantKey(r, i);
+        r.fullName = cleaned;
+        r.nameCorrectedAt = new Date().toISOString();
+        r.nameCorrectedBy = currentUser || (isChair ? 'chair' : 'staff');
+        list[i] = r;
+        localStorage.setItem('bt42_registrations', JSON.stringify(list));
+        const newKeys = paymentKeysFor(r, i);
+        const newKey = participantKey(r, i);
+        function remap(map) {
+          const out = Object.assign({}, map);
+          oldKeys.concat([oldKey]).forEach((ok, idx) => {
+            const nk = (newKeys[idx] != null ? newKeys[idx] : newKey);
+            if (ok && nk && ok !== nk && out[ok] && !out[nk]) {
+              out[nk] = Object.assign({}, out[ok], { name: cleaned });
+            }
+          });
+          if (out[oldKey] && !out[newKey]) out[newKey] = Object.assign({}, out[oldKey], { name: cleaned });
+          return out;
+        }
+        const pays = remap(loadPayments()); savePayments(pays);
+        const bibsMap = remap(loadBibs()); saveBibs(bibsMap);
+        const fins = remap(loadFinishes()); saveFinishes(fins);
+        if (getSyncToken()) {
+          await livePush({
+            registrations: list,
+            replaceRegistrations: true,
+            payments: pays,
+            bibs: bibsMap,
+            finishes: fins
+          }).catch(() => {});
+        }
+        renderParticipants();
+        alert('Name updated to “' + cleaned + '”.');
+      };
+    });
 
     container.querySelectorAll('.entry-delete').forEach(btn => {
       btn.onclick = async () => {
