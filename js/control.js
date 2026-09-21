@@ -1302,6 +1302,7 @@
       try {
         localStorage.setItem('bt42_registrations', JSON.stringify(s.registrations));
       } catch (e) {}
+      try { ensureRestoredAthletes(); } catch (e) {}
     }
     if (s.payments && typeof s.payments === 'object') {
       const localPay = loadPayments();
@@ -1555,6 +1556,82 @@
   }
 
 
+  const RESTORED_ATHLETES = [
+    {
+      fullName: 'Maggie Chitseko',
+      aliases: ['maggei chitseko', 'maggie chitseko', 'maggie  chitseko'],
+      distance: '10',
+      email: '',
+      phone: '',
+      source: 'netlify-forms-restore'
+    },
+    {
+      fullName: 'Mussa Maundala',
+      aliases: ['mussa maundala', 'musa maundala'],
+      distance: '42.195',
+      email: '',
+      phone: '',
+      source: 'netlify-forms-restore'
+    }
+  ];
+
+  function namesMatchAthlete(r, spec) {
+    const n = String(r.fullName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+    if (n === spec.fullName.toLowerCase()) return true;
+    return (spec.aliases || []).some((a) => a === n);
+  }
+
+  function ensureRestoredAthletes() {
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+    const pays = loadPayments();
+    let changed = false;
+    RESTORED_ATHLETES.forEach((spec) => {
+      let idx = list.findIndex((r) => namesMatchAthlete(r, spec));
+      if (idx < 0) {
+        list.push({
+          fullName: spec.fullName,
+          phone: spec.phone || '',
+          email: spec.email || '',
+          distance: spec.distance,
+          submittedAt: new Date().toISOString(),
+          source: spec.source,
+          restored: true,
+          paymentRef: 'Netlify Forms — restored by Chair'
+        });
+        idx = list.length - 1;
+        changed = true;
+      } else if (String(list[idx].fullName || '').trim() !== spec.fullName) {
+        list[idx].previousFullName = list[idx].fullName;
+        list[idx].fullName = spec.fullName;
+        list[idx].distance = list[idx].distance || spec.distance;
+        list[idx].restored = true;
+        changed = true;
+      }
+      const r = list[idx];
+      const rec = { status: 'verified', note: 'Restored from Netlify Forms — verified by Chair', verifiedAt: new Date().toISOString(), verifiedBy: 'chair-restore' };
+      paymentKeysFor(r, idx).concat([participantKey(r, idx)]).forEach((k) => {
+        if (!k) return;
+        if (!pays[k] || pays[k].status !== 'verified') {
+          pays[k] = Object.assign({}, rec);
+          changed = true;
+        }
+      });
+    });
+    if (changed) {
+      localStorage.setItem('bt42_registrations', JSON.stringify(list));
+      savePayments(pays);
+      if (getSyncToken()) {
+        livePush({
+          registrations: list,
+          replaceRegistrations: false,
+          payments: pays
+        }).catch(() => {});
+      }
+    }
+    return list;
+  }
+
   function entryStamp(r) {
     const raw = r && (r.submittedAt || r.createdAt || r.registeredAt || '');
     if (!raw) return '—';
@@ -1574,6 +1651,7 @@
     const container = $('#ctrl-participants');
     if (!container) return;
     let rows = [];
+    try { ensureRestoredAthletes(); } catch (e) {}
     try {
       rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
     } catch { rows = []; }
