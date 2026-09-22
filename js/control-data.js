@@ -1,7 +1,7 @@
 /* BT42.195km Race 2026 — Control Room data (from Project Planner) */
 
 window.BT42_DATA = {
-  raceDate: '2026-09-27T06:30:00+02:00',
+  raceDate: '2026-09-27T06:00:00+02:00',
   eventName: 'BT42.195km Race 2026',
   chair: 'Chifundo Tenthani',
   meetLink: 'https://meet.google.com/ixu-kyfn-pvc',
@@ -264,8 +264,8 @@ window.BT42_DATA = {
     { time: '05:30', activity: 'Packet pickup / late registration closes', location: 'Stadium registration area', lead: 'Registration Lead' },
     { time: '05:45', activity: 'Elite / seeded athletes call room', location: 'Near start', lead: 'Technical' },
     { time: '06:00', activity: '42.195 km main race start', location: 'Start line', lead: 'Starter / Technical' },
-    { time: '06:15–06:30', activity: '10 km start (staggered)', location: 'Start line', lead: 'Starter' },
-    { time: '06:45–07:00', activity: '5 km Fun Run start', location: 'Start line', lead: 'Starter' },
+    { time: '06:10', activity: '10 km start', location: 'Start line', lead: 'Starter' },
+    { time: '06:20', activity: '5 km Fun Run start', location: 'Start line', lead: 'Starter' },
     { time: '07:00 onwards', activity: 'Live updates, lead vehicle, media', location: 'Course', lead: 'Marketing / Technical' },
     { time: '~08:15–09:00', activity: 'First marathon finishers expected', location: 'Finish line', lead: 'Timing + Announcer' },
     { time: 'Ongoing', activity: '5 km & 10 km finishers, medals, recovery', location: 'Finish area', lead: 'Logistics + Medical' },
