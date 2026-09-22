@@ -81,6 +81,20 @@ function mergeSigPayload(fromBody, fromStore) {
 }
 
 async function fetchLogoBytes(path) {
+  const fs = require('fs');
+  const p = require('path');
+  const rel = String(path || '').replace(/^\//, '');
+  const local = [
+    p.join(process.cwd(), rel),
+    p.join(process.cwd(), 'assets', p.basename(rel)),
+    p.join(__dirname, '..', '..', rel),
+    p.join(__dirname, '..', '..', 'assets', p.basename(rel))
+  ];
+  for (const f of local) {
+    try {
+      if (fs.existsSync(f)) return fs.readFileSync(f);
+    } catch (e) { /* next */ }
+  }
   const base = [
     process.env.URL ? process.env.URL.replace(/\/$/, '') : null,
     process.env.DEPLOY_PRIME_URL ? process.env.DEPLOY_PRIME_URL.replace(/\/$/, '') : null,
@@ -88,7 +102,7 @@ async function fetchLogoBytes(path) {
   ].filter(Boolean);
   for (const b of base) {
     try {
-      const res = await fetch(b + path);
+      const res = await fetch(b + (path.indexOf('/') === 0 ? path : '/' + path));
       if (res.ok) return Buffer.from(await res.arrayBuffer());
     } catch (e) { /* try next */ }
   }
@@ -299,17 +313,26 @@ async function buildVolunteerAppreciationPdf(opts) {
   page.drawRectangle({ x: 118, y: height - 18, width: width - 118, height: 18, color: green });
 
   try {
-    const bytes = await fetchLogoBytes('/assets/mncs-logo.png');
-    if (bytes) {
-      let img = null;
-      try { img = await doc.embedPng(bytes); } catch (e) { try { img = await doc.embedJpg(bytes); } catch (e2) {} }
-      if (img) {
-        const w = 78;
-        const h = Math.min(78, (img.height / img.width) * w);
-        page.drawImage(img, { x: 20, y: height - 110, width: w, height: h });
+    const embed = async (logoPath) => {
+      const bytes = await fetchLogoBytes(logoPath);
+      if (!bytes) return null;
+      try { return await doc.embedPng(bytes); } catch (e) {
+        try { return await doc.embedJpg(bytes); } catch (e2) { return null; }
       }
+    };
+    const am = await embed('/assets/am-logo.png');
+    const mncs = await embed('/assets/mncs-logo.png');
+    if (am) {
+      const w = 70;
+      const h = Math.min(70, (am.height / am.width) * w);
+      page.drawImage(am, { x: 22, y: height - 108, width: w, height: h });
     }
-  } catch (e) { /* logo optional */ }
+    if (mncs) {
+      const w = 70;
+      const h = Math.min(70, (mncs.height / mncs.width) * w);
+      page.drawImage(mncs, { x: width - 118, y: height - 108, width: w, height: h });
+    }
+  } catch (e) { /* logos optional */ }
 
   page.drawText('MALAWI', { x: 22, y: 88, size: 11, font: fontBold, color: rgb(1, 1, 1) });
   page.drawText('SPORT', { x: 22, y: 74, size: 11, font: fontBold, color: rgb(0.85, 0.95, 0.4) });

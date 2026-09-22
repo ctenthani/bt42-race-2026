@@ -3157,7 +3157,12 @@ h2 { margin:8px 0 0; font-size:15px; color:#2980b9; }
 .sig { display:flex; justify-content:space-between; gap:12px; margin-top:40px; }
 </style></head><body>
 <div class="sheet">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <img src="/assets/am-logo.png" alt="Athletics Malawi" style="height:72px;max-width:160px;object-fit:contain" />
+    <img src="/assets/mncs-logo.png" alt="MNCS" style="height:72px;max-width:160px;object-fit:contain" />
+  </div>
   <h1>CERTIFICATE OF VOLUNTEER SERVICE</h1>
+  <h2>Athletics Malawi · Malawi National Council of Sports</h2>
   <h2>BT42.195km Race 2026 · Blantyre · 27 September 2026</h2>
   <p>This certifies that</p>
   <div class="who">${name.replace(/[<>]/g,'')}</div>
