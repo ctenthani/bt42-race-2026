@@ -503,7 +503,11 @@ exports.handler = async (event) => {
       : `<p>Dear ${esc(fullName)},</p><p>Thank you for taking part in the <strong>${esc(distance)}</strong>. Your certificate of participation is attached as a PDF.</p><p>— Organising Committee, BT42.195km Race</p>`;
 
     try {
-      const pdfB64 = await buildCertificatePdf({
+      let pdfB64 = '';
+      if (typeof body.pdfBase64 === 'string' && body.pdfBase64.length > 80) {
+        pdfB64 = body.pdfBase64.replace(/^data:application\/pdf;base64,/, '');
+      } else {
+      pdfB64 = await buildCertificatePdf({
         fullName,
         distance,
         finishTime,
@@ -515,6 +519,7 @@ exports.handler = async (event) => {
         issued: body.issued || '',
         signatures: mergeSigPayload(body.signatures || {}, await loadStoredSignatures())
       });
+      }
       attachments.push({
         filename: finalCompletion
           ? 'BT42-Completion-Certificate.pdf'

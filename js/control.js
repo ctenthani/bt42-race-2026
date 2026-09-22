@@ -2815,9 +2815,15 @@
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
     ].join('');
-    const sigsP = loadSigs();
     const phoneP = r.phone || '';
     const certIdP = 'BT42-PART-' + String(phoneP).replace(/\D/g, '').slice(-8);
+    signaturesForEmail().then((sigsP) => {
+      const pdfBase64 = buildClientCertificatePdf({
+        fullName: name,
+        distance: dist,
+        isCompletion: false,
+        signatures: sigsP
+      });
     sendAthleteEmail({
       type: 'participation',
       to: to,
@@ -2830,11 +2836,14 @@
       issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
       subject: 'Certificate of Participation — BT42.195km Race 2026',
       raceDate: '27 September 2026',
-      signatures: certSignaturesPayload()
+      isCompletion: false,
+      signatures: sigsP,
+      pdfBase64: pdfBase64
     }).then((j) => {
       if (j && j.ok) console.log('Participation certificate emailed to', to);
       else console.warn('Participation certificate email result', j);
     });
+    }).catch((e) => console.warn('Participation cert signatures', e));
   }
 
   function queueCompletionEmail(r, finishTime) {
