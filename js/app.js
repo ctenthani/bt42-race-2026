@@ -865,11 +865,16 @@
     }, 20000);
   }
 
-  function renderPublicSurvey() {
-    const root = document.getElementById('survey-root');
+  function isChairPreview() {
+    try { return sessionStorage.getItem('bt42_control_role') === 'chair'; } catch (e) { return false; }
+  }
+
+  function renderSurveyForm(root, opts) {
+    opts = opts || {};
     if (!root) return;
+    const pretest = !!opts.pretest || isChairPreview();
     const open = Date.now() >= SURVEY_OPEN_AT;
-    if (!open) {
+    if (!open && !pretest) {
       root.innerHTML = '<div class="notice"><p>This survey opens on <strong>Sunday 27 September 2026 at 12:00 noon</strong> (CAT), after the main race is underway.</p><p>There will be a short form for participants, volunteers, committee, media and the public.</p></div>';
       return;
     }
@@ -886,11 +891,16 @@
         return '<div class="form-group"><label>' + item.q + '</label><textarea name="' + item.id + '" rows="3" maxlength="800"></textarea></div>';
       }).join('');
     }
+    const formId = opts.formId || 'surveyForm';
+    const thanksId = opts.thanksId || 'surveyThanks';
+    const audId = opts.audId || 'surveyAudience';
+    const fieldsId = opts.fieldsId || 'surveyFields';
     root.innerHTML =
+      (pretest ? '<div class="notice"><strong>Chair pretest</strong> — this is exactly how respondents will see the form. Answers are stored as pretest and kept separate from race-day results.</div>' : '') +
       '<p class="form-note">Pick who you are. Ten short questions. Results go only to the OC Chair.</p>' +
-      '<form id="surveyForm" class="reg-form">' +
+      '<form id="' + formId + '" class="reg-form">' +
       '<div class="form-group"><label>I am completing this as</label>' +
-      '<select id="surveyAudience" name="audience" required>' +
+      '<select id="' + audId + '" name="audience" required>' +
       '<option value="">Select</option>' +
       '<option value="participant">Race participant</option>' +
       '<option value="volunteer">Volunteer</option>' +
@@ -898,17 +908,19 @@
       '<option value="media">Media</option>' +
       '<option value="public">General public / spectator</option>' +
       '</select></div>' +
-      '<div id="surveyFields"></div>' +
-      '<button type="submit" class="btn btn-primary">Send feedback</button></form>' +
-      '<p id="surveyThanks" class="notice" style="display:none">Thank you. Your feedback has been sent to the Chair.</p>';
-    const aud = document.getElementById('surveyAudience');
-    const box = document.getElementById('surveyFields');
+      '<div id="' + fieldsId + '"></div>' +
+      '<button type="submit" class="btn btn-primary">' + (pretest ? 'Send pretest response' : 'Send feedback') + '</button></form>' +
+      '<p id="' + thanksId + '" class="notice" style="display:none">' + (pretest ? 'Pretest saved. Check Survey results in Control Room (pretest column).' : 'Thank you. Your feedback has been sent to the Chair.') + '</p>';
+    const aud = document.getElementById(audId);
+    const box = document.getElementById(fieldsId);
     function paint() {
       const key = aud.value;
       box.innerHTML = SURVEY[key] ? fields(SURVEY[key]) : '';
     }
     aud.addEventListener('change', paint);
-    document.getElementById('surveyForm').addEventListener('submit', function (e) {
+    const formEl = document.getElementById(formId);
+    if (!formEl) return;
+    formEl.addEventListener('submit', function (e) {
       e.preventDefault();
       const audience = aud.value;
       if (!SURVEY[audience]) return;
@@ -918,14 +930,20 @@
       fetch('/.netlify/functions/survey', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ audience: audience, answers: answers })
+        body: JSON.stringify({ audience: audience, answers: answers, pretest: pretest })
       }).then((r) => r.json()).then((j) => {
         if (!j || !j.ok) throw new Error((j && j.error) || 'Could not send');
         e.target.style.display = 'none';
-        document.getElementById('surveyThanks').style.display = '';
+        const th = document.getElementById(thanksId);
+        if (th) th.style.display = '';
       }).catch((err) => alert(err.message || err));
     });
   }
+
+  function renderPublicSurvey() {
+    renderSurveyForm(document.getElementById('survey-root'), { pretest: false });
+  }
+  window.BT42_renderSurvey = renderSurveyForm;
 
   const _nav = window.navigate;
   if (typeof _nav === 'function') {

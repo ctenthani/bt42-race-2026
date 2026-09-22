@@ -43,9 +43,12 @@ exports.handler = async (event) => {
     return json(200, { ok: true, open: Date.now() >= OPEN_AT, openAt: '2026-09-27T12:00:00+02:00' });
   }
   if (event.httpMethod !== 'POST') return json(405, { ok: false, error: 'POST only' });
-  if (Date.now() < OPEN_AT) return json(403, { ok: false, error: 'Survey opens 27 September 2026 at 12:00 CAT' });
   let body = {};
   try { body = JSON.parse(event.body || '{}'); } catch (e) { return json(400, { ok: false, error: 'Bad JSON' }); }
+  const pretest = !!body.pretest;
+  if (Date.now() < OPEN_AT && !pretest) {
+    return json(403, { ok: false, error: 'Survey opens 27 September 2026 at 12:00 CAT' });
+  }
   const audience = String(body.audience || '').toLowerCase();
   if (AUDIENCES.indexOf(audience) < 0) return json(400, { ok: false, error: 'Choose who you are' });
   const answers = body.answers && typeof body.answers === 'object' ? body.answers : {};
@@ -53,6 +56,7 @@ exports.handler = async (event) => {
     id: 'sv-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
     audience,
     answers,
+    pretest,
     comment: String(body.comment || '').slice(0, 2000),
     submittedAt: new Date().toISOString()
   };

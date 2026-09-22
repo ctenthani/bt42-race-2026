@@ -3650,13 +3650,17 @@ w.document.close();
   function renderSurveyPreview() {
     const box = $('#ctrl-survey-preview');
     if (!box || !isChair) return;
-    let html = '<h4>Question preview (public form)</h4>';
-    Object.keys(SURVEY_PREVIEW).forEach((k) => {
-      html += '<details open style="margin:0.5rem 0"><summary><strong>' + k + '</strong> — ' + SURVEY_PREVIEW[k].length + ' questions</summary><ol>';
-      SURVEY_PREVIEW[k].forEach((q) => { html += '<li>' + escapeHtml(q) + '</li>'; });
-      html += '</ol></details>';
-    });
-    box.innerHTML = html;
+    box.innerHTML = '<p><a class="btn btn-primary" href="#survey">Open public survey page (respondent view)</a></p><div id="chair-survey-pretest"></div>';
+    const mount = $('#chair-survey-pretest');
+    if (window.BT42_renderSurvey && mount) {
+      window.BT42_renderSurvey(mount, {
+        pretest: true,
+        formId: 'chairSurveyForm',
+        thanksId: 'chairSurveyThanks',
+        audId: 'chairSurveyAudience',
+        fieldsId: 'chairSurveyFields'
+      });
+    }
   }
 
   function renderSurveyResults() {
@@ -3665,9 +3669,11 @@ w.document.close();
     let rows = [];
     try { rows = JSON.parse(localStorage.getItem('bt42_survey_responses') || '[]'); } catch { rows = []; }
     const labels = { participant: 'Participants', volunteer: 'Volunteers', committee: 'Committee', media: 'Media', public: 'Public' };
+    const live = rows.filter((r) => !r.pretest);
+    const pre = rows.filter((r) => r.pretest);
     const groups = {};
-    Object.keys(labels).forEach((k) => { groups[k] = rows.filter((r) => r.audience === k); });
-    let html = '<p><strong>' + rows.length + '</strong> responses received.</p>';
+    Object.keys(labels).forEach((k) => { groups[k] = live.filter((r) => r.audience === k); });
+    let html = '<p><strong>' + live.length + '</strong> race-day responses · <strong>' + pre.length + '</strong> chair pretests (not counted in averages below).</p>';
     Object.keys(labels).forEach((k) => {
       const list = groups[k];
       html += '<h4 style="margin:1rem 0 0.35rem">' + labels[k] + ' — ' + list.length + '</h4>';
