@@ -836,7 +836,53 @@
       </tr>`;
     });
     html += '</tbody></table>';
+    html += `<div class="notice" style="margin-top:1rem">
+      <h4 style="margin:0 0 0.4rem">Prize-giving · 10:00 · stadium podium</h4>
+      <ol>
+        <li>42.195 km — women, then men</li>
+        <li>10 km — women, then men</li>
+        <li>5 km — recognition</li>
+      </ol>
+      <p>Remarks: Jim Kalua (MNCS) · Kondwani Chamwala (Athletics Malawi) · Zamara as partner · Chair closes.</p>
+      <button type="button" class="btn-mini" id="btn-print-pack">Print finish-tent pack</button>
+    </div>`;
     container.innerHTML = html;
+    const pb = $('#btn-print-pack');
+    if (pb) pb.onclick = printFinishPack;
+  }
+
+  function printFinishPack() {
+    let regs = [];
+    try { regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { regs = []; }
+    regs = expandCollapsedTeamRows(regs);
+    const bibs = loadBibs();
+    function rowsFor(code) {
+      return regs.map((r, i) => ({
+        name: r.fullName || '',
+        bib: resolveBibNumber(r, i, bibs),
+        race: distanceLabel(r.distance),
+        dist: normalizeDistanceCode(r.distance)
+      })).filter((r) => r.dist === code && r.bib).sort((a, b) => Number(a.bib) - Number(b.bib));
+    }
+    function table(title, list) {
+      let t = '<h2>' + title + '</h2><table><thead><tr><th>Bib</th><th>Name</th><th>Time</th><th>DNF</th></tr></thead><tbody>';
+      list.forEach((r) => {
+        t += '<tr><td>' + r.bib + '</td><td>' + String(r.name).replace(/</g, '') + '</td><td style="width:90px"></td><td style="width:50px"></td></tr>';
+      });
+      if (!list.length) t += '<tr><td colspan="4">No bibs assigned yet</td></tr>';
+      return t + '</tbody></table>';
+    }
+    const w = window.open('', '_blank');
+    if (!w) { alert('Allow pop-ups'); return; }
+    w.document.write('<!DOCTYPE html><html><head><title>BT42 finish tent pack</title><style>body{font-family:Georgia,serif;padding:16px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin:12px 0 28px}th,td{border:1px solid #333;padding:6px 8px;font-size:13px}th{background:#eee}.lock{display:flex;justify-content:space-between;align-items:center}img{height:48px}@media print{.noprint{display:none}}</style></head><body>');
+    w.document.write('<div class="lock"><img src="/assets/am-logo.png"><div><h1>BT42.195km Race · 27 September 2026</h1><p>Finish tent pack · times 06:00 / 06:10 / 06:20 · course close 12:00</p></div><img src="/assets/mncs-logo.png"></div>');
+    w.document.write('<p><strong>Medical:</strong> Isaac Chapweteka · stadium desk from 05:00 · stop the field if an ambulance is on course.</p>');
+    w.document.write('<p><strong>Prize-giving 10:00:</strong> 42.195 W then M · 10 km W then M · 5 km · Kalua · Chamwala · Zamara partner · Chair.</p>');
+    w.document.write(table('42.195 km', rowsFor('42.195')));
+    w.document.write(table('10 km', rowsFor('10')));
+    w.document.write(table('5 km', rowsFor('5')));
+    w.document.write('<p class="noprint"><button onclick="print()">Print</button></p></body></html>');
+    w.document.close();
   }
 
   // ---------- Roles (Chair can assign names) ----------
@@ -1748,6 +1794,84 @@
     btn.onclick = downloadStartList;
   }
 
+  function assignAllMissingBibs() {
+    if (!canBibs()) {
+      alert('Your login cannot assign bibs.');
+      return;
+    }
+    let regs = [];
+    try { regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { regs = []; }
+    regs = expandCollapsedTeamRows(regs);
+    const pays = loadPayments();
+    const map = loadBibs();
+    const used = new Set(Object.values(map).map((b) => Number(b && b.number)).filter((n) => !isNaN(n) && n > 0));
+    const seenTeam = new Set();
+    const plan = [];
+
+    function hasBib(r, i) {
+      return !!resolveBibNumber(r, i, map);
+    }
+    function writeBib(r, i, num) {
+      const rec = {
+        number: String(num),
+        assignedAt: new Date().toISOString(),
+        distance: r.distance,
+        name: r.fullName,
+        phone: r.phone || r.teamContactPhone || '',
+        email: r.email || r.teamContactEmail || '',
+        teamId: r.teamId || '',
+        teamName: r.teamName || '',
+        teamMemberIndex: r.teamMemberIndex || null
+      };
+      const k = participantKey(r, i);
+      map[k] = rec;
+      if (r.teamId) {
+        const tk = [r.teamId, 'm' + String(r.teamMemberIndex || i + 1), String(r.fullName || '').trim().toLowerCase(), normalizeDistanceCode(r.distance)].join('|');
+        map[tk] = rec;
+      }
+      used.add(Number(num));
+    }
+
+    regs.forEach((r, i) => {
+      if (paymentRecordFor(r, i, pays).status !== 'verified') return;
+      if (hasBib(r, i)) return;
+      if (r.teamId) {
+        if (seenTeam.has(r.teamId)) return;
+        seenTeam.add(r.teamId);
+        const mates = teamMates(r, regs);
+        mates.forEach((m, mi) => {
+          if (m.teamMemberIndex == null || m.teamMemberIndex === '') m.teamMemberIndex = mi + 1;
+          const idx = regs.indexOf(m);
+          if (hasBib(m, idx)) return;
+          const n = nextBibForDistance(m.distance, map, Array.from(used));
+          writeBib(m, idx >= 0 ? idx : i, n);
+          plan.push((m.fullName || '') + ' · ' + distanceLabel(m.distance) + ' → #' + n);
+        });
+        return;
+      }
+      const n = nextBibForDistance(r.distance, map, Array.from(used));
+      writeBib(r, i, n);
+      plan.push((r.fullName || '') + ' · ' + distanceLabel(r.distance) + ' → #' + n);
+    });
+
+    if (!plan.length) {
+      alert('No verified athletes are missing a bib.');
+      return;
+    }
+    if (!confirm('Assign ' + plan.length + ' missing bib(s)?\n\n' + plan.slice(0, 25).join('\n') + (plan.length > 25 ? '\n…' : '') + '\n\nExisting bibs are not changed.')) return;
+    saveBibs(map);
+    if (getSyncToken()) livePush({ bibs: map, replaceBibs: true }).catch(() => {});
+    renderParticipants();
+    renderLiveResults();
+    alert('Assigned ' + plan.length + ' bib(s).');
+  }
+
+  function wireAssignAllBibs() {
+    const btn = $('#btn-assign-all');
+    if (!btn) return;
+    btn.onclick = assignAllMissingBibs;
+  }
+
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
@@ -1769,6 +1893,7 @@
       ${canPayment() ? '' : '<br><span class="pay-status pay-wait">Payment verify requires an Ops or Chair login.</span>'}
       <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
       ${canDownloadStartList() ? '<br><button type="button" class="btn-mini" id="btn-start-list">Download start list (Excel · one sheet per race)</button>' : ''}
+      ${canBibs() ? ' <button type="button" class="btn-mini" id="btn-assign-all">Assign all missing bibs</button>' : ''}
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -1790,6 +1915,7 @@
       wireSigUploads();
       renderSigPreviews();
       wireStartListDownload();
+      wireAssignAllBibs();
       return;
     }
 
@@ -1880,7 +2006,9 @@
         <td>
           ${hasBib ? '<strong>#' + bibRec.number + '</strong>' : '<span class="pay-status pay-wait">No bib</span>'}
           <div class="actions-cell">
-            <button type="button" class="btn-mini bib-assign" data-key="${escapeHtml(key)}" data-i="${i}" ${!canBibs() ? 'disabled title="Need Ops/Chair login"' : (st !== 'verified' ? 'disabled title="Verify payment first"' : '')}>Assign bib</button>
+            ${hasBib
+              ? '<button type="button" class="btn-mini" disabled title="Bib already assigned">Bib assigned</button>'
+              : '<button type="button" class="btn-mini bib-assign" data-key="' + escapeHtml(key) + '" data-i="' + i + '" ' + (!canBibs() ? 'disabled title="Need Ops/Chair login"' : (st !== 'verified' ? 'disabled title="Verify payment first"' : '')) + '>Assign bib</button>'}
           </div>
         </td>
         <td>
@@ -1902,6 +2030,7 @@
     wireSigUploads();
     renderSigPreviews();
     wireStartListDownload();
+    wireAssignAllBibs();
     container.querySelectorAll('.race-filter').forEach((btn) => {
       btn.onclick = () => {
         sessionStorage.setItem('bt42_part_race', btn.dataset.race || 'all');

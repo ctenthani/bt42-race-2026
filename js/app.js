@@ -863,6 +863,40 @@
       if (!(location.hash || '').replace('#', '').startsWith('results')) return;
       fetch('/.netlify/functions/results').then((r) => r.json()).then((j) => paint((j && j.rows) || [])).catch(() => {});
     }, 20000);
+    const stBtn = document.getElementById('btn-stadium-mode');
+    if (stBtn) {
+      stBtn.onclick = function () {
+        document.body.classList.toggle('stadium-mode');
+        stBtn.textContent = document.body.classList.contains('stadium-mode') ? 'Exit projector mode' : 'Projector / stadium mode';
+      };
+    }
+  }
+
+  function renderLookup() {
+    const form = document.getElementById('lookup-form');
+    const out = document.getElementById('lookup-out');
+    if (!form || !out) return;
+    function run() {
+      const q = String((document.getElementById('lookup-q') || {}).value || '').trim().toLowerCase();
+      if (q.length < 2) { out.innerHTML = '<p class="form-note">Type at least two letters.</p>'; return; }
+      out.innerHTML = '<p class="form-note">Searching…</p>';
+      fetch('/.netlify/functions/results').then((r) => r.json()).then((j) => {
+        const rows = (j && j.rows) || [];
+        const hits = rows.filter((r) => String(r.name || '').toLowerCase().indexOf(q) >= 0 || String(r.bib || '') === q);
+        if (!hits.length) {
+          out.innerHTML = '<p class="form-note">No match yet. Bibs and times appear after assignment and finish.</p>';
+          return;
+        }
+        let html = '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Name</th><th>Race</th><th>Bib</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+        hits.forEach((r) => {
+          html += '<tr><td>' + String(r.name || '').replace(/</g, '') + '</td><td>' + String(r.distance || '') + '</td><td>' + (r.bib || '—') + '</td><td>' + (r.status || '') + '</td><td>' + (r.time || '—') + '</td></tr>';
+        });
+        out.innerHTML = html + '</tbody></table></div>';
+      }).catch(() => { out.innerHTML = '<p class="form-note">Lookup will work when results are online.</p>'; });
+    }
+    form.onsubmit = function (e) { e.preventDefault(); run(); };
+    const go = document.getElementById('lookup-go');
+    if (go) go.onclick = run;
   }
 
   function isChairPreview() {
@@ -951,6 +985,7 @@
       _nav(pageId, opts);
       if (pageId === 'survey') renderPublicSurvey();
       if (pageId === 'results') renderPublicResults();
+      if (pageId === 'lookup') renderLookup();
     };
   }
 
@@ -959,6 +994,7 @@
       initTeamRegistrationUI();
       if ((location.hash || '').indexOf('survey') >= 0) renderPublicSurvey();
       if ((location.hash || '').indexOf('results') >= 0) renderPublicResults();
+      if ((location.hash || '').indexOf('lookup') >= 0) renderLookup();
     });
   } else {
     initTeamRegistrationUI();

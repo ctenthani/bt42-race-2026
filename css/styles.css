@@ -1812,3 +1812,56 @@ body.course-full #page-course .container.section { padding: 0.35rem 0.5rem 0; }
   color: #fff;
   border-color: #1B4F72;
 }
+
+/* Race morning card + lockup */
+.race-morning-card {
+  background: #fff;
+  border: 2px solid var(--primary);
+  border-radius: 16px;
+  padding: 1.25rem 1.35rem 1.4rem;
+  margin-bottom: 2rem;
+  box-shadow: var(--shadow);
+}
+.rm-lockup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 0.75rem;
+}
+.rm-lockup img { height: 52px; width: auto; object-fit: contain; }
+.rm-lockup .rm-wordmark { height: 44px; max-width: 42%; }
+.rm-kicker { color: var(--text-muted); font-size: 0.85rem; margin: 0; }
+.race-morning-card h2 { margin: 0.2rem 0 0.8rem; color: var(--primary); }
+.rm-times {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+.rm-times div {
+  background: #f0f6fb;
+  border-radius: 10px;
+  text-align: center;
+  padding: 0.65rem 0.3rem;
+}
+.rm-times strong { display: block; font-size: 1.35rem; color: var(--primary); }
+.rm-times span { font-size: 0.8rem; color: var(--text-muted); }
+.rm-fees, .rm-cut { font-size: 0.92rem; margin: 0.25rem 0; }
+.rm-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 0.75rem; }
+.results-lockup { max-width: 520px; margin: 0 auto 0.5rem; }
+
+/* Stadium / projector results */
+body.stadium-mode { background: #0b1220; color: #f4f7fb; }
+body.stadium-mode .header,
+body.stadium-mode .tabbar,
+body.stadium-mode .control-entry { display: none !important; }
+body.stadium-mode { padding: 0; }
+body.stadium-mode #page-results { display: block !important; min-height: 100vh; }
+body.stadium-mode #page-results .page-header { background: #0b1220; }
+body.stadium-mode #page-results h1 { font-size: 2.4rem; color: #fff; }
+body.stadium-mode #public-results { max-width: none; padding: 0 24px 40px; }
+body.stadium-mode #public-results h2 { font-size: 1.8rem; color: #f5d76e; margin: 1.2rem 0 0.4rem; }
+body.stadium-mode #public-results table { font-size: 1.35rem; }
+body.stadium-mode #public-results td, body.stadium-mode #public-results th { padding: 0.55rem 0.7rem; color: #fff; }
+body.stadium-mode #public-results tr:nth-child(-n+3) td { color: #f5d76e; font-weight: 700; }

@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>BT42.195km Race 2026</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/styles.css?v=20260922a" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -36,6 +36,7 @@
           <a href="#volunteers" data-page="volunteers">Volunteers</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
           <a href="#results" data-page="results">Results</a>
+          <a href="#lookup" data-page="lookup">Find athlete</a>
           <a href="#survey" data-page="survey">Survey</a>
           <a href="#info" data-page="info">Info</a>
           <a href="#control" data-page="control" class="nav-control">Control</a>
@@ -91,6 +92,28 @@
         </div>
 
         <div class="section container">
+          <div class="race-morning-card" id="race-morning">
+            <div class="rm-lockup">
+              <img src="assets/am-logo.png" alt="Athletics Malawi" />
+              <img src="assets/race-wordmark.png" alt="BT42.195km Race" class="rm-wordmark" />
+              <img src="assets/mncs-logo.png" alt="Malawi National Council of Sports" />
+            </div>
+            <p class="rm-kicker">Sunday 27 September 2026 · Kamuzu Stadium</p>
+            <h2>Race morning</h2>
+            <div class="rm-times">
+              <div><strong>06:00</strong><span>42.195 km</span></div>
+              <div><strong>06:10</strong><span>10 km</span></div>
+              <div><strong>06:20</strong><span>5 km</span></div>
+            </div>
+            <p class="rm-fees">Fees: MK 15,000 · 10,000 · 5,000 · National Bank of Malawi <code>782637</code> (name + mobile)</p>
+            <p class="rm-cut">Course closes 12:00 · Feedback survey opens 12:00</p>
+            <div class="rm-links">
+              <a href="course-route.html" class="btn btn-sm">Course</a>
+              <a href="#results" class="btn btn-sm" onclick="navigate('results')">Live results</a>
+              <a href="#lookup" class="btn btn-sm" onclick="navigate('lookup')">Find my bib</a>
+              <a href="#info" class="btn btn-sm" onclick="navigate('info')">Info</a>
+            </div>
+          </div>
           <h2 class="section-title">Three Distances. One Great Day.</h2>
           <div class="race-cards">
             <article class="race-card marathon">
@@ -542,6 +565,24 @@
                 <li><strong>Marathon minimum age:</strong> 20 years old on race day</li>
               </ul>
             </details>
+            <details open>
+              <summary>Weather, cut-off and medical</summary>
+              <ul>
+                <li><strong>Season:</strong> late dry season in Blantyre. Cool start, warm to hot by mid-morning. Little rain expected — confirm Saturday evening forecast.</li>
+                <li><strong>Advice:</strong> start hydrated, use the kiosks at Kwacha, Kamba, CFAO and Trade Fair, and do not push in the heat after 09:00.</li>
+                <li><strong>Course cut-off:</strong> 12:00. Sweep vehicle will close the loops. Finishers after 12:00 are recorded as DNF if still on course.</li>
+                <li><strong>Medical:</strong> ambulances and first aid from 05:00. Desk at Kamuzu Stadium finish. Medical lead: Isaac Chapweteka. If you feel faint, stop at the next marshal.</li>
+              </ul>
+            </details>
+            <details>
+              <summary>Prize-giving order (10:00)</summary>
+              <ol>
+                <li>42.195 km women, then men</li>
+                <li>10 km women, then men</li>
+                <li>5 km recognition</li>
+              </ol>
+              <p>Guests (short remarks): MNCS Chairman Jim Kalua · Athletics Malawi President Kondwani Chamwala · Partner acknowledgement (Zamara). OC Chair closes.</p>
+            </details>
             <details>
               <summary>What to Bring on Race Day</summary>
               <ul>
@@ -586,6 +627,10 @@
         <span class="tab-icon">🏁</span>
         <span>Results</span>
       </a>
+      <a href="#lookup" data-page="lookup" class="tab">
+        <span class="tab-icon">🔎</span>
+        <span>Find</span>
+      </a>
       <a href="#survey" data-page="survey" class="tab">
         <span class="tab-icon">📋</span>
         <span>Survey</span>
@@ -600,11 +645,42 @@
       <section id="page-results" class="page">
         <div class="page-header">
           <div class="container">
+            <div class="rm-lockup results-lockup">
+              <img src="assets/am-logo.png" alt="Athletics Malawi" />
+              <img src="assets/race-wordmark.png" alt="BT42.195km Race" class="rm-wordmark" />
+              <img src="assets/mncs-logo.png" alt="MNCS" />
+            </div>
             <h1>Live results</h1>
-            <p>BT42.195km Race · 27 September 2026 · updates as athletes finish</p>
+            <p>27 September 2026 · updates as athletes finish · 42.195 06:00 · 10 km 06:10 · 5 km 06:20</p>
+            <p><button type="button" class="btn btn-sm" id="btn-stadium-mode">Projector / stadium mode</button>
+              <a class="btn btn-sm" href="#lookup">Find athlete</a></p>
           </div>
         </div>
         <div class="container" id="public-results"></div>
+      </section>
+
+      <section id="page-lookup" class="page">
+        <div class="page-header">
+          <div class="container">
+            <div class="rm-lockup results-lockup">
+              <img src="assets/am-logo.png" alt="Athletics Malawi" />
+              <img src="assets/race-wordmark.png" alt="BT42.195km Race" class="rm-wordmark" />
+              <img src="assets/mncs-logo.png" alt="MNCS" />
+            </div>
+            <h1>Find athlete</h1>
+            <p>Look up bib number or finish time by name</p>
+          </div>
+        </div>
+        <div class="container section">
+          <form id="lookup-form" class="reg-form" onsubmit="return false;">
+            <div class="form-group">
+              <label>Name (part of the name is enough)</label>
+              <input type="text" id="lookup-q" autocomplete="off" placeholder="e.g. Chitseko" />
+            </div>
+            <button type="submit" class="btn btn-primary" id="lookup-go">Search</button>
+          </form>
+          <div id="lookup-out"></div>
+        </div>
       </section>
 
       <section id="page-survey" class="page">
@@ -809,9 +885,9 @@
   </div>
 
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="js/control-data.js?v=20260921s"></script>
-  <script src="js/control.js?v=20260921s"></script>
+  <script src="js/control-data.js?v=20260922a"></script>
+  <script src="js/control.js?v=20260922a"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.js?v=20260921s"></script>
+  <script src="js/app.js?v=20260922a"></script>
 </body>
 </html>
