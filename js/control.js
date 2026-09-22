@@ -184,6 +184,10 @@
   function canFinish() { return isChair || !!perms.finish; }
   function canManageStaff() { return isChair || !!perms.manageStaff; }
   function canVolunteers() { return isChair || !!perms.volunteers; }
+  function canDownloadStartList() {
+    const u = String(currentUser || '').trim().toLowerCase();
+    return isChair || u === 'nkanyenda' || u === 'chair';
+  }
   function canRequisitions() { return isChair || !!perms.requisitions; }
 
   function $(sel, ctx) { return (ctx || document).querySelector(sel); }
@@ -1211,21 +1215,30 @@
     localStorage.setItem(BIB_KEY, JSON.stringify(map));
   }
 
-  function nextBibForDistance(distance, bibs) {
-    const used = Object.values(bibs).map(b => Number(b && b.number)).filter(n => !isNaN(n));
+  function bibSeriesStart(distance) {
     const code = normalizeDistanceCode(distance);
-    let start = 1001;
-    if (code === '10') start = 2001;
-    if (code === '5') start = 3001;
+    if (code === '10') return 2001;
+    if (code === '5') return 3001;
+    return 1001;
+  }
+
+  function nextBibForDistance(distance, bibs, extraUsed) {
+    const used = Object.values(bibs || {}).map((b) => Number(b && b.number)).filter((n) => !isNaN(n));
+    (extraUsed || []).forEach((n) => used.push(Number(n)));
+    const start = bibSeriesStart(distance);
     let n = start;
-    while (used.includes(n)) n++;
+    while (used.indexOf(n) >= 0) n += 1;
     return n;
   }
 
   function participantKey(r, i) {
     const phone = String(r.phone || r.teamContactPhone || '').replace(/\s+/g, '');
     const name = String(r.fullName || '').trim().toLowerCase();
-    // Always combine name when present so team-mates sharing one contact phone stay distinct
+    const tidx = r.teamMemberIndex != null && r.teamMemberIndex !== '' ? String(r.teamMemberIndex) : '';
+    const dist = normalizeDistanceCode(r.distance);
+    if (r.teamId) {
+      return [r.teamId, tidx || name || ('i' + i), dist || ''].join('|');
+    }
     if (phone && name) return phone + '|' + name;
     return phone || name || ('idx-' + i);
   }
@@ -1652,6 +1665,89 @@
     });
   }
 
+  function resolveBibNumber(r, i, bibs) {
+    const key = participantKey(r, i);
+    if (bibs[key] && bibs[key].number) return String(bibs[key].number);
+    const nm = String(r.fullName || '').trim().toLowerCase();
+    const dist = normalizeDistanceCode(r.distance);
+    const tid = r.teamId || '';
+    let found = '';
+    Object.keys(bibs || {}).some((bk) => {
+      const b = bibs[bk];
+      if (!b || !b.number) return false;
+      if (tid && b.teamId === tid && String(b.name || '').trim().toLowerCase() === nm) {
+        found = String(b.number); return true;
+      }
+      if (String(b.name || '').trim().toLowerCase() === nm && normalizeDistanceCode(b.distance || '') === dist) {
+        found = String(b.number); return true;
+      }
+      return false;
+    });
+    return found;
+  }
+
+  function xmlCell(val) {
+    return '<Cell><Data ss:Type="String">' + String(val || '').replace(/&/g, '&amp;').replace(/</g, '&lt;') + '</Data></Cell>';
+  }
+
+  function startListSheet(name, rows) {
+    let xml = '<Worksheet ss:Name="' + name.replace(/"/g, '') + '"><Table>';
+    xml += '<Row>' + xmlCell('Bib') + xmlCell('Name') + xmlCell('Race') + xmlCell('Team') + '</Row>';
+    rows.forEach((r) => {
+      xml += '<Row>' + xmlCell(r.bib) + xmlCell(r.name) + xmlCell(r.race) + xmlCell(r.team) + '</Row>';
+    });
+    if (!rows.length) xml += '<Row>' + xmlCell('—') + xmlCell('No athletes with bibs yet') + xmlCell('') + xmlCell('') + '</Row>';
+    xml += '</Table></Worksheet>';
+    return xml;
+  }
+
+  function downloadStartList() {
+    if (!canDownloadStartList()) {
+      alert('Only the Chair and nkanyenda can download the start list.');
+      return;
+    }
+    let regs = [];
+    try { regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { regs = []; }
+    regs = expandCollapsedTeamRows(regs);
+    const bibs = loadBibs();
+    const groups = { '42.195': [], '10': [], '5': [] };
+    regs.forEach((r, i) => {
+      const bib = resolveBibNumber(r, i, bibs);
+      if (!bib) return;
+      const dist = normalizeDistanceCode(r.distance);
+      const rec = {
+        bib: bib,
+        name: r.fullName || '',
+        race: distanceLabel(r.distance),
+        team: r.teamName || ''
+      };
+      if (groups[dist]) groups[dist].push(rec);
+    });
+    Object.keys(groups).forEach((k) => {
+      groups[k].sort((a, b) => (Number(a.bib) || 0) - (Number(b.bib) || 0) || String(a.name).localeCompare(String(b.name)));
+    });
+    const book =
+      '<?xml version="1.0"?>\n<?mso-application progid="Excel.Sheet"?>\n' +
+      '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">' +
+      startListSheet('42.195km', groups['42.195']) +
+      startListSheet('10km', groups['10']) +
+      startListSheet('5km', groups['5']) +
+      '</Workbook>';
+    const blob = new Blob([book], { type: 'application/vnd.ms-excel' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'BT42-start-list-27-Sep-2026.xls';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }
+
+  function wireStartListDownload() {
+    const btn = $('#btn-start-list');
+    if (!btn) return;
+    btn.onclick = downloadStartList;
+  }
+
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
@@ -1660,6 +1756,7 @@
     try {
       rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
     } catch { rows = []; }
+    rows = expandCollapsedTeamRows(rows);
     const pays = loadPayments();
     const finishes = loadFinishes();
     const bibs = loadBibs();
@@ -1671,6 +1768,7 @@
       <strong>Payment verification (Verify / Reject)</strong> — <em>Chair only</em>.
       ${canPayment() ? '' : '<br><span class="pay-status pay-wait">Payment verify requires an Ops or Chair login.</span>'}
       <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
+      ${canDownloadStartList() ? '<br><button type="button" class="btn-mini" id="btn-start-list">Download start list (Excel · one sheet per race)</button>' : ''}
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -1691,6 +1789,7 @@
       container.innerHTML = html;
       wireSigUploads();
       renderSigPreviews();
+      wireStartListDownload();
       return;
     }
 
@@ -1738,10 +1837,26 @@
       const stClass = st === 'verified' ? 'pay-ok' : (st === 'rejected' ? 'pay-no' : 'pay-wait');
       const fLabel = fst === 'finished' ? 'Finished' : (fst === 'dns' ? 'DNS' : (fst === 'dnf' ? 'DNF' : '—'));
       const fClass = fst === 'finished' ? 'pay-ok' : (fst === 'dnf' || fst === 'dns' ? 'pay-no' : 'pay-wait');
-      const hasBib = !!(bibs[key] && bibs[key].number) || Object.keys(bibs).some((bk) => {
-        const b = bibs[bk];
-        return b && b.number && String(b.name || '').trim().toLowerCase() === String(r.fullName || '').trim().toLowerCase();
-      });
+      const bibRec = (function () {
+        if (bibs[key] && bibs[key].number) return bibs[key];
+        const nm = String(r.fullName || '').trim().toLowerCase();
+        const dist = normalizeDistanceCode(r.distance);
+        const tid = r.teamId || '';
+        let found = null;
+        Object.keys(bibs).some((bk) => {
+          const b = bibs[bk];
+          if (!b || !b.number) return false;
+          if (tid && b.teamId === tid && String(b.name || '').trim().toLowerCase() === nm && normalizeDistanceCode(b.distance) === dist) {
+            found = b; return true;
+          }
+          if (!tid && String(b.name || '').trim().toLowerCase() === nm && normalizeDistanceCode(b.distance || '') === dist) {
+            found = b; return true;
+          }
+          return false;
+        });
+        return found;
+      })();
+      const hasBib = !!(bibRec && bibRec.number);
       const finDisabled = !canFinish() || !hasBib;
       const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
@@ -1763,7 +1878,7 @@
           </div>
         </td>
         <td>
-          ${bibs[key] && bibs[key].number ? '<strong>#' + bibs[key].number + '</strong>' : '<span class="pay-status pay-wait">No bib</span>'}
+          ${hasBib ? '<strong>#' + bibRec.number + '</strong>' : '<span class="pay-status pay-wait">No bib</span>'}
           <div class="actions-cell">
             <button type="button" class="btn-mini bib-assign" data-key="${escapeHtml(key)}" data-i="${i}" ${!canBibs() ? 'disabled title="Need Ops/Chair login"' : (st !== 'verified' ? 'disabled title="Verify payment first"' : '')}>Assign bib</button>
           </div>
@@ -1786,6 +1901,7 @@
     container.innerHTML = html;
     wireSigUploads();
     renderSigPreviews();
+    wireStartListDownload();
     container.querySelectorAll('.race-filter').forEach((btn) => {
       btn.onclick = () => {
         sessionStorage.setItem('bt42_part_race', btn.dataset.race || 'all');
@@ -2057,46 +2173,44 @@
         const r = rows[i];
         if (!r) return;
         const map = loadBibs();
-        const mates = (r.teamId ? teamMates(r, rows) : [r]).slice();
-        // Sort team by member index if present
+        const mates = teamMates(r, rows).slice();
         mates.sort((a, b) => (Number(a.teamMemberIndex) || 0) - (Number(b.teamMemberIndex) || 0));
+        mates.forEach((m, idx) => {
+          if (m.teamMemberIndex == null || m.teamMemberIndex === '') m.teamMemberIndex = idx + 1;
+          if (!m.teamId && r.teamId) m.teamId = r.teamId;
+        });
+        try { localStorage.setItem('bt42_registrations', JSON.stringify(rows)); } catch (e) {}
 
         function keyFor(m) {
-          // Always key by name+phone so team-mates with shared contact phone stay distinct
-          const phone = String(m.phone || m.teamContactPhone || '').replace(/\s+/g, '');
-          const name = String(m.fullName || '').trim().toLowerCase();
-          return (phone + '|' + name) || participantKey(m, rows.indexOf(m));
+          const idx = rows.indexOf(m);
+          const base = participantKey(m, idx >= 0 ? idx : 0);
+          if (m.teamId || r.teamId) {
+            return [
+              m.teamId || r.teamId,
+              'm' + String(m.teamMemberIndex || idx + 1),
+              String(m.fullName || '').trim().toLowerCase(),
+              normalizeDistanceCode(m.distance)
+            ].join('|');
+          }
+          return base;
         }
         function existingBib(m) {
-          // Only accept a bib stored under this member's exact key or exact name match
           const k = keyFor(m);
           if (map[k] && map[k].number) return String(map[k].number);
-          const wantName = String(m.fullName || '').trim().toLowerCase();
-          let found = '';
-          Object.keys(map).forEach((key) => {
-            const b = map[key];
-            if (!b || !b.number) return;
-            if (String(b.name || '').trim().toLowerCase() === wantName) {
-              // name match only (do NOT match on shared team phone alone)
-              found = String(b.number);
-            }
-          });
-          return found;
+          return '';
         }
 
         if (r.teamId && mates.length > 1) {
-          // Preview next free bib per distance series for this team
           const used = new Set(
             Object.values(map).map((b) => Number(b && b.number)).filter((x) => !isNaN(x) && x > 0)
           );
-          const seriesNote = {
-            '42.195': 'Marathon series (1001+)',
-            '10': '10 km series (2001+)',
-            '5': '5 km series (3001+)'
-          };
+          const previewUsed = [];
           const plan = mates.map((m) => {
-            const sug = nextBibForDistance(m.distance, map);
-            return (m.fullName || '') + ' — ' + distanceLabel(m.distance) + ' → ~' + sug;
+            const already = existingBib(m);
+            if (already) return (m.fullName || '') + ' — ' + distanceLabel(m.distance) + ' → #' + already + ' (kept)';
+            const sug = nextBibForDistance(m.distance, map, previewUsed);
+            previewUsed.push(sug);
+            return (m.fullName || '') + ' — ' + distanceLabel(m.distance) + ' → #' + sug;
           }).join('\n');
           if (!confirm(
             'Assign bibs to team "' + (r.teamName || 'Team') + '" by RACE:\n\n' +
@@ -2106,29 +2220,21 @@
           )) return;
 
           const assigned = [];
-          // Cursor per distance series so same-race team-mates get consecutive unique bibs
-          const cursor = {};
           const assignedNums = new Set();
           mates.forEach((m) => {
             const k = keyFor(m);
             const dist = normalizeDistanceCode(m.distance) || '10';
-            if (cursor[dist] == null) {
-              cursor[dist] = nextBibForDistance(dist, map);
+            let numStr = existingBib(m);
+            if (numStr && assignedNums.has(Number(numStr))) numStr = '';
+            if (!numStr) {
+              let n = nextBibForDistance(dist, map, Array.from(assignedNums));
+              while (used.has(n) || assignedNums.has(n)) n += 1;
+              numStr = String(n);
             }
-            let n = Number(cursor[dist]);
-            while (used.has(n) || assignedNums.has(n)) n += 1;
-            const numStr = String(n);
+            const n = Number(numStr);
             used.add(n);
             assignedNums.add(n);
-            cursor[dist] = n + 1;
-            // Remove any previous bib entry for this athlete (old colliding keys)
-            Object.keys(map).forEach((oldKey) => {
-              if (map[oldKey] && String(map[oldKey].name || '').toLowerCase() === String(m.fullName || '').toLowerCase()
-                  && String(map[oldKey].teamId || '') === String(m.teamId || r.teamId || '')) {
-                if (oldKey !== k) delete map[oldKey];
-              }
-            });
-            map[k] = {
+            const rec = {
               number: numStr,
               assignedAt: new Date().toISOString(),
               distance: m.distance,
@@ -2136,8 +2242,12 @@
               phone: m.phone || m.teamContactPhone || '',
               email: m.email || m.teamContactEmail || '',
               teamId: m.teamId || r.teamId,
-              teamName: m.teamName || r.teamName || ''
+              teamName: m.teamName || r.teamName || '',
+              teamMemberIndex: m.teamMemberIndex || null
             };
+            map[k] = rec;
+            const legacy = participantKey(m, rows.indexOf(m));
+            if (legacy && legacy !== k) map[legacy] = rec;
             assigned.push({ m: m, number: numStr, key: k, distance: dist });
           });
           // Safety: never allow duplicate numbers in this batch
@@ -2441,9 +2551,58 @@
   }
 
 
+  function expandCollapsedTeamRows(list) {
+    const out = [];
+    let changed = false;
+    (list || []).forEach((row) => {
+      const detailed = row && Array.isArray(row.teamMembersDetailed) ? row.teamMembersDetailed : [];
+      const alreadyMember = !!row.teamMemberIndex && !detailed.length;
+      if (row && row.regType === 'team' && detailed.length >= 2 && !alreadyMember) {
+        const teamId = row.teamId || ('team-' + Date.now().toString(36));
+        detailed.forEach((m, i) => {
+          out.push(Object.assign({}, row, {
+            fullName: String(m.name || m.fullName || row.fullName || '').trim(),
+            distance: String(m.distance || row.distance || '').trim(),
+            dob: m.dob || row.dob || '',
+            ageOnRaceDay: m.ageOnRaceDay != null ? m.ageOnRaceDay : row.ageOnRaceDay,
+            feeMwk: m.feeMwk != null ? m.feeMwk : null,
+            teamId: teamId,
+            teamMemberIndex: i + 1,
+            teamMemberCount: detailed.length,
+            teamContactPhone: row.phone || row.teamContactPhone || '',
+            teamContactEmail: row.email || row.teamContactEmail || '',
+            teamMembersDetailed: [],
+            teamMembers: []
+          }));
+        });
+        changed = true;
+      } else {
+        out.push(row);
+      }
+    });
+    if (changed) {
+      try { localStorage.setItem('bt42_registrations', JSON.stringify(out)); } catch (e) {}
+    }
+    return out;
+  }
+
   function teamMates(row, allRows) {
-    if (!row || !row.teamId) return row ? [row] : [];
-    return (allRows || []).filter((r) => r.teamId && r.teamId === row.teamId);
+    if (!row) return [];
+    const all = allRows || [];
+    if (row.teamId) {
+      const byId = all.filter((r) => r.teamId && r.teamId === row.teamId);
+      if (byId.length) return byId;
+    }
+    const tn = String(row.teamName || '').trim().toLowerCase();
+    const em = String(row.teamContactEmail || row.email || '').trim().toLowerCase();
+    if (tn && em) {
+      const byContact = all.filter((r) =>
+        String(r.teamName || '').trim().toLowerCase() === tn &&
+        String(r.teamContactEmail || r.email || '').trim().toLowerCase() === em
+      );
+      if (byContact.length > 1) return byContact;
+    }
+    return [row];
   }
 
   function teamContactEmail(row, mates) {
