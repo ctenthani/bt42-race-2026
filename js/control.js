@@ -1115,8 +1115,26 @@
     return normalizeSigMap(loadSigs());
   }
 
+  function logoDataUrl(src) {
+    return new Promise((resolve) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          const c = document.createElement('canvas');
+          c.width = img.width || 1;
+          c.height = img.height || 1;
+          c.getContext('2d').drawImage(img, 0, 0);
+          resolve(c.toDataURL('image/png'));
+        };
+        img.onerror = () => resolve('');
+        img.src = src;
+      } catch (e) { resolve(''); }
+    });
+  }
+
   async function signaturesForEmail() {
     const src = certSignaturesPayload();
+    if (!src.tenthani) src.tenthani = src.chair || src.chifundo || '';
     const out = { kalua: '', chamwala: '', tenthani: '' };
     for (const k of Object.keys(out)) {
       if (!src[k]) continue;
@@ -1144,6 +1162,12 @@
     doc.setTextColor(27, 79, 114);
     doc.setFont('times', 'bold');
     doc.setFontSize(11);
+    try {
+      if (opts.amLogo) doc.addImage(opts.amLogo, opts.amLogo.indexOf('jpeg') >= 0 ? 'JPEG' : 'PNG', 28, 18, 64, 64);
+    } catch (e) { /* logo optional */ }
+    try {
+      if (opts.mncsLogo) doc.addImage(opts.mncsLogo, opts.mncsLogo.indexOf('jpeg') >= 0 ? 'JPEG' : 'PNG', W - 92, 18, 64, 64);
+    } catch (e) { /* logo optional */ }
     doc.text('MALAWI NATIONAL COUNCIL OF SPORTS  ·  ATHLETICS MALAWI', W / 2, 58, { align: 'center' });
     doc.setFontSize(16);
     doc.text('BT42.195km Race 2026', W / 2, 78, { align: 'center' });
@@ -1185,8 +1209,8 @@
       const data = sigs[p.k];
       if (data && data.indexOf('data:image') === 0) {
         try {
-          const fmt = data.indexOf('png') >= 0 ? 'PNG' : 'JPEG';
-          doc.addImage(data, fmt, x + 10, 360, 150, 42);
+          try { doc.addImage(data, 'JPEG', x + 10, 360, 150, 42); }
+          catch (e1) { try { doc.addImage(data, 'PNG', x + 10, 360, 150, 42); } catch (e2) {} }
         } catch (e) { /* skip */ }
       }
       doc.setDrawColor(30, 30, 30);
@@ -2817,12 +2841,19 @@
     ].join('');
     const phoneP = r.phone || '';
     const certIdP = 'BT42-PART-' + String(phoneP).replace(/\D/g, '').slice(-8);
-    signaturesForEmail().then((sigsP) => {
+    Promise.all([
+      signaturesForEmail(),
+      logoDataUrl('/assets/am-logo.png'),
+      logoDataUrl('/assets/mncs-logo.png')
+    ]).then((pack) => {
+      const sigsP = pack[0];
       const pdfBase64 = buildClientCertificatePdf({
         fullName: name,
         distance: dist,
         isCompletion: false,
-        signatures: sigsP
+        signatures: sigsP,
+        amLogo: pack[1],
+        mncsLogo: pack[2]
       });
     sendAthleteEmail({
       type: 'participation',
@@ -2873,26 +2904,43 @@
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
     ].join('');
-    const sigsC = loadSigs();
     const phoneC = r.phone || '';
     const certIdC = 'BT42-FIN-' + String(phoneC).replace(/\D/g, '').slice(-8);
-    sendAthleteEmail({
-      type: 'completion',
-      to: to,
-      fullName: name,
-      distance: dist,
-      finishTime: finishTime || '',
-      phone: phoneC,
-      email: to,
-      certId: certIdC,
-      issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
-      subject: 'Certificate of Completion — BT42.195km Race 2026',
-      raceDate: '27 September 2026',
-      signatures: certSignaturesPayload()
-    }).then((j) => {
-      if (j && j.ok) console.log('Completion certificate emailed to', to);
-      else console.warn('Completion certificate email result', j);
-    });
+    Promise.all([
+      signaturesForEmail(),
+      logoDataUrl('/assets/am-logo.png'),
+      logoDataUrl('/assets/mncs-logo.png')
+    ]).then((pack) => {
+      const sigsC = pack[0];
+      const pdfBase64 = buildClientCertificatePdf({
+        fullName: name,
+        distance: dist,
+        finishTime: finishTime || '',
+        isCompletion: true,
+        signatures: sigsC,
+        amLogo: pack[1],
+        mncsLogo: pack[2]
+      });
+      sendAthleteEmail({
+        type: 'completion',
+        to: to,
+        fullName: name,
+        distance: dist,
+        finishTime: finishTime || '',
+        phone: phoneC,
+        email: to,
+        certId: certIdC,
+        issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
+        subject: 'Certificate of Completion — BT42.195km Race 2026',
+        raceDate: '27 September 2026',
+        isCompletion: true,
+        signatures: sigsC,
+        pdfBase64: pdfBase64
+      }).then((j) => {
+        if (j && j.ok) console.log('Completion certificate emailed to', to);
+        else console.warn('Completion certificate email result', j);
+      });
+    }).catch((e) => console.warn('Completion cert signatures', e));
   }
 
   function openCertificate(r, certType) {

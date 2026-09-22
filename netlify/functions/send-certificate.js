@@ -20,7 +20,9 @@ function envNonEmpty(name) {
 function pickSigs(src, out) {
   const sigs = src && typeof src === 'object' ? src : {};
   ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
-    const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
+    const v = sigs[k]
+      || (k === 'chamwala' ? (sigs.chinangwa || '') : '')
+      || (k === 'tenthani' ? (sigs.chair || sigs.chifundo || '') : '');
     if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
   });
 }
@@ -58,7 +60,9 @@ async function loadStoredSignatures() {
         const j = await res.json();
         const sigs = (j.record && j.record.signatures) || {};
         ['kalua', 'chamwala', 'tenthani'].forEach((k) => {
-          const v = sigs[k] || (k === 'chamwala' ? sigs.chinangwa : '');
+          const v = sigs[k]
+            || (k === 'chamwala' ? (sigs.chinangwa || '') : '')
+            || (k === 'tenthani' ? (sigs.chair || sigs.chifundo || '') : '');
           if (typeof v === 'string' && v.indexOf('data:image') === 0) out[k] = v;
         });
       }
@@ -73,8 +77,10 @@ function mergeSigPayload(fromBody, fromStore) {
   keys.forEach((k) => {
     const a = fromBody && fromBody[k];
     const b = fromStore && fromStore[k];
+    const extra = k === 'tenthani' ? ((fromBody && (fromBody.chair || fromBody.chifundo)) || (fromStore && (fromStore.chair || fromStore.chifundo))) : '';
     out[k] = (typeof a === 'string' && a.indexOf('data:image') === 0) ? a
       : (typeof b === 'string' && b.indexOf('data:image') === 0) ? b
+      : (typeof extra === 'string' && extra.indexOf('data:image') === 0) ? extra
       : '';
   });
   return out;
@@ -234,8 +240,10 @@ async function buildCertificatePdf(opts) {
         const b64 = dataUrl.split(',')[1];
         const bytes = Buffer.from(b64, 'base64');
         let img = null;
-        try { img = await doc.embedPng(bytes); } catch (e1) {
-          try { img = await doc.embedJpg(bytes); } catch (e2) { img = null; }
+        try { img = await doc.embedJpg(bytes); } catch (e0) {
+          try { img = await doc.embedPng(bytes); } catch (e1) {
+            try { img = await doc.embedJpg(bytes); } catch (e2) { img = null; }
+          }
         }
         if (img) {
           const maxW = 150;
