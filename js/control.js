@@ -199,12 +199,13 @@
 
   function staffCanSee(panel) {
     if (isChair) return true;
-    if (panel === 'dash') return true;
-    if (panel === 'participants') return canPayment() || canBibs() || canFinish();
-    if (panel === 'results') return canFinish() || isChair;
-    if (panel === 'volunteers') return canVolunteers();
-    if (panel === 'staff') return canManageStaff();
+    if (panel === 'staff' || panel === 'site' || panel === 'chair') return canManageStaff();
     if (panel === 'approvals') return canRequisitions();
+    const openToOc = [
+      'dash', 'deadlines', 'survey', 'results', 'participants', 'volunteers',
+      'checklist', 'meetings', 'budget', 'runsheet', 'roles', 'notes'
+    ];
+    if (openToOc.indexOf(panel) >= 0) return true;
     return false;
   }
 
@@ -3649,7 +3650,11 @@ w.document.close();
 
   function renderSurveyPreview() {
     const box = $('#ctrl-survey-preview');
-    if (!box || !isChair) return;
+    if (!box) return;
+    if (!isChair) {
+      box.innerHTML = '<p class="form-note">Survey questions and live totals. Pretest form is Chair only.</p>';
+      return;
+    }
     box.innerHTML = '<p><a class="btn btn-primary" href="#survey">Open public survey page (respondent view)</a></p><div id="chair-survey-pretest"></div>';
     const mount = $('#chair-survey-pretest');
     if (window.BT42_renderSurvey && mount) {
@@ -3665,7 +3670,7 @@ w.document.close();
 
   function renderSurveyResults() {
     const box = $('#ctrl-survey-results');
-    if (!box || !isChair) return;
+    if (!box) return;
     let rows = [];
     try { rows = JSON.parse(localStorage.getItem('bt42_survey_responses') || '[]'); } catch { rows = []; }
     const labels = { participant: 'Participants', volunteer: 'Volunteers', committee: 'Committee', media: 'Media', public: 'Public' };
@@ -3725,8 +3730,8 @@ w.document.close();
     renderDeadlines();
     if (isChair) renderChairNotes();
     if (canRequisitions()) renderApprovals();
-    if (isChair) renderSurveyPreview();
-    if (isChair) renderSurveyResults();
+    renderSurveyPreview();
+    renderSurveyResults();
     renderLiveResults();
     if (canManageStaff()) renderStaffAdmin();
     if (isChair) renderSiteContentAdmin();
