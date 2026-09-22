@@ -1193,8 +1193,8 @@
     const body = opts.volunteer
       ? ('served as a volunteer (' + (opts.distance || opts.role || 'Race volunteer') + ') at the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.')
       : (opts.isCompletion
-        ? ('has successfully completed the ' + (opts.distance || '') + ' of the BT42.195km Race 2026.')
-        : ('was a registered participant in the ' + (opts.distance || '') + ' of the BT42.195km Race 2026.'));
+        ? ('has successfully completed the ' + (opts.distance || '') + ' of the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.')
+        : ('was a registered participant in the ' + (opts.distance || '') + ' of the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.'));
     const lines = doc.splitTextToSize(body, 620);
     doc.text(lines, W / 2, 250, { align: 'center' });
     const sigs = opts.signatures || {};
@@ -3511,7 +3511,7 @@ h2 { margin:8px 0 0; font-size:15px; color:#2980b9; }
   <h2>BT42.195km Race 2026 · Blantyre · 27 September 2026</h2>
   <p>This certifies that</p>
   <div class="who">${name.replace(/[<>]/g,'')}</div>
-  <p>served as <strong>${role.replace(/[<>]/g,'')}</strong></p>
+  <p>served as <strong>${role.replace(/[<>]/g,'')}</strong> at the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.</p>
   <div class="sig">
     ${sigCell(sigs.kalua, 'Jim Kalua', 'Chairman, MNCS')}
     ${sigCell(sigs.chamwala, 'Kondwani Chamwala', 'President, Athletics Malawi')}
@@ -3675,13 +3675,20 @@ w.document.close();
         let mailed = false;
         let mailErr = '';
         try {
-          const sigs = await signaturesForEmail();
+          const pack = await Promise.all([
+            signaturesForEmail(),
+            logoDataUrl('/assets/am-logo.png'),
+            logoDataUrl('/assets/mncs-logo.png')
+          ]);
+          const sigs = pack[0];
           const pdfBase64 = buildClientCertificatePdf({
             volunteer: true,
             fullName: v.fullName,
             distance: v.role || 'Race volunteer',
             role: v.role || 'Race volunteer',
-            signatures: sigs
+            signatures: sigs,
+            amLogo: pack[1],
+            mncsLogo: pack[2]
           });
           const j = await sendAthleteEmail({
             type: 'volunteer',

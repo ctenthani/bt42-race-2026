@@ -364,7 +364,7 @@ async function buildVolunteerAppreciationPdf(opts) {
 
   const role = String(opts.distance || opts.role || 'Race volunteer');
   const body1 = 'in appreciation for dedicated volunteerism and service';
-  const body2 = 'to the Malawi National Council of Sports';
+  const body2 = 'organised under the auspices of the Malawi National Council of Sports';
   const body3 = '(BT42.195km Race 2026 · Blantyre · 27 September 2026)';
   const body4 = role ? ('Crew role: ' + role) : '';
   drawC(body1, height - 258, 13, font, black);
