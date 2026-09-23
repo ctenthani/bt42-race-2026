@@ -2795,9 +2795,10 @@
     if (!/^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,24}$/i.test(to) || /gamil\.com|gmial\.com|gnail\.com|gmail\.con|gmail\.cm$/i.test(to)) {
       return Promise.resolve({ ok: false, skipped: true, error: 'Invalid email — not sent' });
     }
+    const skipDedupe = payload.type === 'volunteer_onboard' || payload.forceSend;
     const dedupeKey = [payload.type || '', to.toLowerCase(), payload.bib || '', payload.subject || '', payload.fullName || ''].join('|');
     const now = Date.now();
-    if (recentEmail[dedupeKey] && now - recentEmail[dedupeKey] < 20000) {
+    if (!skipDedupe && recentEmail[dedupeKey] && now - recentEmail[dedupeKey] < 20000) {
       console.info('Skipped duplicate email', dedupeKey);
       return Promise.resolve({ ok: true, skipped: true, deduped: true });
     }
@@ -3722,6 +3723,9 @@ w.document.close();
           return tag;
         }) + '</textarea>' +
         '<p class="form-note">Keep <code>{{ROSTER}}</code> in the text — it is replaced with that inbox’s names and roles.</p>' +
+        '<label style="display:block;margin:0.5rem 0"><input type="checkbox" id="vol-onboard-each" checked /> Send a personal email to <strong>each volunteer</strong></label>' +
+        '<label style="display:block;margin:0 0 0.6rem"><input type="checkbox" id="vol-onboard-group" checked /> Also send one combined email where people share an inbox</label>' +
+        '<p id="vol-onboard-progress" class="form-note"></p>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:0.6rem">' +
         '<button type="button" class="btn btn-primary" id="vol-onboard-send">Looks good — send</button>' +
         '<button type="button" class="btn-mini" id="vol-onboard-cancel">Cancel</button></div></div>';
@@ -3752,17 +3756,26 @@ w.document.close();
       modal.querySelector('#vol-onboard-cancel').onclick = () => modal.remove();
       modal.querySelector('#vol-onboard-send').onclick = async () => {
         const sendBtn = modal.querySelector('#vol-onboard-send');
+        const prog = modal.querySelector('#vol-onboard-progress');
+        const sendEach = !!(modal.querySelector('#vol-onboard-each') || {}).checked;
+        const sendGroup = !!(modal.querySelector('#vol-onboard-group') || {}).checked;
+        if (!sendEach && !sendGroup) { alert('Tick at least one send option.'); return; }
         sendBtn.disabled = true;
         sendBtn.textContent = 'Sending…';
         const subjectBase = (modal.querySelector('#vol-onboard-subject').value || '').trim() || 'Volunteer onboarding — BT42.195km Race 2026';
         let ok = 0;
         let fail = 0;
-        for (let g = 0; g < emails.length; g++) {
-          const email = emails[g];
-          const people = groups[email];
-          if (people.length > 1) {
+        const pause = () => new Promise((r) => setTimeout(r, 350));
+        const mark = (msg) => { if (prog) prog.textContent = msg; };
+        if (sendGroup) {
+          for (let g = 0; g < emails.length; g++) {
+            const email = emails[g];
+            const people = groups[email];
+            if (people.length < 2) continue;
+            mark('Shared inbox ' + (g + 1) + '/' + emails.length + ' → ' + email);
             const jg = await sendAthleteEmail({
               type: 'volunteer_onboard',
+              forceSend: true,
               to: email,
               email: email,
               fullName: people.map((p) => p.fullName).join(', '),
@@ -3770,25 +3783,31 @@ w.document.close();
               html: applyTemplate(people),
               raceDate: '27 September 2026'
             });
-            if (jg && jg.ok) ok++; else fail++;
+            if (jg && jg.ok && !jg.skipped) ok++; else fail++;
+            await pause();
           }
         }
-        for (let i = 0; i < list.length; i++) {
-          const p = list[i];
-          const email = String(p.email || '').trim().toLowerCase();
-          const jp = await sendAthleteEmail({
-            type: 'volunteer_onboard',
-            to: email,
-            email: email,
-            fullName: p.fullName,
-            subject: subjectBase + ' — ' + (p.fullName || 'Volunteer'),
-            html: applyTemplate([p]),
-            raceDate: '27 September 2026'
-          });
-          if (jp && jp.ok) ok++; else fail++;
+        if (sendEach) {
+          for (let i = 0; i < list.length; i++) {
+            const p = list[i];
+            const email = String(p.email || '').trim().toLowerCase();
+            mark('Volunteer ' + (i + 1) + '/' + list.length + ' → ' + (p.fullName || email));
+            const jp = await sendAthleteEmail({
+              type: 'volunteer_onboard',
+              forceSend: true,
+              to: email,
+              email: email,
+              fullName: p.fullName,
+              subject: subjectBase + ' — ' + (p.fullName || 'Volunteer'),
+              html: applyTemplate([p]),
+              raceDate: '27 September 2026'
+            });
+            if (jp && jp.ok && !jp.skipped) ok++; else fail++;
+            await pause();
+          }
         }
         modal.remove();
-        alert('Onboarding: ' + ok + ' message(s) sent (each volunteer plus shared-inbox roster). Failed: ' + fail + '.');
+        alert('Onboarding finished. Delivered: ' + ok + '. Not delivered: ' + fail + '. Personal emails ' + (sendEach ? 'ON' : 'off') + '.');
       };
     };
     const markAll = $('#vol-mark-selected');
