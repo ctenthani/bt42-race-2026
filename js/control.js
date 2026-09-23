@@ -3707,7 +3707,7 @@ w.document.close();
       modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,30,20,0.55);z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto';
       modal.innerHTML = '<div style="background:#fff;max-width:640px;width:100%;border-radius:12px;padding:1.1rem 1.2rem 1.3rem;box-shadow:0 16px 40px rgba(0,0,0,.2)">' +
         '<h3 style="margin:0 0 0.35rem;color:#1B5E20">Preview onboarding email</h3>' +
-        '<p class="form-note">Will send <strong>' + emails.length + '</strong> email(s) covering <strong>' + list.length + '</strong> volunteer(s). Shared inboxes get one message listing every name on that address. Edit the wording below if needed — names/roles still insert per inbox.</p>' +
+        '<p class="form-note">Will send a personal email to each of <strong>' + list.length + '</strong> volunteer(s) (' + emails.length + ' distinct address' + (emails.length === 1 ? '' : 'es') + '). Where several people share an inbox, they also get one combined roster email.</p>' +
         '<label style="font-size:0.8rem;font-weight:700">Subject</label>' +
         '<input id="vol-onboard-subject" type="text" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem" value="Volunteer onboarding — BT42.195km Race 2026" />' +
         '<label style="font-size:0.8rem;font-weight:700">Message (preview of first inbox: ' + emails[0].replace(/</g, '') + ')</label>' +
@@ -3754,19 +3754,35 @@ w.document.close();
         for (let g = 0; g < emails.length; g++) {
           const email = emails[g];
           const people = groups[email];
-          const j = await sendAthleteEmail({
+          if (people.length > 1) {
+            const jg = await sendAthleteEmail({
+              type: 'volunteer_onboard',
+              to: email,
+              email: email,
+              fullName: people.map((p) => p.fullName).join(', '),
+              subject: subjectBase + ' (' + people.length + ' crew)',
+              html: applyTemplate(people),
+              raceDate: '27 September 2026'
+            });
+            if (jg && jg.ok) ok++; else fail++;
+          }
+        }
+        for (let i = 0; i < list.length; i++) {
+          const p = list[i];
+          const email = String(p.email || '').trim().toLowerCase();
+          const jp = await sendAthleteEmail({
             type: 'volunteer_onboard',
             to: email,
             email: email,
-            fullName: people[0].fullName,
-            subject: people.length > 1 ? (subjectBase + ' (' + people.length + ' crew)') : subjectBase,
-            html: applyTemplate(people),
+            fullName: p.fullName,
+            subject: subjectBase + ' — ' + (p.fullName || 'Volunteer'),
+            html: applyTemplate([p]),
             raceDate: '27 September 2026'
           });
-          if (j && j.ok) ok++; else fail++;
+          if (jp && jp.ok) ok++; else fail++;
         }
         modal.remove();
-        alert('Onboarding sent to ' + ok + ' email address(es). Failed: ' + fail + '.');
+        alert('Onboarding: ' + ok + ' message(s) sent (each volunteer plus shared-inbox roster). Failed: ' + fail + '.');
       };
     };
     const markAll = $('#vol-mark-selected');
