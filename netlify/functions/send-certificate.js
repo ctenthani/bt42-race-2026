@@ -574,6 +574,15 @@ exports.handler = async (event) => {
         filename: 'BT42-Volunteer-Certificate.pdf',
         content: pdfB64
       });
+      if (Array.isArray(body.extraPdfs)) {
+        body.extraPdfs.forEach((p, i) => {
+          if (!p || !p.content) return;
+          attachments.push({
+            filename: String(p.filename || ('BT42-Volunteer-' + (i + 2) + '.pdf')).replace(/[^\w.\-]+/g, '_'),
+            content: String(p.content).replace(/^data:application\/pdf;base64,/, '')
+          });
+        });
+      }
     } catch (e) {
       return {
         statusCode: 200,
@@ -581,6 +590,9 @@ exports.handler = async (event) => {
         body: JSON.stringify({ ok: false, error: 'PDF generation failed: ' + (e.message || e) })
       };
     }
+  } else if (type === 'volunteer_onboard') {
+    subject = body.subject || 'Volunteer onboarding — BT42.195km Race 2026';
+    html = body.html || `<p>Dear Volunteer,</p><p>Thank you for joining the BT42.195km Race crew.</p>`;
   } else {
     html = body.html || `<p>Dear ${esc(fullName)},</p><p>Message from BT42.195km Race.</p>`;
   }

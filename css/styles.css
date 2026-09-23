@@ -1913,3 +1913,26 @@ body.stadium-mode #public-results h2 { font-size: 1.8rem; color: #f5d76e; margin
 body.stadium-mode #public-results table { font-size: 1.35rem; }
 body.stadium-mode #public-results td, body.stadium-mode #public-results th { padding: 0.55rem 0.7rem; color: #fff; }
 body.stadium-mode #public-results tr:nth-child(-n+3) td { color: #f5d76e; font-weight: 700; }
+
+/* Official programme — printed sheet greens */
+#page-programme .page-header { background: #1B5E20; }
+#page-programme .page-header p { color: #c8e6c9; }
+.programme-table { width: 100%; border-collapse: collapse; }
+.programme-table th {
+  background: #1B5E20;
+  color: #fff;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.programme-table td {
+  padding: 12px 16px;
+  vertical-align: top;
+  color: #1C2833;
+  border-bottom: 1px solid #c8e6c9;
+}
+.programme-table td:first-child { font-weight: 700; white-space: nowrap; width: 140px; color: #1B5E20; }
+.programme-table tbody tr:nth-child(odd) td { background: #e8f5e9; }
+.programme-table tbody tr:nth-child(even) td { background: #ffffff; }
+.programme-table ul { margin: 0.35rem 0 0 1.1rem; }

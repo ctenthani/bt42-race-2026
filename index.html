@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>BT42.195km Race 2026</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="stylesheet" href="css/styles.css?v=20260922e" />
+  <link rel="stylesheet" href="css/styles.css?v=20260923c" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -38,6 +38,7 @@
           <a href="#results" data-page="results">Results</a>
           <a href="#lookup" data-page="lookup">Find athlete</a>
           <a href="#survey" data-page="survey">Survey</a>
+          <a href="#programme" data-page="programme">Programme</a>
           <a href="#info" data-page="info">Info</a>
           <a href="#control" data-page="control" class="nav-control">Control</a>
         </nav>
@@ -104,8 +105,8 @@
             <h2>Race morning</h2>
             <div class="rm-times">
               <div><strong>06:00</strong><span>42.195 km</span></div>
-              <div><strong>06:10</strong><span>10 km</span></div>
-              <div><strong>06:20</strong><span>5 km</span></div>
+              <div><strong>06:10</strong><span>5 km</span></div>
+              <div><strong>06:20</strong><span>10 km</span></div>
             </div>
             <p class="rm-fees">Fees: MK 15,000 · 10,000 · 5,000 · National Bank of Malawi <code>782637</code> (name + mobile)</p>
             <p class="rm-cut">Course closes 12:00 · Feedback survey opens 12:00</p>
@@ -207,7 +208,7 @@
               <h3>10 km Race</h3>
               <table class="info-table">
                 <tr><td>Distance</td><td>10 km</td></tr>
-                <tr><td>Start</td><td>06:10</td></tr>
+                <tr><td>Start</td><td>06:20</td></tr>
                 <tr><td>Categories</td><td>Open + recreational</td></tr>
                 <tr><td>Prizes</td><td>Scaled prizes</td></tr>
                 <tr><td>Entry fee</td><td>MK 10,000</td></tr>
@@ -217,7 +218,7 @@
               <h3>5 km Fun Run</h3>
               <table class="info-table">
                 <tr><td>Distance</td><td>5 km</td></tr>
-                <tr><td>Start</td><td>06:20</td></tr>
+                <tr><td>Start</td><td>06:10</td></tr>
                 <tr><td>Focus</td><td>Community & families</td></tr>
                 <tr><td>Prizes</td><td>Recognition + medals</td></tr>
                 <tr><td>Entry fee</td><td>MK 5,000</td></tr>
@@ -236,13 +237,13 @@
         <div class="page-header">
           <div class="container">
             <h1>Register</h1>
-            <p>Sunday 27 September 2026 · Starts 06:00 / 06:10 / 06:20</p>
+            <p>Sunday 27 September 2026 · 42.195 km 06:00 · 5 km 06:10 · 10 km 06:20</p>
           </div>
         </div>
         <div class="container section">
           <div class="notice" style="margin-bottom:1rem">
             <strong>Entry fees:</strong> 42.195 km <strong>MK 15,000</strong> · 10 km <strong>MK 10,000</strong> · 5 km <strong>MK 5,000</strong>.<br>
-            <strong>Starts:</strong> 42.195 km 06:00 · 10 km 06:10 · 5 km 06:20. Pay to National Bank of Malawi account <code data-site="bankAccount">782637</code> (reference: full name + mobile).
+            <strong>Starts:</strong> 42.195 km 06:00 · 5 km 06:10 · 10 km 06:20. Pay to National Bank of Malawi account <code data-site="bankAccount">782637</code> (reference: full name + mobile).
           </div>
           <div class="register-layout">
             <form id="regForm" class="reg-form" name="bt42-registration" method="POST" onsubmit="return handleRegister(event)">
@@ -544,6 +545,53 @@
         </div>
       </section>
 
+      <section id="page-programme" class="page">
+        <div class="page-header">
+          <div class="container">
+            <div class="rm-lockup results-lockup">
+              <img src="assets/am-logo.png" alt="Athletics Malawi" />
+              <img src="assets/race-wordmark.png" alt="BT42.195km Race" class="rm-wordmark" />
+              <img src="assets/mncs-logo.png" alt="MNCS" />
+            </div>
+            <h1>Program of Events</h1>
+            <p>Sunday, 27 September 2026 · Blantyre, Malawi</p>
+          </div>
+        </div>
+        <div class="container section">
+          <div class="table-wrap">
+            <table class="ctrl-table programme-table">
+              <thead><tr><th>Time</th><th>Activity</th></tr></thead>
+              <tbody>
+                <tr class="prog-prep"><td>05:00</td><td>Athletes arrive at the start: NBS Bank, Ginnery Corner</td></tr>
+                <tr class="prog-prep"><td>05:30</td><td>Call room opens; athlete registration and first call</td></tr>
+                <tr class="prog-prep"><td>05:45</td><td>Guest of Honour arrives; final call, welcome remarks and marathon route briefing</td></tr>
+                <tr class="prog-mara"><td>06:00</td><td><strong>42.195 km race starts</strong></td></tr>
+                <tr class="prog-five"><td>06:10</td><td><strong>5 km race starts</strong></td></tr>
+                <tr class="prog-ten"><td>06:20</td><td><strong>10 km race starts</strong></td></tr>
+                <tr class="prog-fun"><td>06:30–07:30</td><td>Aerobics session led by KuHES Complex Trainers at Kamuzu Stadium — free entry</td></tr>
+                <tr class="prog-fun"><td>07:30–08:00</td><td>Tug of war</td></tr>
+                <tr class="prog-speech">
+                  <td>09:00</td>
+                  <td>Speeches:
+                    <ul>
+                      <li>Mr. Chifundo Tenthani, Organising Committee Chairperson</li>
+                      <li>Mr. Kondwani Chamwala, Athletics Malawi President</li>
+                      <li>Mr. Ekari Chauluka, Managing Director of Zamara</li>
+                      <li>Councillor Jomo Osman, Blantyre City Mayor</li>
+                      <li>Hon. Alfred Gangata, MP, Guest of Honour</li>
+                    </ul>
+                  </td>
+                </tr>
+                <tr class="prog-prize"><td>09:30</td><td>Prize presentation</td></tr>
+                <tr class="prog-end"><td>12:00</td><td>End of programme</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="form-note" style="margin-top:1rem">Official starts: 42.195 km 06:00 · 5 km 06:10 · 10 km 06:20. Course closes 12:00.</p>
+          <p><a class="btn btn-sm" href="docs/BT42-Program-of-Events.pdf" target="_blank" rel="noopener">Download programme (PDF)</a></p>
+        </div>
+      </section>
+
       <!-- INFO -->
       <section id="page-info" class="page">
         <div class="page-header">
@@ -577,13 +625,15 @@
               </ul>
             </details>
             <details>
-              <summary>Prize-giving order (10:00)</summary>
+              <summary>Speeches (09:00) and prize presentation (09:30)</summary>
               <ol>
-                <li>42.195 km women, then men</li>
-                <li>10 km women, then men</li>
-                <li>5 km recognition</li>
+                <li>Mr. Chifundo Tenthani, Organising Committee Chairperson</li>
+                <li>Mr. Kondwani Chamwala, Athletics Malawi President</li>
+                <li>Mr. Ekari Chauluka, Managing Director of Zamara</li>
+                <li>Councillor Jomo Osman, Blantyre City Mayor</li>
+                <li>Hon. Alfred Gangata, MP, Guest of Honour</li>
               </ol>
-              <p>Guests (short remarks): MNCS Chairman Jim Kalua · Athletics Malawi President Kondwani Chamwala · Partner acknowledgement (Zamara). OC Chair closes.</p>
+              <p>Prize presentation follows immediately at 09:30: 42.195 km women then men · 10 km women then men · 5 km recognition.</p>
             </details>
             <details>
               <summary>What to Bring on Race Day</summary>
@@ -637,6 +687,10 @@
         <span class="tab-icon">📋</span>
         <span>Survey</span>
       </a>
+      <a href="#programme" data-page="programme" class="tab">
+        <span class="tab-icon">🗓️</span>
+        <span>Programme</span>
+      </a>
       <a href="#info" data-page="info" class="tab">
         <span class="tab-icon">ℹ️</span>
         <span>Info</span>
@@ -653,7 +707,7 @@
               <img src="assets/mncs-logo.png" alt="MNCS" />
             </div>
             <h1>Live results</h1>
-            <p>27 September 2026 · updates as athletes finish · 42.195 06:00 · 10 km 06:10 · 5 km 06:20</p>
+            <p>27 September 2026 · updates as athletes finish · 42.195 06:00 · 5 km 06:10 · 10 km 06:20</p>
             <p><button type="button" class="btn btn-sm" id="btn-stadium-mode">Projector / stadium mode</button>
               <a class="btn btn-sm" href="#lookup">Find athlete</a></p>
           </div>
@@ -887,9 +941,9 @@
   </div>
 
   <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="js/control-data.js?v=20260922a"></script>
-  <script src="js/control.js?v=20260922h"></script>
+  <script src="js/control-data.js?v=20260923b"></script>
+  <script src="js/control.js?v=20260923f"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.js?v=20260922a"></script>
+  <script src="js/app.js?v=20260923b"></script>
 </body>
 </html>

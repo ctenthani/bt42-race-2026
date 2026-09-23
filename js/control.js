@@ -183,7 +183,10 @@
   function canBibs() { return isChair || !!perms.bibs; }
   function canFinish() { return isChair || !!perms.finish; }
   function canManageStaff() { return isChair || !!perms.manageStaff; }
-  function canVolunteers() { return isChair || !!perms.volunteers; }
+  function canVolunteers() { return isChair || !!perms.volunteers || String(currentUser || '').toLowerCase() === 'gmkanndawire'; }
+  function canAssignVolunteerRole() {
+    return !!(unlocked && (isChair || currentUser));
+  }
   function canDownloadStartList() {
     const u = String(currentUser || '').trim().toLowerCase();
     return isChair || u === 'nkanyenda' || u === 'chair';
@@ -837,13 +840,15 @@
     });
     html += '</tbody></table>';
     html += `<div class="notice" style="margin-top:1rem">
-      <h4 style="margin:0 0 0.4rem">Prize-giving · 10:00 · stadium podium</h4>
+      <h4 style="margin:0 0 0.4rem">Official programme · speeches 09:00 · prizes 09:30</h4>
       <ol>
-        <li>42.195 km — women, then men</li>
-        <li>10 km — women, then men</li>
-        <li>5 km — recognition</li>
+        <li>Chifundo Tenthani (OC Chair)</li>
+        <li>Kondwani Chamwala (Athletics Malawi)</li>
+        <li>Ekari Chauluka (Zamara MD)</li>
+        <li>Councillor Jomo Osman (Mayor)</li>
+        <li>Hon. Alfred Gangata, MP (Guest of Honour)</li>
       </ol>
-      <p>Remarks: Jim Kalua (MNCS) · Kondwani Chamwala (Athletics Malawi) · Zamara as partner · Chair closes.</p>
+      <p>Prize presentation 09:30: 42.195 W then M · 10 km W then M · 5 km recognition.</p>
       <button type="button" class="btn-mini" id="btn-print-pack">Print finish-tent pack</button>
     </div>`;
     container.innerHTML = html;
@@ -877,7 +882,7 @@
     w.document.write('<!DOCTYPE html><html><head><title>BT42 finish tent pack</title><style>body{font-family:Georgia,serif;padding:16px}h1{font-size:20px;margin:0}table{width:100%;border-collapse:collapse;margin:12px 0 28px}th,td{border:1px solid #333;padding:6px 8px;font-size:13px}th{background:#eee}.lock{display:flex;justify-content:space-between;align-items:center}img{height:48px}@media print{.noprint{display:none}}</style></head><body>');
     w.document.write('<div class="lock"><img src="/assets/am-logo.png"><div><h1>BT42.195km Race · 27 September 2026</h1><p>Finish tent pack · times 06:00 / 06:10 / 06:20 · course close 12:00</p></div><img src="/assets/mncs-logo.png"></div>');
     w.document.write('<p><strong>Medical:</strong> Isaac Chapweteka · stadium desk from 05:00 · stop the field if an ambulance is on course.</p>');
-    w.document.write('<p><strong>Prize-giving 10:00:</strong> 42.195 W then M · 10 km W then M · 5 km · Kalua · Chamwala · Zamara partner · Chair.</p>');
+    w.document.write('<p><strong>Speeches 09:00 · prizes 09:30:</strong> Tenthani · Chamwala · Chauluka · Mayor Osman · Hon. Gangata.</p>');
     w.document.write(table('42.195 km', rowsFor('42.195')));
     w.document.write(table('10 km', rowsFor('10')));
     w.document.write(table('5 km', rowsFor('5')));
@@ -1485,6 +1490,7 @@
     }
     if (canVolunteers()) {
       payload.volunteers = loadVolunteers();
+      if ((payload.volunteers || []).length) payload.replaceVolunteers = true;
     }
     if (isChair) {
       payload.replacePayments = true;
@@ -3527,6 +3533,8 @@ w.document.close();
     if (!box) return;
     const list = loadVolunteers();
     const canEdit = canVolunteers();
+    const canRole = canAssignVolunteerRole();
+    const roleOptions = ['Race volunteer','Water kiosk','Marshal','Registration','Medical','Protocol','Security','Catering','Transport','Finish / timing','Call room','Media','Tug of war','Aerobics','Course sweeping'];
     const rows = list.map((v, i) => {
       const st = String(v.status || 'applied');
       const cert = v.certIssued
@@ -3538,11 +3546,20 @@ w.document.close();
         '<button type="button" class="btn-mini vol-cert" data-i="' + i + '"' + (st === 'selected' || st === 'served' ? '' : ' disabled title="Select first"') + '>Issue certificate</button> ' +
         '<button type="button" class="btn-mini vol-del" data-i="' + i + '" style="color:#C0392B">Remove</button>'
       ) : (st + (v.certIssued ? ' · certificate issued' : ''));
+      const curRole = String(v.role || 'Race volunteer');
+      let roleCell = escapeHtml(curRole);
+      if (canRole) {
+        const opts = roleOptions.slice();
+        if (curRole && opts.indexOf(curRole) < 0) opts.unshift(curRole);
+        roleCell = '<select class="vol-role-pick" data-i="' + i + '">' +
+          opts.map((r) => '<option' + (r === curRole ? ' selected' : '') + '>' + escapeHtml(r) + '</option>').join('') +
+          '<option value="__other__">Other…</option></select>';
+      }
       return '<tr><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
-        '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + escapeHtml(v.role || '') +
+        '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + roleCell +
         '</td><td>' + escapeHtml(st) + '</td><td>' + escapeHtml(cert) +
         '</td><td>' + escapeHtml(String(v.createdAt || '').slice(0, 10)) + '</td><td>' + actions + '</td></tr>';
-    }).join('') || '<tr><td colspan="7">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
+    }).join('') || '<tr><td colspan="8">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
     box.innerHTML = (canEdit ? `
       <div class="card" style="padding:0.75rem;margin-bottom:1rem">
         <h4 style="margin-top:0">Add volunteer from the form</h4>
@@ -3559,12 +3576,33 @@ w.document.close();
           <h4 style="margin:0 0 0.35rem">Upload selected list</h4>
           <p class="form-note">CSV with headers: <code>fullName,email,phone,role,status</code>. Status may be applied, selected or served. One volunteer per row.</p>
           <input type="file" id="vol-csv" accept=".csv,text/csv,text/plain" />
+          <button type="button" class="btn-mini" id="vol-push">Push list to all gadgets</button>
           <button type="button" class="btn-mini" id="vol-mark-selected">Mark all listed as Selected</button>
+          <button type="button" class="btn-mini" id="vol-onboard">Send onboarding email to all</button>
         </div>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
-      '<p class="form-note"><button type="button" class="btn-mini" id="vol-refresh">Refresh shared list</button> Volunteer records sync to every signed-in gadget.</p>' +
+      '<p class="form-note"><button type="button" class="btn-mini" id="vol-refresh">Refresh shared list</button> Chair, gmkanndawire and every signed-in account can assign roles. Coordinator rights are still needed to select or issue certificates.</p>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
+    box.querySelectorAll('.vol-role-pick').forEach((sel) => {
+      sel.onchange = async () => {
+        if (!canAssignVolunteerRole()) return;
+        const i = Number(sel.dataset.i);
+        const next = loadVolunteers();
+        if (!next[i]) return;
+        let val = sel.value;
+        if (val === '__other__') {
+          val = (prompt('Role / station for ' + (next[i].fullName || 'volunteer') + ':', next[i].role || '') || '').trim();
+          if (!val) { renderVolunteersAdmin(); return; }
+        }
+        next[i].role = val;
+        next[i].roleAssignedBy = currentUser || (isChair ? 'chair' : 'oc');
+        next[i].roleAssignedAt = new Date().toISOString();
+        saveVolunteers(next);
+        await syncVolunteers(next);
+        renderVolunteersAdmin();
+      };
+    });
     const refresh = $('#vol-refresh');
     if (refresh) refresh.onclick = async () => {
       refresh.disabled = true;
@@ -3592,12 +3630,20 @@ w.document.close();
       syncVolunteers(next);
       renderVolunteersAdmin();
     };
+    const pushBtn = $('#vol-push');
+    if (pushBtn) pushBtn.onclick = async () => {
+      pushBtn.disabled = true;
+      const r = await syncVolunteers(loadVolunteers());
+      pushBtn.disabled = false;
+      if (r && r.ok) alert('Volunteer list is on the shared store. Other gadgets: Volunteers tab → Refresh shared list.');
+      else alert('Push failed: ' + ((r && r.error) || 'no sync token — sign in on this laptop first'));
+    };
     const csvInput = $('#vol-csv');
     if (csvInput) csvInput.onchange = () => {
       const file = csvInput.files && csvInput.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = () => {
+      reader.onload = async () => {
         const incoming = parseVolunteerCsv(reader.result);
         if (!incoming.length) {
           alert('No rows found. Use headers fullName,email,phone,role,status');
@@ -3614,11 +3660,114 @@ w.document.close();
         });
         const merged = Array.from(map.values());
         saveVolunteers(merged);
-        syncVolunteers(merged);
-        alert('Loaded ' + incoming.length + ' volunteers from the file. They are on the shared list.');
+        const r = await syncVolunteers(merged);
+        if (r && r.ok) {
+          alert('Loaded ' + incoming.length + ' volunteers and pushed to the shared list (' + merged.length + ' total). Other gadgets: Refresh shared list.');
+        } else {
+          alert('Saved on this laptop only. Shared push failed: ' + ((r && r.error) || 'sign in again, then Push list to all gadgets') + '.');
+        }
         renderVolunteersAdmin();
       };
       reader.readAsText(file);
+    };
+    function volunteerOnboardInner(people) {
+      const lis = (people || []).map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(p.role || 'Race volunteer').replace(/</g, '') + '</li>').join('');
+      return [
+        '<h2 style="color:#1B5E20;margin:0 0 0.4rem">Welcome to the BT42.195km Race crew</h2>',
+        '<p>Sunday 27 September 2026 · Kamuzu Stadium, Blantyre</p>',
+        '<p>You are confirmed for:</p><ul>' + (lis || '<li>(names and roles for this inbox)</li>') + '</ul>',
+        '<p><strong>Report:</strong> 05:00 at the start (NBS Bank, Ginnery Corner) or as your coordinator briefed for stadium posts.</p>',
+        '<p><strong>Race starts:</strong> 42.195 km 06:00 · 5 km 06:10 · 10 km 06:20.</p>',
+        '<p><strong>Aerobics</strong> (free): 06:30–07:30 at the Stadium · KuHES Complex Trainers.</p>',
+        '<p>Wear comfortable kit. Bring water and your phone. Marshals brief at the stadium volunteer desk.</p>',
+        '<p>Programme: <a href="https://btrace.netlify.app/#programme">btrace.netlify.app/#programme</a></p>',
+        '<p>— Organising Committee, BT42.195km Race</p>'
+      ].join('');
+    }
+    function wrapOnboardHtml(inner) {
+      return '<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1a1a1a">' + inner + '</div>';
+    }
+    const onboard = $('#vol-onboard');
+    if (onboard) onboard.onclick = () => {
+      if (!canVolunteers()) { alert('Coordinator or Chair sends onboarding.'); return; }
+      const list = loadVolunteers().filter((v) => v.status !== 'declined' && String(v.email || '').indexOf('@') > 0);
+      if (!list.length) { alert('No volunteers with an email address.'); return; }
+      const groups = {};
+      list.forEach((v) => {
+        const k = String(v.email || '').trim().toLowerCase();
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(v);
+      });
+      const emails = Object.keys(groups);
+      const samplePeople = groups[emails[0]] || [];
+      let existing = document.getElementById('vol-onboard-modal');
+      if (existing) existing.remove();
+      const modal = document.createElement('div');
+      modal.id = 'vol-onboard-modal';
+      modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,30,20,0.55);z-index:80;display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;overflow:auto';
+      modal.innerHTML = '<div style="background:#fff;max-width:640px;width:100%;border-radius:12px;padding:1.1rem 1.2rem 1.3rem;box-shadow:0 16px 40px rgba(0,0,0,.2)">' +
+        '<h3 style="margin:0 0 0.35rem;color:#1B5E20">Preview onboarding email</h3>' +
+        '<p class="form-note">Will send <strong>' + emails.length + '</strong> email(s) covering <strong>' + list.length + '</strong> volunteer(s). Shared inboxes get one message listing every name on that address. Edit the wording below if needed — names/roles still insert per inbox.</p>' +
+        '<label style="font-size:0.8rem;font-weight:700">Subject</label>' +
+        '<input id="vol-onboard-subject" type="text" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem" value="Volunteer onboarding — BT42.195km Race 2026" />' +
+        '<label style="font-size:0.8rem;font-weight:700">Message (preview of first inbox: ' + emails[0].replace(/</g, '') + ')</label>' +
+        '<div id="vol-onboard-view" style="border:1px solid #c8e6c9;background:#f4fbf5;padding:1rem;margin:0.35rem 0 0.75rem;min-height:180px">' + volunteerOnboardInner(samplePeople) + '</div>' +
+        '<textarea id="vol-onboard-edit" style="width:100%;min-height:140px;font-family:Georgia,serif;font-size:0.92rem;padding:0.5rem">' + volunteerOnboardInner(samplePeople).replace(/<li>[\s\S]*<\/ul>/, '<p>You are confirmed for:</p><ul>{{ROSTER}}</ul>').replace(/<[^>]+>/g, function (tag) {
+          return tag;
+        }) + '</textarea>' +
+        '<p class="form-note">Keep <code>{{ROSTER}}</code> in the text — it is replaced with that inbox’s names and roles.</p>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:0.6rem">' +
+        '<button type="button" class="btn btn-primary" id="vol-onboard-send">Looks good — send</button>' +
+        '<button type="button" class="btn-mini" id="vol-onboard-cancel">Cancel</button></div></div>';
+      document.body.appendChild(modal);
+      const edit = modal.querySelector('#vol-onboard-edit');
+      const view = modal.querySelector('#vol-onboard-view');
+      // Store a simple template using {{ROSTER}}
+      edit.value = volunteerOnboardInner([{ fullName: '{{NAME}}', role: '{{ROLE}}' }])
+        .replace('<li><strong>{{NAME}}</strong> — {{ROLE}}</li>', '{{ROSTER}}');
+      if (edit.value.indexOf('{{ROSTER}}') < 0) {
+        edit.value = volunteerOnboardInner(samplePeople).replace(/<ul>[\s\S]*?<\/ul>/, '<ul>{{ROSTER}}</ul>').replace(/<[^>]+>/g, function (m) {
+          const map = { '<h2 style="color:#1B5E20;margin:0 0 0.4rem">': '', '</h2>': '\n\n', '<p>': '', '</p>': '\n\n', '<strong>': '', '</strong>': '', '<ul>': '', '</ul>': '', '<li>': '• ', '<a href="https://btrace.netlify.app/#programme">': '', '</a>': '' };
+          return map[m] != null ? map[m] : '';
+        });
+        // fallback visual only; send uses structured template
+      }
+      function applyTemplate(people) {
+        const raw = (edit.value || '').trim();
+        const roster = people.map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(p.role || 'Race volunteer').replace(/</g, '') + '</li>').join('');
+        if (raw.indexOf('<') >= 0) {
+          return wrapOnboardHtml(raw.replace(/\{\{ROSTER\}\}/g, roster));
+        }
+        const text = raw.replace(/\{\{ROSTER\}\}/g, people.map((p) => '• ' + p.fullName + ' — ' + (p.role || 'Race volunteer')).join('\n'));
+        return wrapOnboardHtml(text.split('\n').map((line) => '<p>' + line.replace(/</g, '') + '</p>').join(''));
+      }
+      view.innerHTML = applyTemplate(samplePeople);
+      edit.oninput = () => { view.innerHTML = applyTemplate(samplePeople); };
+      modal.querySelector('#vol-onboard-cancel').onclick = () => modal.remove();
+      modal.querySelector('#vol-onboard-send').onclick = async () => {
+        const sendBtn = modal.querySelector('#vol-onboard-send');
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'Sending…';
+        const subjectBase = (modal.querySelector('#vol-onboard-subject').value || '').trim() || 'Volunteer onboarding — BT42.195km Race 2026';
+        let ok = 0;
+        let fail = 0;
+        for (let g = 0; g < emails.length; g++) {
+          const email = emails[g];
+          const people = groups[email];
+          const j = await sendAthleteEmail({
+            type: 'volunteer_onboard',
+            to: email,
+            email: email,
+            fullName: people[0].fullName,
+            subject: people.length > 1 ? (subjectBase + ' (' + people.length + ' crew)') : subjectBase,
+            html: applyTemplate(people),
+            raceDate: '27 September 2026'
+          });
+          if (j && j.ok) ok++; else fail++;
+        }
+        modal.remove();
+        alert('Onboarding sent to ' + ok + ' email address(es). Failed: ' + fail + '.');
+      };
     };
     const markAll = $('#vol-mark-selected');
     if (markAll) markAll.onclick = () => {
@@ -3665,11 +3814,13 @@ w.document.close();
           alert('Mark as Selected before issuing a certificate.');
           return;
         }
-        const to = String(v.email || '').trim();
+        const to = String(v.email || '').trim().toLowerCase();
         if (!to || to.indexOf('@') < 0) {
           alert('Add a valid email before issuing. The certificate is emailed to the volunteer.');
           return;
         }
+        const group = next.filter((x) => String(x.email || '').trim().toLowerCase() === to && (x.status === 'selected' || x.status === 'served'));
+        const people = group.length ? group : [v];
         btn.disabled = true;
         btn.textContent = 'Sending…';
         let mailed = false;
@@ -3681,44 +3832,58 @@ w.document.close();
             logoDataUrl('/assets/mncs-logo.png')
           ]);
           const sigs = pack[0];
-          const pdfBase64 = buildClientCertificatePdf({
-            volunteer: true,
-            fullName: v.fullName,
-            distance: v.role || 'Race volunteer',
-            role: v.role || 'Race volunteer',
-            signatures: sigs,
-            amLogo: pack[1],
-            mncsLogo: pack[2]
-          });
+          const pdfs = people.map((p) => ({
+            person: p,
+            b64: buildClientCertificatePdf({
+              volunteer: true,
+              fullName: p.fullName,
+              distance: p.role || 'Race volunteer',
+              role: p.role || 'Race volunteer',
+              signatures: sigs,
+              amLogo: pack[1],
+              mncsLogo: pack[2]
+            })
+          }));
+          const names = people.map((p) => p.fullName + ' (' + (p.role || 'Race volunteer') + ')').join(', ');
           const j = await sendAthleteEmail({
             type: 'volunteer',
             to: to,
             email: to,
-            fullName: v.fullName,
-            role: v.role || 'Race volunteer',
-            distance: v.role || 'Race volunteer',
-            phone: v.phone || '',
-            subject: 'Certificate of Volunteer Service — BT42.195km Race 2026',
+            fullName: people[0].fullName,
+            role: people.map((p) => p.role || 'Race volunteer').join(', '),
+            distance: people[0].role || 'Race volunteer',
+            phone: people[0].phone || '',
+            subject: people.length > 1
+              ? ('Volunteer certificates (' + people.length + ') — BT42.195km Race 2026')
+              : 'Certificate of Volunteer Service — BT42.195km Race 2026',
+            html: '<p>Dear crew,</p><p>Certificates of volunteer service for <strong>' + names.replace(/</g, '') + '</strong> are attached.</p><p>Race day: Sunday 27 September 2026 · Kamuzu Stadium.</p><p>— Organising Committee</p>',
             raceDate: '27 September 2026',
-            certId: 'BT42-VOL-' + String(v.id || '').slice(-8),
+            certId: 'BT42-VOL-' + String(people[0].id || '').slice(-8),
             issued: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }),
             signatures: sigs,
-            pdfBase64: pdfBase64
+            pdfBase64: pdfs[0] && pdfs[0].b64,
+            extraPdfs: pdfs.slice(1).map((p) => ({
+              filename: 'BT42-Volunteer-' + String(p.person.fullName || 'crew').replace(/\s+/g, '-') + '.pdf',
+              content: p.b64
+            }))
           });
           mailed = !!(j && j.ok);
           mailErr = (j && (j.error || j.detail && j.detail.message)) || '';
         } catch (e) {
           mailErr = String(e);
         }
-        v.status = 'served';
-        v.certIssued = mailed;
-        v.issuedAt = new Date().toISOString();
-        v.issuedBy = currentUser || 'coordinator';
-        v.emailResult = mailed ? 'sent' : ('failed: ' + mailErr);
+        const nowIso = new Date().toISOString();
+        people.forEach((p) => {
+          p.status = 'served';
+          p.certIssued = mailed;
+          p.issuedAt = nowIso;
+          p.issuedBy = currentUser || 'coordinator';
+          p.emailResult = mailed ? 'sent-batch' : ('failed: ' + mailErr);
+        });
         saveVolunteers(next);
         await syncVolunteers(next);
         openVolunteerCertificate(v);
-        if (mailed) alert('Certificate emailed to ' + to);
+        if (mailed) alert('Emailed ' + people.length + ' certificate(s) to ' + to);
         else alert('Print window opened, but email failed: ' + (mailErr || 'unknown') + '. Check EMAIL_API_KEY / RESEND_API_KEY on Netlify.');
         renderVolunteersAdmin();
       };
