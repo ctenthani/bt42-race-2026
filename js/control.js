@@ -3560,11 +3560,11 @@ w.document.close();
           opts.map((r) => '<option' + (r === curRole ? ' selected' : '') + '>' + escapeHtml(r) + '</option>').join('') +
           '<option value="__other__">Other…</option></select>';
       }
-      return '<tr><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
+      return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
         '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + roleCell +
         '</td><td>' + escapeHtml(st) + '</td><td>' + escapeHtml(cert) +
         '</td><td>' + escapeHtml(String(v.createdAt || '').slice(0, 10)) + '</td><td>' + actions + '</td></tr>';
-    }).join('') || '<tr><td colspan="8">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
+    }).join('') || '<tr><td colspan="9">No volunteers on this list yet. Add names from the Google Form.</td></tr>';
     box.innerHTML = (canEdit ? `
       <div class="card" style="padding:0.75rem;margin-bottom:1rem">
         <h4 style="margin-top:0">Add volunteer from the form</h4>
@@ -3587,7 +3587,8 @@ w.document.close();
         </div>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
       '<p class="form-note"><button type="button" class="btn-mini" id="vol-refresh">Refresh shared list</button> Chair, gmkanndawire and every signed-in account can assign roles. Coordinator rights are still needed to select or issue certificates.</p>' +
-      '<div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
+      '<p class="form-note">' + list.length + ' volunteer' + (list.length === 1 ? '' : 's') + ' on the list.</p>' +
+      '<div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
     box.querySelectorAll('.vol-role-pick').forEach((sel) => {
       sel.onchange = async () => {
