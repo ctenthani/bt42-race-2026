@@ -187,6 +187,21 @@
   function canAssignVolunteerRole() {
     return !!(unlocked && (isChair || currentUser));
   }
+  const VOL_DUTY_ALL = 'Any other duties as assigned by the organisers';
+  const VOL_ROLE_OPTIONS = ['Water kiosk','Marshal','Registration','Medical','Protocol','Security','Catering','Transport','Finish / timing','Call room','Media','Tug of war','Aerobics','Course sweeping','Race volunteer'];
+  function volunteerRoles(v) {
+    const raw = v && (Array.isArray(v.roles) ? v.roles : String((v && v.role) || '').split(/[;,|/]+/));
+    const out = [];
+    (raw || []).forEach((r) => {
+      const s = String(r || '').trim();
+      if (s && out.indexOf(s) < 0 && s !== VOL_DUTY_ALL) out.push(s);
+    });
+    out.push(VOL_DUTY_ALL);
+    return out;
+  }
+  function volunteerRoleLabel(v) {
+    return volunteerRoles(v).join('; ');
+  }
   function canDownloadStartList() {
     const u = String(currentUser || '').trim().toLowerCase();
     return isChair || u === 'nkanyenda' || u === 'chair';
@@ -3488,11 +3503,12 @@
         createdAt: new Date().toISOString()
       });
     }
+    rows.forEach((v) => { v.role = volunteerRoleLabel(v); });
     return rows;
   }
   function openVolunteerCertificate(v) {
     const name = String(v.fullName || '').trim() || 'Volunteer';
-    const role = String(v.role || 'Race volunteer').trim();
+    const role = volunteerRoleLabel(v);
     const sigs = loadSigs();
     const sigCell = (src, label, sub) => {
       const img = (src && src.indexOf('data:image') === 0)
@@ -3540,7 +3556,6 @@ w.document.close();
     const list = loadVolunteers();
     const canEdit = canVolunteers();
     const canRole = canAssignVolunteerRole();
-    const roleOptions = ['Race volunteer','Water kiosk','Marshal','Registration','Medical','Protocol','Security','Catering','Transport','Finish / timing','Call room','Media','Tug of war','Aerobics','Course sweeping'];
     const rows = list.map((v, i) => {
       const st = String(v.status || 'applied');
       const cert = v.certIssued
@@ -3553,14 +3568,15 @@ w.document.close();
         '<button type="button" class="btn-mini vol-onboard-one" data-i="' + i + '">Onboard this one</button> ' +
         '<button type="button" class="btn-mini vol-del" data-i="' + i + '" style="color:#C0392B">Remove</button>'
       ) : (st + (v.certIssued ? ' · certificate issued' : ''));
-      const curRole = String(v.role || 'Race volunteer');
-      let roleCell = escapeHtml(curRole);
+      const selected = volunteerRoles(v).filter((r) => r !== VOL_DUTY_ALL);
+      let roleCell = escapeHtml(volunteerRoleLabel(v));
       if (canRole) {
-        const opts = roleOptions.slice();
-        if (curRole && opts.indexOf(curRole) < 0) opts.unshift(curRole);
-        roleCell = '<select class="vol-role-pick" data-i="' + i + '">' +
-          opts.map((r) => '<option' + (r === curRole ? ' selected' : '') + '>' + escapeHtml(r) + '</option>').join('') +
-          '<option value="__other__">Other…</option></select>';
+        const extras = selected.filter((r) => VOL_ROLE_OPTIONS.indexOf(r) < 0);
+        const opts = VOL_ROLE_OPTIONS.concat(extras);
+        roleCell = '<div class="vol-roles" data-i="' + i + '" style="display:flex;flex-wrap:wrap;gap:4px 10px;max-width:280px">' +
+          opts.map((r) => '<label style="font-size:0.78rem;white-space:nowrap"><input type="checkbox" class="vol-role-box" data-i="' + i + '" value="' + escapeHtml(r) + '"' + (selected.indexOf(r) >= 0 ? ' checked' : '') + ' /> ' + escapeHtml(r) + '</label>').join('') +
+          '<label style="font-size:0.78rem;color:#1B5E20">✓ ' + escapeHtml(VOL_DUTY_ALL) + '</label>' +
+          '<button type="button" class="btn-mini vol-role-other" data-i="' + i + '">+ Other</button></div>';
       }
       return '<tr><td>' + (i + 1) + '</td><td>' + escapeHtml(v.fullName || '') + '</td><td>' + escapeHtml(v.email || '') +
         '</td><td>' + escapeHtml(v.phone || '') + '</td><td>' + roleCell +
@@ -3592,22 +3608,40 @@ w.document.close();
       '<p class="form-note">' + list.length + ' volunteer' + (list.length === 1 ? '' : 's') + ' on the list.</p>' +
       '<div class="table-wrap"><table class="data-table"><thead><tr><th>#</th><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Certificate</th><th>Added</th><th></th></tr></thead><tbody>' +
       rows + '</tbody></table></div>';
-    box.querySelectorAll('.vol-role-pick').forEach((sel) => {
-      sel.onchange = async () => {
+    function persistRoles(i, roles) {
+      const next = loadVolunteers();
+      if (!next[i]) return;
+      const clean = [];
+      (roles || []).forEach((r) => {
+        const s = String(r || '').trim();
+        if (s && s !== VOL_DUTY_ALL && clean.indexOf(s) < 0) clean.push(s);
+      });
+      next[i].roles = clean;
+      next[i].role = volunteerRoleLabel(next[i]);
+      next[i].roleAssignedBy = currentUser || (isChair ? 'chair' : 'oc');
+      next[i].roleAssignedAt = new Date().toISOString();
+      saveVolunteers(next);
+      syncVolunteers(next);
+    }
+    box.querySelectorAll('.vol-role-box').forEach((boxEl) => {
+      boxEl.onchange = () => {
         if (!canAssignVolunteerRole()) return;
-        const i = Number(sel.dataset.i);
+        const i = Number(boxEl.dataset.i);
+        const wrap = boxEl.closest('.vol-roles');
+        const picked = wrap ? Array.from(wrap.querySelectorAll('.vol-role-box:checked')).map((el) => el.value) : [];
+        persistRoles(i, picked);
+      };
+    });
+    box.querySelectorAll('.vol-role-other').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canAssignVolunteerRole()) return;
+        const i = Number(btn.dataset.i);
+        const extra = (prompt('Other duty / station:', '') || '').trim();
+        if (!extra) return;
         const next = loadVolunteers();
-        if (!next[i]) return;
-        let val = sel.value;
-        if (val === '__other__') {
-          val = (prompt('Role / station for ' + (next[i].fullName || 'volunteer') + ':', next[i].role || '') || '').trim();
-          if (!val) { renderVolunteersAdmin(); return; }
-        }
-        next[i].role = val;
-        next[i].roleAssignedBy = currentUser || (isChair ? 'chair' : 'oc');
-        next[i].roleAssignedAt = new Date().toISOString();
-        saveVolunteers(next);
-        await syncVolunteers(next);
+        const current = volunteerRoles(next[i] || {}).filter((r) => r !== VOL_DUTY_ALL);
+        if (current.indexOf(extra) < 0) current.push(extra);
+        persistRoles(i, current);
         renderVolunteersAdmin();
       };
     });
@@ -3629,7 +3663,8 @@ w.document.close();
         fullName,
         email,
         phone: (($('#vol-phone') || {}).value || '').trim(),
-        role: (($('#vol-role') || {}).value || '').trim() || 'Race volunteer',
+        roles: ((($('#vol-role') || {}).value || '').trim() ? [(($('#vol-role') || {}).value || '').trim()] : []),
+        role: volunteerRoleLabel({ role: (($('#vol-role') || {}).value || '').trim() }),
         status: 'applied',
         certIssued: false,
         createdAt: new Date().toISOString()
@@ -3679,7 +3714,7 @@ w.document.close();
       reader.readAsText(file);
     };
     function volunteerOnboardInner(people) {
-      const lis = (people || []).map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(p.role || 'Race volunteer').replace(/</g, '') + '</li>').join('');
+      const lis = (people || []).map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(volunteerRoleLabel(p)).replace(/</g, '') + '</li>').join('');
       return [
         '<h2 style="color:#1B5E20;margin:0 0 0.4rem">Welcome to the BT42.195km Race crew</h2>',
         '<p>Sunday 27 September 2026 · Kamuzu Stadium, Blantyre</p>',
@@ -3725,7 +3760,7 @@ w.document.close();
         '<label style="font-size:0.8rem;font-weight:700">Send to</label>' +
         '<select id="vol-onboard-who" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem">' +
           (only ? '' : '<option value="all">All volunteers with email (' + list.length + ')</option>') +
-          list.map((v, i) => '<option value="' + i + '"' + (only || list.length === 1 ? ' selected' : '') + '>' + escapeHtml((v.fullName || 'Volunteer') + ' — ' + (v.email || '') + (v.role ? ' · ' + v.role : '')) + '</option>').join('') +
+          list.map((v, i) => '<option value="' + i + '"' + (only || list.length === 1 ? ' selected' : '') + '>' + escapeHtml((v.fullName || 'Volunteer') + ' — ' + (v.email || '') + (volunteerRoleLabel(v) ? ' · ' + volunteerRoleLabel(v) : '')) + '</option>').join('') +
         '</select>' +
         '<label style="font-size:0.8rem;font-weight:700">Subject</label>' +
         '<input id="vol-onboard-subject" type="text" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem" value="Volunteer onboarding — BT42.195km Race 2026" />' +
@@ -3756,11 +3791,11 @@ w.document.close();
       }
       function applyTemplate(people) {
         const raw = (edit.value || '').trim();
-        const roster = people.map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(p.role || 'Race volunteer').replace(/</g, '') + '</li>').join('');
+        const roster = people.map((p) => '<li><strong>' + String(p.fullName || '').replace(/</g, '') + '</strong> — ' + String(volunteerRoleLabel(p)).replace(/</g, '') + '</li>').join('');
         if (raw.indexOf('<') >= 0) {
           return wrapOnboardHtml(raw.replace(/\{\{ROSTER\}\}/g, roster));
         }
-        const text = raw.replace(/\{\{ROSTER\}\}/g, people.map((p) => '• ' + p.fullName + ' — ' + (p.role || 'Race volunteer')).join('\n'));
+        const text = raw.replace(/\{\{ROSTER\}\}/g, people.map((p) => '• ' + p.fullName + ' — ' + volunteerRoleLabel(p)).join('\n'));
         return wrapOnboardHtml(text.split('\n').map((line) => '<p>' + line.replace(/</g, '') + '</p>').join(''));
       }
       view.innerHTML = applyTemplate(samplePeople);
@@ -3904,20 +3939,20 @@ w.document.close();
             b64: buildClientCertificatePdf({
               volunteer: true,
               fullName: p.fullName,
-              distance: p.role || 'Race volunteer',
-              role: p.role || 'Race volunteer',
+              distance: volunteerRoleLabel(p),
+              role: volunteerRoleLabel(p),
               signatures: sigs,
               amLogo: pack[1],
               mncsLogo: pack[2]
             })
           }));
-          const names = people.map((p) => p.fullName + ' (' + (p.role || 'Race volunteer') + ')').join(', ');
+          const names = people.map((p) => p.fullName + ' (' + volunteerRoleLabel(p) + ')').join(', ');
           const j = await sendAthleteEmail({
             type: 'volunteer',
             to: to,
             email: to,
             fullName: people[0].fullName,
-            role: people.map((p) => p.role || 'Race volunteer').join(', '),
+            role: people.map((p) => volunteerRoleLabel(p)).join(' | '),
             distance: people[0].role || 'Race volunteer',
             phone: people[0].phone || '',
             subject: people.length > 1
@@ -4021,16 +4056,17 @@ w.document.close();
     const sum = (list) => list.reduce((a, r) => a + Number(r.amount || 0) + Number(r.vat || 0), 0);
     const line = (r, i) => {
       const total = Number(r.amount || 0) + Number(r.vat || 0);
-      const st = r.status === 'approved' ? 'pay-ok' : (r.status === 'rejected' ? 'pay-no' : 'pay-wait');
+      const st = r.status === 'approved' ? 'pay-ok' : (r.status === 'rejected' ? 'pay-no' : (r.status === 'returned' ? 'pay-no' : 'pay-wait'));
       const fileLink = (r.fileData && r.fileName)
         ? '<a href="' + r.fileData + '" download="' + escapeHtml(r.fileName) + '">' + escapeHtml(r.fileName) + '</a>'
         : '—';
       const actions = isChair
         ? ('<button type="button" class="btn-mini ap-toggle" data-i="' + i + '">' + (r.status === 'approved' ? 'Mark pending' : 'Approve') + '</button> ' +
-           (r.status === 'pending' ? '<button type="button" class="btn-mini ap-reject" data-i="' + i + '">Reject</button> ' : '') +
+           (r.status !== 'approved' ? '<button type="button" class="btn-mini ap-reject" data-i="' + i + '">Reject</button> ' : '') +
+           '<button type="button" class="btn-mini ap-sendback" data-i="' + i + '">Send back to GS</button> ' +
            '<button type="button" class="btn-mini ap-del" data-i="' + i + '" style="color:#C0392B">Remove</button>')
         : (
-          '<button type="button" class="btn-mini ap-recall" data-i="' + i + '">' + (r.status === 'pending' ? 'Recall / edit' : 'Reverse & edit') + '</button>'
+          '<button type="button" class="btn-mini ap-recall" data-i="' + i + '">' + (r.status === 'returned' ? 'Edit & resubmit' : (r.status === 'pending' ? 'Recall / edit' : 'Reverse & edit')) + '</button>'
         );
       return '<tr>' +
         '<td>' + escapeHtml(r.approvedOn || r.requested || '') + '</td>' +
@@ -4139,6 +4175,23 @@ w.document.close();
           r.approvedOn = new Date().toISOString().slice(0, 10);
           r.comment = 'Approved by Chair — Chifundo Tenthani';
         }
+        saveApprovals(next);
+        renderApprovals();
+      };
+    });
+    box.querySelectorAll('.ap-sendback').forEach((btn) => {
+      btn.onclick = () => {
+        if (!isChair) return;
+        const next = loadApprovals();
+        const r = next[Number(btn.dataset.i)];
+        if (!r) return;
+        const reason = (prompt('Reason to send back to GS for update:', r.comment || 'Please correct and resubmit') || '').trim();
+        if (!reason) return;
+        r.status = 'returned';
+        r.approvedOn = '';
+        r.comment = 'Sent back by Chair: ' + reason;
+        r.returnedAt = new Date().toISOString();
+        r.returnedBy = currentUser || 'chair';
         saveApprovals(next);
         renderApprovals();
       };
