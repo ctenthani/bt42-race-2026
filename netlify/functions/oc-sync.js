@@ -440,7 +440,7 @@ function mergeState(current, body, role) {
         if (s === 'declined') return 2;
         return 1;
       };
-      const keyOf = (v) => String((v && (v.id || v.email || v.fullName)) || '').trim().toLowerCase();
+      const keyOf = (v) => String((v && (v.id || (String(v.email||'').trim().toLowerCase()+'|'+String(v.fullName||'').trim().toLowerCase()))) || '').trim().toLowerCase();
       const map = new Map();
       (current.volunteers || []).forEach((v) => {
         const k = keyOf(v);

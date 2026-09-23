@@ -3455,16 +3455,21 @@
       }
       return -1;
     };
-    const iName = idx(['fullname', 'name', 'volunteer', 'volunteername']);
-    const iEmail = idx(['email', 'e-mail', 'mail']);
-    const iPhone = idx(['phone', 'mobile', 'tel', 'cellphone']);
+    const iName = idx(['fullname', 'name', 'volunteer', 'volunteername', 'fullnameaspersubmission']);
+    const iFirst = idx(['firstname', 'first', 'givenname']);
+    const iLast = idx(['lastname', 'surname', 'last', 'familyname']);
+    const iEmail = idx(['email', 'e-mail', 'mail', 'emailaddress']);
+    const iPhone = idx(['phone', 'mobile', 'tel', 'cellphone', 'phonenumber']);
     const iRole = idx(['role', 'area', 'duty', 'station']);
     const iStatus = idx(['status', 'selected', 'state']);
-    const start = (iName >= 0 || iEmail >= 0) ? 1 : 0;
+    const start = (iName >= 0 || iEmail >= 0 || iFirst >= 0) ? 1 : 0;
     const rows = [];
     for (let r = start; r < lines.length; r++) {
       const cols = split(lines[r]);
-      const fullName = (iName >= 0 ? cols[iName] : cols[0] || '').trim();
+      let fullName = (iName >= 0 ? cols[iName] : cols[0] || '').trim();
+      if (!fullName && (iFirst >= 0 || iLast >= 0)) {
+        fullName = ((iFirst >= 0 ? cols[iFirst] : '') + ' ' + (iLast >= 0 ? cols[iLast] : '')).trim();
+      }
       const email = (iEmail >= 0 ? cols[iEmail] : cols[1] || '').trim();
       if (!fullName) continue;
       let status = (iStatus >= 0 ? cols[iStatus] : 'selected') || 'selected';
@@ -3650,7 +3655,7 @@ w.document.close();
           return;
         }
         const next = loadVolunteers();
-        const keyOf = (v) => String(v.email || v.fullName || '').trim().toLowerCase();
+        const keyOf = (v) => [String(v.email || '').trim().toLowerCase(), String(v.fullName || '').trim().toLowerCase()].join('|');
         const map = new Map();
         next.forEach((v) => map.set(keyOf(v), v));
         incoming.forEach((v) => {
@@ -3662,7 +3667,7 @@ w.document.close();
         saveVolunteers(merged);
         const r = await syncVolunteers(merged);
         if (r && r.ok) {
-          alert('Loaded ' + incoming.length + ' volunteers and pushed to the shared list (' + merged.length + ' total). Other gadgets: Refresh shared list.');
+          alert('File rows kept: ' + incoming.length + '. Shared list now has ' + merged.length + ' names (same email can have more than one person). Other gadgets: Refresh shared list.');
         } else {
           alert('Saved on this laptop only. Shared push failed: ' + ((r && r.error) || 'sign in again, then Push list to all gadgets') + '.');
         }
