@@ -429,6 +429,17 @@ function mergeState(current, body, role) {
     });
     next.approvals = cur;
   }
+  if (body.updateApprovals && Array.isArray(body.updateApprovals) && body.updateApprovals.length) {
+    const cur = Array.isArray(next.approvals) ? next.approvals.slice() : [];
+    body.updateApprovals.forEach((u) => {
+      if (!u || !u.id) return;
+      const i = cur.findIndex((r) => r && r.id === u.id);
+      const merged = Object.assign({}, i >= 0 ? cur[i] : {}, u);
+      if (i >= 0) cur[i] = merged;
+      else cur.unshift(merged);
+    });
+    next.approvals = cur;
+  }
   if (body.volunteers && Array.isArray(body.volunteers)) {
     if (body.replaceVolunteers) {
       next.volunteers = body.volunteers;

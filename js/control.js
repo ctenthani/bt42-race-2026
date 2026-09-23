@@ -3550,6 +3550,7 @@ w.document.close();
         '<button type="button" class="btn-mini vol-select" data-i="' + i + '">' + (st === 'selected' || st === 'served' ? 'Selected' : 'Select') + '</button> ' +
         '<button type="button" class="btn-mini vol-decline" data-i="' + i + '">Decline</button> ' +
         '<button type="button" class="btn-mini vol-cert" data-i="' + i + '"' + (st === 'selected' || st === 'served' ? '' : ' disabled title="Select first"') + '>Issue certificate</button> ' +
+        '<button type="button" class="btn-mini vol-onboard-one" data-i="' + i + '">Onboard this one</button> ' +
         '<button type="button" class="btn-mini vol-del" data-i="' + i + '" style="color:#C0392B">Remove</button>'
       ) : (st + (v.certIssued ? ' · certificate issued' : ''));
       const curRole = String(v.role || 'Race volunteer');
@@ -3697,7 +3698,13 @@ w.document.close();
     const onboard = $('#vol-onboard');
     if (onboard) onboard.onclick = () => {
       if (!canVolunteers()) { alert('Coordinator or Chair sends onboarding.'); return; }
-      const list = loadVolunteers().filter((v) => v.status !== 'declined' && String(v.email || '').indexOf('@') > 0);
+      const only = window._bt42OnboardOne || null;
+      window._bt42OnboardOne = null;
+      let list = loadVolunteers().filter((v) => v.status !== 'declined' && String(v.email || '').indexOf('@') > 0);
+      if (only) {
+        list = list.filter((v) => (only.id && v.id === only.id) || (String(v.fullName) === String(only.fullName) && String(v.email || '').toLowerCase() === String(only.email || '').toLowerCase()));
+        if (!list.length && String(only.email || '').indexOf('@') > 0) list = [only];
+      }
       if (!list.length) { alert('No volunteers with an email address.'); return; }
       const groups = {};
       list.forEach((v) => {
@@ -3715,6 +3722,11 @@ w.document.close();
       modal.innerHTML = '<div style="background:#fff;max-width:640px;width:100%;border-radius:12px;padding:1.1rem 1.2rem 1.3rem;box-shadow:0 16px 40px rgba(0,0,0,.2)">' +
         '<h3 style="margin:0 0 0.35rem;color:#1B5E20">Preview onboarding email</h3>' +
         '<p class="form-note">Will send a personal email to each of <strong>' + list.length + '</strong> volunteer(s) (' + emails.length + ' distinct address' + (emails.length === 1 ? '' : 'es') + '). Where several people share an inbox, they also get one combined roster email.</p>' +
+        '<label style="font-size:0.8rem;font-weight:700">Send to</label>' +
+        '<select id="vol-onboard-who" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem">' +
+          (only ? '' : '<option value="all">All volunteers with email (' + list.length + ')</option>') +
+          list.map((v, i) => '<option value="' + i + '"' + (only || list.length === 1 ? ' selected' : '') + '>' + escapeHtml((v.fullName || 'Volunteer') + ' — ' + (v.email || '') + (v.role ? ' · ' + v.role : '')) + '</option>').join('') +
+        '</select>' +
         '<label style="font-size:0.8rem;font-weight:700">Subject</label>' +
         '<input id="vol-onboard-subject" type="text" style="width:100%;margin:0.25rem 0 0.75rem;padding:0.45rem" value="Volunteer onboarding — BT42.195km Race 2026" />' +
         '<label style="font-size:0.8rem;font-weight:700">Message (preview of first inbox: ' + emails[0].replace(/</g, '') + ')</label>' +
@@ -3757,6 +3769,20 @@ w.document.close();
       modal.querySelector('#vol-onboard-send').onclick = async () => {
         const sendBtn = modal.querySelector('#vol-onboard-send');
         const prog = modal.querySelector('#vol-onboard-progress');
+        let working = list.slice();
+        const whoSel = modal.querySelector('#vol-onboard-who');
+        if (whoSel && whoSel.value !== 'all') {
+          const one = list[Number(whoSel.value)];
+          if (one) working = [one];
+        }
+        const groupsNow = {};
+        working.forEach((v) => {
+          const k = String(v.email || '').trim().toLowerCase();
+          if (!groupsNow[k]) groupsNow[k] = [];
+          groupsNow[k].push(v);
+        });
+        const emailKeys = Object.keys(groupsNow);
+        list = working;
         const sendEach = !!(modal.querySelector('#vol-onboard-each') || {}).checked;
         const sendGroup = !!(modal.querySelector('#vol-onboard-group') || {}).checked;
         if (!sendEach && !sendGroup) { alert('Tick at least one send option.'); return; }
@@ -3768,9 +3794,9 @@ w.document.close();
         const pause = () => new Promise((r) => setTimeout(r, 350));
         const mark = (msg) => { if (prog) prog.textContent = msg; };
         if (sendGroup) {
-          for (let g = 0; g < emails.length; g++) {
-            const email = emails[g];
-            const people = groups[email];
+          for (let g = 0; g < emailKeys.length; g++) {
+            const email = emailKeys[g];
+            const people = groupsNow[email];
             if (people.length < 2) continue;
             mark('Shared inbox ' + (g + 1) + '/' + emails.length + ' → ' + email);
             const jg = await sendAthleteEmail({
@@ -3929,6 +3955,21 @@ w.document.close();
         renderVolunteersAdmin();
       };
     });
+    box.querySelectorAll('.vol-onboard-one').forEach((btn) => {
+      btn.onclick = () => {
+        if (!canVolunteers()) { alert('Coordinator or Chair sends onboarding.'); return; }
+        const next = loadVolunteers();
+        const v = next[Number(btn.dataset.i)];
+        if (!v) return;
+        if (String(v.email || '').indexOf('@') < 0) {
+          alert('This volunteer needs a valid email first.');
+          return;
+        }
+        window._bt42OnboardOne = v;
+        const allBtn = document.getElementById('vol-onboard');
+        if (allBtn) allBtn.click();
+      };
+    });
     box.querySelectorAll('.vol-del').forEach((btn) => {
       btn.onclick = async () => {
         if (!canVolunteers()) return;
@@ -3959,6 +4000,7 @@ w.document.close();
     if (!getSyncToken()) return;
     if (isChair) livePush({ approvals: list }).catch(() => {});
     else if (opts && opts.added) livePush({ newApprovals: opts.added }).catch(() => {});
+    else if (opts && opts.updated) livePush({ updateApprovals: opts.updated }).catch(() => {});
   }
   function fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
@@ -3987,7 +4029,9 @@ w.document.close();
         ? ('<button type="button" class="btn-mini ap-toggle" data-i="' + i + '">' + (r.status === 'approved' ? 'Mark pending' : 'Approve') + '</button> ' +
            (r.status === 'pending' ? '<button type="button" class="btn-mini ap-reject" data-i="' + i + '">Reject</button> ' : '') +
            '<button type="button" class="btn-mini ap-del" data-i="' + i + '" style="color:#C0392B">Remove</button>')
-        : '<span class="form-note">Waiting on Chair</span>';
+        : (
+          '<button type="button" class="btn-mini ap-recall" data-i="' + i + '">' + (r.status === 'pending' ? 'Recall / edit' : 'Reverse & edit') + '</button>'
+        );
       return '<tr>' +
         '<td>' + escapeHtml(r.approvedOn || r.requested || '') + '</td>' +
         '<td><strong>' + escapeHtml(r.payee || '') + '</strong><br><span class="form-note">' + escapeHtml(r.items || '') + '</span><br>' + fileLink + '</td>' +
@@ -4012,7 +4056,9 @@ w.document.close();
       '<div class="form-row"><div class="form-group"><label>VAT MK</label><input id="ap-vat" type="number" min="0" value="0" /></div>' +
       '<div class="form-group"><label>Requisition file (pdf/doc/jpg, under 2.5 MB)</label><input id="ap-file" type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.xlsx" /></div></div>' +
       (isChair ? '<div class="form-group"><label>Note</label><input id="ap-note" value="Approved by Chair — Chifundo Tenthani" /></div>' : '') +
-      '<button type="button" class="btn btn-primary" id="ap-add">' + (isChair ? 'Save as approved' : 'Send to Chair') + '</button>';
+      '<input type="hidden" id="ap-edit-id" value="" />' +
+      '<button type="button" class="btn btn-primary" id="ap-add">' + (isChair ? 'Save as approved' : 'Send to Chair') + '</button>' +
+      '<p class="form-note">GS can recall a request, change payee, amount or file, and resubmit. Recalled items return to pending.</p>';
     const add = $('#ap-add');
     if (add) add.onclick = async () => {
       const payee = (($('#ap-payee') || {}).value || '').trim();
@@ -4028,6 +4074,33 @@ w.document.close();
       }
       const bankLine = (($('#ap-bank') || {}).value || '').trim();
       const parts = bankLine.split('·').map((s) => s.trim());
+      const editId = (($('#ap-edit-id') || {}).value || '').trim();
+      const next = loadApprovals();
+      if (editId) {
+        const r = next.find((x) => x.id === editId);
+        if (!r) { alert('That requisition is no longer on the list.'); return; }
+        r.payee = payee;
+        r.amount = amount;
+        r.vat = Number((($('#ap-vat') || {}).value) || 0);
+        r.items = (($('#ap-items') || {}).value || '').trim();
+        r.bank = parts[0] || bankLine;
+        r.account = parts[1] || '';
+        r.status = isChair ? (r.status || 'approved') : 'pending';
+        r.approvedOn = isChair && r.status === 'approved' ? (r.approvedOn || new Date().toISOString().slice(0, 10)) : '';
+        r.comment = isChair
+          ? ((($('#ap-note') || {}).value || '').trim() || r.comment)
+          : ('Updated by GS (' + (currentUser || 'GS') + ') — resubmitted for Chair approval');
+        r.requestedBy = r.requestedBy || currentUser || 'GS';
+        if (fileMeta) {
+          r.fileName = fileMeta.name || r.fileName;
+          r.fileType = fileMeta.type || r.fileType;
+          r.fileData = fileMeta.data || r.fileData;
+        }
+        saveApprovals(next, { updated: [r] });
+        renderApprovals();
+        alert(isChair ? 'Requisition updated.' : 'Request reversed and resubmitted as pending.');
+        return;
+      }
       const rec = {
         id: 'ap-' + Date.now().toString(36),
         requested: new Date().toISOString().slice(0, 10),
@@ -4047,7 +4120,6 @@ w.document.close();
         fileType: fileMeta && fileMeta.type || '',
         fileData: fileMeta && fileMeta.data || ''
       };
-      const next = loadApprovals();
       next.unshift(rec);
       saveApprovals(next, { added: [rec] });
       renderApprovals();
@@ -4081,6 +4153,41 @@ w.document.close();
         r.comment = 'Rejected by Chair';
         saveApprovals(next);
         renderApprovals();
+      };
+    });
+    box.querySelectorAll('.ap-recall').forEach((btn) => {
+      btn.onclick = () => {
+        if (isChair || !canRequisitions()) return;
+        const next = loadApprovals();
+        const r = next[Number(btn.dataset.i)];
+        if (!r) return;
+        r.status = 'pending';
+        r.approvedOn = '';
+        r.comment = 'Recalled by GS (' + (currentUser || 'GS') + ') for update';
+        saveApprovals(next, { updated: [r] });
+        const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        set('ap-edit-id', r.id);
+        set('ap-payee', r.payee);
+        set('ap-amount', r.amount);
+        set('ap-vat', r.vat || 0);
+        set('ap-items', r.items);
+        set('ap-bank', [r.bank, r.account].filter(Boolean).join(' · '));
+        const addBtn = document.getElementById('ap-add');
+        if (addBtn) addBtn.textContent = 'Save update & resubmit';
+        window.scrollTo({ top: addBtn ? addBtn.getBoundingClientRect().top + window.scrollY - 80 : 0, behavior: 'smooth' });
+        renderApprovals();
+        // re-fill after re-render
+        setTimeout(() => {
+          const set2 = (id, val) => { const el = document.getElementById(id); if (el) el.value = val == null ? '' : val; };
+          set2('ap-edit-id', r.id);
+          set2('ap-payee', r.payee);
+          set2('ap-amount', r.amount);
+          set2('ap-vat', r.vat || 0);
+          set2('ap-items', r.items);
+          set2('ap-bank', [r.bank, r.account].filter(Boolean).join(' · '));
+          const b = document.getElementById('ap-add');
+          if (b) b.textContent = 'Save update & resubmit';
+        }, 30);
       };
     });
     box.querySelectorAll('.ap-del').forEach((btn) => {
