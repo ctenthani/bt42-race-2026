@@ -62,8 +62,18 @@
     const lineA = L.polyline(TRACE_A, { color: '#f4d03f', weight: 5, opacity: 0.95 }).addTo(map);
     const lineB = L.polyline(TRACE_B, { color: '#f39c12', weight: 5, opacity: 0.95 }).addTo(map);
     L.polyline([TRACE_A[TRACE_A.length - 1], TRACE_B[0]], { color: '#f4d03f', weight: 5, opacity: 0.95 }).addTo(map);
-    L.polyline([TRACE_B[TRACE_B.length - 1], [-15.8002, 35.0265], [-15.7985, 35.0318], FINISH], {
-      color: '#e74c3c', weight: 4, opacity: 0.95, dashArray: '8 6'
+    L.polyline([
+      [-15.801635, 35.035990],
+      [-15.800900, 35.036120],
+      [-15.799150, 35.036180],
+      [-15.798960, 35.035200],
+      [-15.798940, 35.034980],
+      [-15.798360, 35.034780],
+      [-15.798260, 35.034520],
+      [-15.798550, 35.034050],
+      FINISH
+    ], {
+      color: '#8e44ad', weight: 5, opacity: 0.95
     }).addTo(map);
     L.circleMarker(START, { radius: 8, color: '#145a32', fillColor: '#27AE60', fillOpacity: 1 }).addTo(map)
       .bindPopup('<strong>START</strong><br>Ginnery Corner · NBS / ShopRite<br>−15.80075, 35.02193');

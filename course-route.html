@@ -173,15 +173,17 @@ var totalKm = 42.195;
 var finalApproachCoords = [
   [-15.801635, 35.035990],
   [-15.800900, 35.036120],
-  [-15.799700, 35.036350],
-  [-15.798900, 35.036450],
-  [-15.798450, 35.036480],
-  [-15.798430, 35.035700],
-  [-15.798400, 35.034950],
-  [-15.798300, 35.034650],
-  [-15.798250, 35.034350],
-  [-15.798420, 35.034100],
-  [-15.798750, 35.034050],
+  [-15.799850, 35.036220],
+  [-15.799150, 35.036180],
+  [-15.798980, 35.035720],
+  [-15.798960, 35.035200],
+  [-15.798940, 35.034980],
+  [-15.798620, 35.034920],
+  [-15.798360, 35.034780],
+  [-15.798260, 35.034520],
+  [-15.798320, 35.034220],
+  [-15.798550, 35.034050],
+  [-15.798820, 35.034020],
   [-15.798900, 35.034500]
 ];
 var lapLength = 14.065;
@@ -209,7 +211,7 @@ var routeLine = L.polyline(routeCoords, {
 var finalApproachLine = L.polyline(finalApproachCoords, {
   color: '#8e44ad', weight: 7, opacity: 0.95,
   smoothFactor: 0.5, lineCap: 'round', lineJoin: 'round'
-}).bindPopup('<div class="popup-title">Final-lap diversion</div><div class="popup-detail">At Shoprite Roundabout, continue north on Kamuzu Stadium Road, turn left at the stadium entrance, then follow the running track to the VIP finish.</div>');
+}).bindPopup('<div class="popup-title">Final-lap diversion</div><div class="popup-detail">Shoprite Roundabout → north on Kamuzu Stadium Road → left into the main (east) gate → right onto the running track → VIP finish on the field.</div>');
 
 var finalTurnMarker = L.circleMarker(finalApproachCoords[0], { radius: 7, color: '#6c3483', weight: 3, fillColor: '#d2b4de', fillOpacity: 1 })
   .bindTooltip('Final lap: turn at Shoprite Roundabout', { permanent: false, sticky: true, direction: 'top' })
