@@ -216,7 +216,7 @@ window.BT42_DATA = {
     { id: 7, date: '2026-09-24', time: '15:00–16:30', type: 'Hybrid + Meet', status: 'today', focus: '72 hours out — lock the loose ends', outcome: '', agenda: [
       'Start list: verify remaining payments; assign remaining bibs; Chair/Nkanyenda download Name + Bib sheets by race',
       'Volunteers: full 79-name list on the portal; roles ticked (plus any other duties); onboarding mail to those not yet mailed',
-      'Protocol: confirm Minister of Youth, Sports and Culture as Guest of Honour — arrival 05:45, podium 09:00; brief Ireen Luka / protocol on order of speeches',
+      'Protocol: confirm Hon. Alfred Gangata, MP, Minister of Youth, Sports and Culture as Guest of Honour — arrival 05:45, podium 09:00; brief Ireen Luka / protocol on order of speeches',
       'Medical + tents + toilets: which requisitions are approved and on site Saturday',
       'Water: product at Kwacha, Kamba, CFAO, Trade Fair — who loads Friday, who staffs Sunday 05:00',
       'Security / traffic / police: written plan for Ginnery Corner start and stadium finish',
@@ -230,7 +230,7 @@ window.BT42_DATA = {
       'Confirm medals, bibs, tents, PA, toilets on the ground or with delivery time Saturday morning',
       'SMS / radio / page announcement: starts 06:00 · 06:10 · 06:20, course closes 12:00',
       'Any unpaid entries: pay by 18:00 Friday or they do not start',
-      'Minister’s office: written confirmation of arrival time and motorcade point'
+      'Hon. Gangata’s office: written confirmation of arrival time and motorcade point'
     ], attendees: 'Chair, Vice Chair, GS, Technical, Protocol, Finance' },
     { id: 9, date: '2026-09-26', time: '09:00–12:00', type: 'On site', status: 'next', focus: 'Saturday set-up', outcome: '', agenda: [
       'Mark the course (no Ginnery Corner circle). Place km and water kiosk boards',
@@ -243,7 +243,7 @@ window.BT42_DATA = {
     { id: 10, date: '2026-09-27', time: '04:00–13:00', type: 'Race day', status: 'next', focus: 'Race day — execute the runsheet', outcome: '', agenda: [
       '04:00 core team in',
       '05:00 athletes and medical',
-      '05:45 Minister of Youth, Sports and Culture arrives',
+      '05:45 Hon. Alfred Gangata (Minister of Youth, Sports and Culture, Guest of Honour) arrives',
       '06:00 / 06:10 / 06:20 starts',
       'Finish, DNF, live results — no certificate until bib is assigned and the athlete has a result',
       '09:00 speeches then prizes',
@@ -297,13 +297,13 @@ window.BT42_DATA = {
     { time: '05:00', activity: 'Athletes arrive at the start', location: 'NBS Bank, Ginnery Corner', lead: 'Technical / Protocol' },
     { time: '05:00', activity: 'Medical team & ambulances in position', location: 'Key points + stadium', lead: 'Medical Lead' },
     { time: '05:30', activity: 'Call room opens; athlete registration and first call', location: 'Start / call room', lead: 'Technical' },
-    { time: '05:45', activity: 'Guest of Honour arrives — Honourable Minister of Youth, Sports and Culture; final call, welcome remarks and route briefing', location: 'Start', lead: 'Protocol / Chair' },
+    { time: '05:45', activity: 'Guest of Honour arrives; final call, welcome remarks and marathon route briefing', location: 'Start', lead: 'Protocol / Chair' },
     { time: '06:00', activity: '42.195 km race starts', location: 'NBS Ginnery Corner', lead: 'Starter / Technical' },
     { time: '06:10', activity: '5 km race starts', location: 'Start line', lead: 'Starter' },
     { time: '06:20', activity: '10 km race starts', location: 'Start line', lead: 'Starter' },
     { time: '06:30–07:30', activity: 'Aerobics session — KuHES Complex Trainers (free entry)', location: 'Kamuzu Stadium', lead: 'Marketing / Volunteers' },
     { time: '07:30–08:00', activity: 'Tug of war', location: 'Kamuzu Stadium', lead: 'Volunteers' },
-    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Honourable Minister of Youth, Sports and Culture (Guest of Honour)', location: 'Stadium podium', lead: 'Protocol / Chair' },
+    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Hon. Alfred Gangata, MP, Minister of Youth, Sports and Culture (Guest of Honour)', location: 'Stadium podium', lead: 'Protocol / Chair' },
     { time: '09:30', activity: 'Prize presentation', location: 'Stadium podium', lead: 'Chair + MC' },
     { time: '12:00', activity: 'End of programme · survey open · course recovery', location: 'Stadium / online', lead: 'Logistics + Chair' },
     { time: '13:00+', activity: 'Core team debrief hot-wash (quick)', location: 'Stadium', lead: 'Chair' }
