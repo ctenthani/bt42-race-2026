@@ -202,6 +202,11 @@
   function volunteerRoleLabel(v) {
     return volunteerRoles(v).join('; ');
   }
+  function volunteerCertRole(v) {
+    const roles = volunteerRoles(v).filter((r) => r !== VOL_DUTY_ALL);
+    const label = roles.length ? roles.join('; ') : 'Race volunteer';
+    return String(label).replace(/\s*;?\s*Any other duties as assigned by the organisers/gi, '').replace(/^;\s*|;\s*$/g, '').trim() || 'Race volunteer';
+  }
   function canDownloadStartList() {
     const u = String(currentUser || '').trim().toLowerCase();
     return isChair || u === 'nkanyenda' || u === 'chair';
@@ -3610,7 +3615,7 @@
   }
   function openVolunteerCertificate(v) {
     const name = String(v.fullName || '').trim() || 'Volunteer';
-    const role = volunteerRoleLabel(v);
+    const role = volunteerCertRole(v);
     const sigs = loadSigs();
     const sigCell = (src, label, sub) => {
       const img = (src && src.indexOf('data:image') === 0)
@@ -4041,8 +4046,8 @@ w.document.close();
             b64: buildClientCertificatePdf({
               volunteer: true,
               fullName: p.fullName,
-              distance: volunteerRoleLabel(p),
-              role: volunteerRoleLabel(p),
+              distance: volunteerCertRole(p),
+              role: volunteerCertRole(p),
               signatures: sigs,
               amLogo: pack[1],
               mncsLogo: pack[2]

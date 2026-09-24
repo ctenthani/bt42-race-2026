@@ -362,7 +362,7 @@ async function buildVolunteerAppreciationPdf(opts) {
   const nameSize = name.length > 28 ? 22 : 28;
   drawC(name, height - 214, nameSize, fontBold, black);
 
-  const role = String(opts.distance || opts.role || 'Race volunteer');
+  const role = String(opts.distance || opts.role || 'Race volunteer').replace(/\s*;?\s*Any other duties as assigned by the organisers/gi,'').replace(/^;\s*|;\s*$/g,'').trim() || 'Race volunteer';
   const body1 = 'in appreciation for dedicated volunteerism and service';
   const body2 = 'organised under the auspices of the Malawi National Council of Sports';
   const body3 = '(BT42.195km Race 2026 · Blantyre · 27 September 2026)';
@@ -542,7 +542,7 @@ exports.handler = async (event) => {
       };
     }
   } else if (type === 'volunteer') {
-    const role = body.role || body.distance || 'Race volunteer';
+    const role = String(body.role || body.distance || 'Race volunteer').replace(/\s*;?\s*Any other duties as assigned by the organisers/gi,'').replace(/^;\s*|;\s*$/g,'').trim() || 'Race volunteer';
     subject = body.subject || 'Certificate of Appreciation — BT42.195km Race 2026';
     html = body.html || `<p>Dear ${esc(fullName)},</p>
 <p>Thank you for serving as a volunteer at the <strong>BT42.195km Race 2026</strong>.</p>
