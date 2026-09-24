@@ -207,14 +207,49 @@ window.BT42_DATA = {
   ],
 
   meetings: [
-    { id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Kick-off & Structure', agenda: ['Formal confirmation of Chair & OC roles', 'Review of previous edition learnings', 'Draft budget & prize structure', 'Route & date confirmation (27 Sep)', 'Sponsorship strategy & target list', 'Registration platform decision', 'Immediate action items & owners'], attendees: 'Chair, MNCS reps, Technical Lead, Marketing, Finance, Medical lead' },
-    { id: 2, date: '2026-08-19', time: '14:00–15:30', type: 'Virtual or Hybrid', focus: 'Registration & Marketing Launch', agenda: ['Registration system live status', 'Marketing calendar & first campaign assets', 'Sponsor outreach progress report', 'Volunteer recruitment plan', 'Medical & safety preliminary plan', 'App / website review'], attendees: 'Full OC + digital/tech lead' },
-    { id: 3, date: '2026-08-27', time: '14:00–16:00', type: 'In-person', focus: 'Sponsorship Deep Dive', agenda: ['Sponsor pipeline & signed letters of intent', 'Benefits packages finalisation', 'Prize money confirmation vs budget', 'Course & logistics detailed plan', 'Timing system & chip supplier', 'Risk register review'], attendees: 'Chair, Finance, Marketing, Technical, MNCS' },
-    { id: 4, date: '2026-09-02', time: '14:00–15:30', type: 'Hybrid', focus: 'Operations Mid-Point', agenda: ['Registration numbers & marketing performance', 'Final course map & police/traffic plan', 'Medical deployment plan', 'Water stations & logistics', 'Bibs, medals, T-shirts production status', 'Packet pickup plan'], attendees: 'Full OC' },
-    { id: 5, date: '2026-09-09', time: '14:00–16:00', type: 'In-person', focus: 'Race Week Readiness', agenda: ['Final participant projections', 'Volunteer roster & briefing schedule', 'Communication plan (SMS/App/Radio)', 'Contingency scenarios (weather, medical)', 'Media & live coverage plan', 'Sponsor activation on race day'], attendees: 'Full OC + key suppliers' },
-    { id: 6, date: '2026-09-15', time: '14:00–15:30', type: 'Hybrid', focus: 'Final Logistics Lock', agenda: ['Course marking schedule', 'Equipment & water delivery timeline', 'Security & traffic final sign-off', 'Elite athlete support (if any)', 'Packet pickup logistics', 'Results process test'], attendees: 'Technical, Logistics, Medical, Chair' },
-    { id: 7, date: '2026-09-17', time: '10:00–12:00', type: 'On-site / Stadium', focus: 'Pre-Race Briefing', agenda: ['Final numbers & start lists', 'Marshal & volunteer final briefing', 'Medical team briefing', 'Media & results process', 'Race-day roles confirmation', 'Emergency contacts & radios'], attendees: 'All key operational leads + lead volunteers' },
-    { id: 8, date: '2026-09-24', time: '14:00–16:00', type: 'In-person / Hybrid', focus: 'Post-Race Debrief', agenda: ['What went well / what to improve', 'Financial reconciliation', 'Participant & sponsor feedback summary', 'Results verification & records', 'Recommendations for 2027', 'Thank-you communications'], attendees: 'Full OC + MNCS' }
+    { id: 1, date: '2026-08-13', time: '14:00–16:00', type: 'Done', status: 'done', focus: 'Kick-off & structure', outcome: 'Chair and OC confirmed. Race locked for Sunday 27 September 2026. Registration to run on btrace.netlify.app. Budget and roles opened.', agenda: ['Roles confirmed', 'Date and course direction agreed', 'Site and registration chosen', 'Budget workstream opened'], attendees: 'Chair, MNCS, Technical, Marketing, Finance, Medical' },
+    { id: 2, date: '2026-08-19', time: '14:00–15:30', type: 'Done', status: 'done', focus: 'Registration live', outcome: 'Public site and entry form live. Fees set: 42.195 km MK15,000 · 10 km MK10,000 · 5 km MK5,000. Pay to National Bank of Malawi 782637.', agenda: ['Form live', 'Fees published', 'Bank details published'], attendees: 'Full OC + digital' },
+    { id: 3, date: '2026-08-27', time: '14:00–16:00', type: 'Done', status: 'done', focus: 'Partners & course', outcome: 'Zamara confirmed as partner. Course and water kiosks (Kwacha, Kamba, CFAO, Trade Fair) mapped. Requisition workflow opened for GS and Chair.', agenda: ['Zamara partnership', 'Course map', 'Requisitions'], attendees: 'Chair, Finance, Marketing, Technical, MNCS' },
+    { id: 4, date: '2026-09-02', time: '14:00–15:30', type: 'Done', status: 'done', focus: 'Operations mid-point', outcome: 'Team and individual entries working. Payment verify, bibs and finish/DNF in Control Room. Volunteer form live.', agenda: ['Entries and payments', 'Bibs', 'Volunteers'], attendees: 'Full OC' },
+    { id: 5, date: '2026-09-09', time: '14:00–16:00', type: 'Done', status: 'done', focus: 'Race-week systems', outcome: 'Certificates (completion + DNF participation) with AM + MNCS logos and three signatures. Volunteer certificates and onboarding mail. Staff logins by task.', agenda: ['Certificates', 'Staff permissions', 'Volunteer certs'], attendees: 'Full OC' },
+    { id: 6, date: '2026-09-17', time: '14:00–16:00', type: 'Done', status: 'done', focus: 'Preparedness check', outcome: 'Starts staggered 06:00 / 06:10 / 06:20. Programme, survey (noon) and live results dashboard in place. Course map cleaned at Ginnery Corner (no roundabout loop).', agenda: ['Start times', 'Programme', 'Course correction'], attendees: 'Full OC' },
+    { id: 7, date: '2026-09-24', time: '15:00–16:30', type: 'Hybrid + Meet', status: 'today', focus: '72 hours out — lock the loose ends', outcome: '', agenda: [
+      'Start list: verify remaining payments; assign remaining bibs; Chair/Nkanyenda download Name + Bib sheets by race',
+      'Volunteers: full 79-name list on the portal; roles ticked (plus any other duties); onboarding mail to those not yet mailed',
+      'Protocol: confirm Minister of Youth, Sports and Culture as Guest of Honour — arrival 05:45, podium 09:00; brief Ireen Luka / protocol on order of speeches',
+      'Medical + tents + toilets: which requisitions are approved and on site Saturday',
+      'Water: product at Kwacha, Kamba, CFAO, Trade Fair — who loads Friday, who staffs Sunday 05:00',
+      'Security / traffic / police: written plan for Ginnery Corner start and stadium finish',
+      'Catering and transport: vehicle roster and feeding points locked',
+      'Live results drill: one test finish + DNF on a dummy bib so stadium screen and emails work',
+      'Signage and course mark: paint/tape plan for Friday dusk and Saturday morning — no loop of the NBS roundabout',
+      'Guest hospitality: water, seat, programme card for Minister, Mayor, Chamwala, Kalua, Zamara MD'
+    ], attendees: 'Full OC + protocol + medical + security + volunteer coordinator' },
+    { id: 8, date: '2026-09-25', time: '16:00–17:00', type: 'Hybrid + Meet', status: 'next', focus: 'Friday lock — suppliers and print', outcome: '', agenda: [
+      'Print start lists and marshal sheets tonight',
+      'Confirm medals, bibs, tents, PA, toilets on the ground or with delivery time Saturday morning',
+      'SMS / radio / page announcement: starts 06:00 · 06:10 · 06:20, course closes 12:00',
+      'Any unpaid entries: pay by 18:00 Friday or they do not start',
+      'Minister’s office: written confirmation of arrival time and motorcade point'
+    ], attendees: 'Chair, Vice Chair, GS, Technical, Protocol, Finance' },
+    { id: 9, date: '2026-09-26', time: '09:00–12:00', type: 'On site', status: 'next', focus: 'Saturday set-up', outcome: '', agenda: [
+      'Mark the course (no Ginnery Corner circle). Place km and water kiosk boards',
+      'Stadium: finish funnel, VIP, aerobics space, prize table',
+      'Volunteer desk and bib collection table ready',
+      'Radio / phone tree test at 11:00',
+      'Final marshal briefing 16:00 — report 05:00 Sunday at NBS or stadium post',
+      'Sleep. No new policy after 18:00'
+    ], attendees: 'Technical, Logistics, Volunteers, Protocol, Medical, Security' },
+    { id: 10, date: '2026-09-27', time: '04:00–13:00', type: 'Race day', status: 'next', focus: 'Race day — execute the runsheet', outcome: '', agenda: [
+      '04:00 core team in',
+      '05:00 athletes and medical',
+      '05:45 Minister of Youth, Sports and Culture arrives',
+      '06:00 / 06:10 / 06:20 starts',
+      'Finish, DNF, live results — no certificate until bib is assigned and the athlete has a result',
+      '09:00 speeches then prizes',
+      '12:00 course closed, survey open'
+    ], attendees: 'All leads' },
+    { id: 11, date: '2026-10-01', time: '14:00–16:00', type: 'Hybrid + Meet', status: 'next', focus: 'Post-race debrief', outcome: '', agenda: ['What worked / fix for 2027', 'Money in and out', 'Survey read-out', 'Thank-you letters: Minister, Mayor, Zamara, volunteers', 'Results freeze and certificates mop-up'], attendees: 'Full OC + MNCS' }
   ],
 
   sponsors: [
@@ -262,13 +297,13 @@ window.BT42_DATA = {
     { time: '05:00', activity: 'Athletes arrive at the start', location: 'NBS Bank, Ginnery Corner', lead: 'Technical / Protocol' },
     { time: '05:00', activity: 'Medical team & ambulances in position', location: 'Key points + stadium', lead: 'Medical Lead' },
     { time: '05:30', activity: 'Call room opens; athlete registration and first call', location: 'Start / call room', lead: 'Technical' },
-    { time: '05:45', activity: 'Guest of Honour arrives; final call, welcome remarks and route briefing', location: 'Start', lead: 'Protocol / Chair' },
+    { time: '05:45', activity: 'Guest of Honour arrives — Honourable Minister of Youth, Sports and Culture; final call, welcome remarks and route briefing', location: 'Start', lead: 'Protocol / Chair' },
     { time: '06:00', activity: '42.195 km race starts', location: 'NBS Ginnery Corner', lead: 'Starter / Technical' },
     { time: '06:10', activity: '5 km race starts', location: 'Start line', lead: 'Starter' },
     { time: '06:20', activity: '10 km race starts', location: 'Start line', lead: 'Starter' },
     { time: '06:30–07:30', activity: 'Aerobics session — KuHES Complex Trainers (free entry)', location: 'Kamuzu Stadium', lead: 'Marketing / Volunteers' },
     { time: '07:30–08:00', activity: 'Tug of war', location: 'Kamuzu Stadium', lead: 'Volunteers' },
-    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Hon. Gangata (GoH)', location: 'Stadium podium', lead: 'Protocol / Chair' },
+    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Honourable Minister of Youth, Sports and Culture (Guest of Honour)', location: 'Stadium podium', lead: 'Protocol / Chair' },
     { time: '09:30', activity: 'Prize presentation', location: 'Stadium podium', lead: 'Chair + MC' },
     { time: '12:00', activity: 'End of programme · survey open · course recovery', location: 'Stadium / online', lead: 'Logistics + Chair' },
     { time: '13:00+', activity: 'Core team debrief hot-wash (quick)', location: 'Stadium', lead: 'Chair' }

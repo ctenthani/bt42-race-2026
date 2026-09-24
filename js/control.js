@@ -274,6 +274,7 @@
       if (tab) tab.classList.add('active');
       if (panel) panel.classList.add('active');
     }
+    try { enableChairPageEditor(); } catch (e) {}
   }
 
   function unlock(role, user, userPerms) {
@@ -679,19 +680,21 @@
         <a href="${meetLink}" target="_blank" rel="noopener">${meetLink}</a>
       </div>`;
     window.BT42_DATA.meetings.forEach(m => {
-      const past = new Date(m.date) < new Date(new Date().toDateString());
+      const past = m.status === 'done' || new Date(m.date) < new Date(new Date().toDateString());
+      const badge = m.status === 'done' ? ' · done' : (m.status === 'today' ? ' · today' : (m.status === 'next' ? ' · next' : ''));
       html += `
-        <details class="ctrl-meeting ${past ? 'past' : ''}">
+        <details class="ctrl-meeting ${past ? 'past' : ''}" ${m.status === 'today' || m.status === 'next' ? 'open' : ''}>
           <summary>
             <span class="m-num">#${m.id}</span>
             <span class="m-date">${formatDate(m.date)}</span>
-            <span class="m-focus">${m.focus}</span>
+            <span class="m-focus">${m.focus}${badge}</span>
           </summary>
           <div class="m-body">
             <p><strong>Time:</strong> ${m.time} · <strong>Type:</strong> ${m.type}</p>
             <p><strong>Google Meet:</strong> <a href="${meetLink}" target="_blank" rel="noopener">${meetLink}</a></p>
             <p><strong>Attendees:</strong> ${m.attendees}</p>
-            <p><strong>Agenda</strong></p>
+            ${m.outcome ? '<p><strong>What was closed:</strong> ' + m.outcome + '</p>' : '<p><strong>Purpose:</strong> close remaining race-week items only.</p>'}
+            <p><strong>${m.status === 'done' ? 'Record' : 'Agenda / loose ends'}</strong></p>
             <ol>${m.agenda.map(a => `<li>${a}</li>`).join('')}</ol>
           </div>
         </details>`;
@@ -3094,6 +3097,38 @@
 
 
 
+  const SITE_FIELDS = [
+    ['heroEyebrow', 'Home · organiser line'],
+    ['heroSub', 'Home · date line'],
+    ['heroTagline', 'Home · tagline'],
+    ['announcement', 'Home · announcement (blank hides it)'],
+    ['raceMorningKicker', 'Home · race-morning kicker'],
+    ['raceMorningTitle', 'Home · race-morning title'],
+    ['raceMorningFees', 'Home · fees line'],
+    ['raceMorningCut', 'Home · cut-off line'],
+    ['distancesTitle', 'Home · distances heading'],
+    ['racesTitle', 'Races · title'],
+    ['racesIntro', 'Races · intro'],
+    ['registerTitle', 'Register · title'],
+    ['registerIntro', 'Register · intro'],
+    ['volKicker', 'Volunteers · kicker'],
+    ['volLead', 'Volunteers · lead'],
+    ['volLanesTitle', 'Volunteers · lanes heading'],
+    ['sponsorsTitle', 'Sponsors · title'],
+    ['sponsorsIntro', 'Sponsors · intro'],
+    ['sponsorsHeadline', 'Sponsors · headline'],
+    ['sponsorsPitch', 'Sponsors · pitch'],
+    ['zamaraBlurb', 'Sponsors · Zamara about'],
+    ['zamaraRole', 'Sponsors · Zamara role'],
+    ['programmeTitle', 'Programme · title'],
+    ['programmeIntro', 'Programme · intro'],
+    ['infoTitle', 'Info · title'],
+    ['infoIntro', 'Info · intro'],
+    ['infoAbout', 'Info · about the event'],
+    ['resultsTitle', 'Results · title'],
+    ['resultsIntro', 'Results · intro'],
+    ['footerNote', 'Footer']
+  ];
   function defaultSiteContent() {
     return {
       heroSub: 'Blantyre · Sunday, 27 September 2026',
@@ -3156,12 +3191,18 @@
       return;
     }
     const c = loadSiteContent();
+    const fields = SITE_FIELDS.map(([key, label]) => {
+      const val = (c[key] != null && c[key] !== '') ? c[key] : (((document.querySelector('[data-site="' + key + '"]') || {}).textContent) || '');
+      const long = String(val).length > 80 || key.indexOf('About') >= 0 || key.indexOf('Pitch') >= 0 || key.indexOf('Blurb') >= 0 || key === 'announcement' || key === 'volLead' || key === 'infoAbout';
+      return '<div class="form-group"><label>' + escapeHtml(label) + '</label>' +
+        (long
+          ? '<textarea data-sc="' + key + '" rows="3">' + escapeHtml(val) + '</textarea>'
+          : '<input type="text" data-sc="' + key + '" value="' + escapeHtml(val) + '" />') +
+        '</div>';
+    }).join('');
     box.innerHTML = `
       <div class="card" style="padding:0.75rem">
-        <div class="form-group"><label>Hero location &amp; date (one line)</label>
-          <input type="text" id="sc-heroSub" value="${escapeHtml(c.heroSub)}" /></div>
-        <div class="form-group"><label>Announcement (shown under hero; leave blank to hide)</label>
-          <textarea id="sc-announcement" rows="2">${escapeHtml(c.announcement || '')}</textarea></div>
+        <p class="form-note">Edit any public line below, or open a public page and use <strong>Edit this page</strong> (yellow outline). Publish writes to every gadget.</p>
         <div class="form-row">
           <div class="form-group"><label>Marathon fee (MWK)</label>
             <input type="number" id="sc-feeM" value="${Number(c.feesMarathon) || 15000}" min="0" step="500" /></div>
@@ -3172,40 +3213,92 @@
         </div>
         <div class="form-group"><label>National Bank of Malawi account number</label>
           <input type="text" id="sc-bank" value="${escapeHtml(c.bankAccount || '782637')}" /></div>
-        <div class="form-group"><label>Footer note</label>
-          <input type="text" id="sc-footer" value="${escapeHtml(c.footerNote)}" /></div>
+        ${fields}
         <button type="button" class="btn btn-primary" id="sc-save">Save &amp; publish to site</button>
         <p class="form-note" id="sc-status" style="margin-top:0.5rem"></p>
       </div>`;
     const saveBtn = $('#sc-save');
     if (saveBtn) saveBtn.onclick = () => {
       const next = Object.assign(loadSiteContent(), {
-        heroSub: (($('#sc-heroSub') || {}).value || '').trim(),
-        heroDate: '',
-        announcement: (($('#sc-announcement') || {}).value || '').trim(),
         feesMarathon: Number((($('#sc-feeM') || {}).value) || 15000),
         fees10: Number((($('#sc-fee10') || {}).value) || 10000),
         fees5: Number((($('#sc-fee5') || {}).value) || 5000),
         bankAccount: (($('#sc-bank') || {}).value || '782637').trim(),
-        footerNote: (($('#sc-footer') || {}).value || '').trim(),
         updatedAt: new Date().toISOString(),
         updatedBy: currentUser || 'chair'
       });
-      saveSiteContent(next);
-      applySiteContentToPublic(next);
-      if (getSyncToken()) {
-        livePush({ siteContent: next }).then(() => {
-          const st = $('#sc-status');
-          if (st) st.textContent = 'Saved and synced. Public pages will show the new content.';
-        }).catch(() => {
-          const st = $('#sc-status');
-          if (st) st.textContent = 'Saved on this device. Sync failed — check connection.';
-        });
-      } else {
-        const st = $('#sc-status');
-        if (st) st.textContent = 'Saved on this device.';
-      }
+      box.querySelectorAll('[data-sc]').forEach((el) => {
+        next[el.getAttribute('data-sc')] = (el.value || '').trim();
+      });
+      publishSiteContent(next, $('#sc-status'));
     };
+  }
+
+  function publishSiteContent(next, statusEl) {
+    saveSiteContent(next);
+    applySiteContentToPublic(next);
+    if (getSyncToken()) {
+      livePush({ siteContent: next }).then(() => {
+        if (statusEl) statusEl.textContent = 'Published. All pages and gadgets will show the new wording.';
+      }).catch(() => {
+        if (statusEl) statusEl.textContent = 'Saved on this device. Sync failed.';
+      });
+    } else if (statusEl) {
+      statusEl.textContent = 'Saved on this device.';
+    }
+  }
+
+  function enableChairPageEditor() {
+    let bar = document.getElementById('chair-page-edit-bar');
+    if (!isChair) {
+      if (bar) bar.remove();
+      document.querySelectorAll('[data-site]').forEach((el) => {
+        el.removeAttribute('contenteditable');
+        el.style.outline = '';
+      });
+      return;
+    }
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'chair-page-edit-bar';
+      bar.style.cssText = 'position:sticky;top:0;z-index:70;background:#145a32;color:#fff;padding:8px 14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.88rem';
+      bar.innerHTML = '<strong>Chair page editor</strong>' +
+        '<button type="button" class="btn-mini" id="chair-edit-toggle" style="background:#fff;color:#145a32">Edit this page</button>' +
+        '<button type="button" class="btn-mini" id="chair-edit-publish" style="background:#f4d03f;color:#1a1a1a">Publish edits</button>' +
+        '<span id="chair-edit-status"></span>';
+      const main = document.querySelector('main') || document.body;
+      main.insertBefore(bar, main.firstChild);
+    }
+    const toggle = document.getElementById('chair-edit-toggle');
+    const pub = document.getElementById('chair-edit-publish');
+    const st = document.getElementById('chair-edit-status');
+    let on = document.body.classList.contains('chair-editing');
+    function setMode(v) {
+      on = v;
+      document.body.classList.toggle('chair-editing', on);
+      document.querySelectorAll('[data-site]').forEach((el) => {
+        const key = el.getAttribute('data-site');
+        const lock = key === 'feesLine' || key === 'bankAccount';
+        el.contentEditable = (on && !lock) ? 'true' : 'false';
+        el.style.outline = (on && !lock) ? '2px dashed #f4d03f' : '';
+        el.style.outlineOffset = (on && !lock) ? '2px' : '';
+      });
+      if (toggle) toggle.textContent = on ? 'Stop editing' : 'Edit this page';
+      if (st) st.textContent = on ? 'Yellow outline = editable. Click the words, then Publish edits.' : '';
+    }
+    if (toggle) toggle.onclick = () => setMode(!on);
+    if (pub) pub.onclick = () => {
+      const next = loadSiteContent();
+      document.querySelectorAll('[data-site]').forEach((el) => {
+        const key = el.getAttribute('data-site');
+        if (!key || key === 'feesLine' || key === 'bankAccount') return;
+        next[key] = (el.innerText || el.textContent || '').replace(/\s+\n/g, '\n').trim();
+      });
+      next.updatedAt = new Date().toISOString();
+      next.updatedBy = currentUser || 'chair';
+      publishSiteContent(next, st);
+    };
+    setMode(on);
   }
 
 
