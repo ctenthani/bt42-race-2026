@@ -114,6 +114,7 @@
   }
   document.addEventListener('DOMContentLoaded', function () {
     applyStoredSiteContent();
+    if (typeof applyRegistrationGate === 'function') applyRegistrationGate();
     handleHash();
   });
   // remove duplicate if any - handled below
@@ -165,6 +166,71 @@
   // ---- Registration form ----
   // Works with Netlify Forms. Shows success panel after submit.
   const RACE_DAY_ISO = '2026-09-27'; // age calculated on race day
+  const REG_CLOSE_AT = window.BT42_REG_CLOSE_AT = new Date('2026-09-25T23:59:59+02:00');
+
+  function registrationForced() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('bt42_site_content') || 'null');
+      return raw && raw.registrationForced ? String(raw.registrationForced) : '';
+    } catch (e) { return ''; }
+  }
+  function isRegistrationOpen() {
+    const forced = registrationForced();
+    if (forced === 'open') return true;
+    if (forced === 'closed') return false;
+    return Date.now() <= REG_CLOSE_AT.getTime();
+  }
+  function applyRegistrationGate() {
+    const open = isRegistrationOpen();
+    const banners = document.querySelectorAll('#reg-close-banner, #reg-close-banner-home');
+    banners.forEach((el) => {
+      if (!el) return;
+      const left = REG_CLOSE_AT.getTime() - Date.now();
+      if (!open) {
+        el.style.display = '';
+        el.classList.add('reg-closed');
+        el.innerHTML = '<strong>Registration is closed.</strong> Online entries ended Friday 25 September 2026 at 23:59. Race day is Sunday 27 September.';
+      } else if (left <= 48 * 3600 * 1000) {
+        el.style.display = '';
+        el.classList.remove('reg-closed');
+        const hrs = Math.max(0, Math.floor(left / 3600000));
+        const mins = Math.max(0, Math.floor((left % 3600000) / 60000));
+        el.innerHTML = '<strong>Registration closes Friday 25 September 2026 at 23:59.</strong> After that the form locks automatically. Time left: ' + hrs + 'h ' + mins + 'm.';
+      } else {
+        el.style.display = '';
+        el.classList.remove('reg-closed');
+        el.innerHTML = '<strong>Registration closes Friday 25 September 2026 at 23:59.</strong> Enter and pay before then — the form will lock on its own.';
+      }
+    });
+    const form = document.getElementById('regForm');
+    if (form) {
+      form.querySelectorAll('input, select, textarea, button[type="submit"]').forEach((el) => {
+        if (el.name === 'bot-field' || el.name === 'form-name') return;
+        if (el.type === 'hidden') return;
+        el.disabled = !open;
+      });
+      let lock = document.getElementById('reg-locked-note');
+      if (!open) {
+        if (!lock) {
+          lock = document.createElement('p');
+          lock.id = 'reg-locked-note';
+          lock.className = 'notice';
+          lock.style.cssText = 'background:#922b21;color:#fff;padding:0.8rem 1rem;font-weight:700';
+          form.parentNode.insertBefore(lock, form);
+        }
+        lock.textContent = 'The entry form is locked. Registration closed Friday 25 September 2026 at 23:59.';
+        form.style.opacity = '0.55';
+        form.style.pointerEvents = 'none';
+      } else if (lock) {
+        lock.remove();
+        form.style.opacity = '';
+        form.style.pointerEvents = '';
+      }
+    }
+  }
+  window.applyRegistrationGate = applyRegistrationGate;
+  applyRegistrationGate();
+  setInterval(applyRegistrationGate, 30000);
 
   // Entry fees (MWK) — shown after race selection; bank account 782637
   const ENTRY_FEES = window.BT42_ENTRY_FEES = {
@@ -213,6 +279,12 @@
   }
 
   window.handleRegister = function (e) {
+    if (!isRegistrationOpen()) {
+      e.preventDefault();
+      alert('Registration closed on Friday 25 September 2026 at 23:59.');
+      applyRegistrationGate();
+      return false;
+    }
     const form = document.getElementById('regForm');
     const teamMode = isTeamMode();
 

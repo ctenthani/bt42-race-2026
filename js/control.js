@@ -3138,6 +3138,7 @@
       fees10: 10000,
       fees5: 5000,
       bankAccount: '782637',
+      registrationForced: '',
       footerNote: 'BT42.195km Race · 27 September 2026',
       aboutBlurb: '',
       updatedAt: null,
@@ -3180,6 +3181,7 @@
         window.BT42_ENTRY_FEES['10'] = Number(c.fees10) || 10000;
         window.BT42_ENTRY_FEES['5'] = Number(c.fees5) || 5000;
       }
+      if (typeof window.applyRegistrationGate === 'function') window.applyRegistrationGate();
     } catch (e) {}
   }
 
@@ -3213,6 +3215,12 @@
         </div>
         <div class="form-group"><label>National Bank of Malawi account number</label>
           <input type="text" id="sc-bank" value="${escapeHtml(c.bankAccount || '782637')}" /></div>
+        <div class="notice" style="margin:0.8rem 0">
+          <p><strong>Registration window</strong> — closes automatically Friday 25 September 2026 at 23:59:59. Chair can reopen or close early.</p>
+          <label style="display:block;margin:0.35rem 0"><input type="radio" name="sc-reg" value="" ${!c.registrationForced ? 'checked' : ''} /> Automatic (closes Friday 23:59)</label>
+          <label style="display:block;margin:0.35rem 0"><input type="radio" name="sc-reg" value="open" ${c.registrationForced === 'open' ? 'checked' : ''} /> Keep registration OPEN</label>
+          <label style="display:block;margin:0.35rem 0"><input type="radio" name="sc-reg" value="closed" ${c.registrationForced === 'closed' ? 'checked' : ''} /> Close registration NOW</label>
+        </div>
         ${fields}
         <button type="button" class="btn btn-primary" id="sc-save">Save &amp; publish to site</button>
         <p class="form-note" id="sc-status" style="margin-top:0.5rem"></p>
@@ -3224,6 +3232,7 @@
         fees10: Number((($('#sc-fee10') || {}).value) || 10000),
         fees5: Number((($('#sc-fee5') || {}).value) || 5000),
         bankAccount: (($('#sc-bank') || {}).value || '782637').trim(),
+        registrationForced: (((box.querySelector('input[name="sc-reg"]:checked') || {}).value) || ''),
         updatedAt: new Date().toISOString(),
         updatedBy: currentUser || 'chair'
       });

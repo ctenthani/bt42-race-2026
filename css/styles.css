@@ -1936,3 +1936,6 @@ body.stadium-mode #public-results tr:nth-child(-n+3) td { color: #f5d76e; font-w
 .programme-table tbody tr:nth-child(odd) td { background: #e8f5e9; }
 .programme-table tbody tr:nth-child(even) td { background: #ffffff; }
 .programme-table ul { margin: 0.35rem 0 0 1.1rem; }
+
+.reg-close-banner{display:block;width:100%;box-sizing:border-box;background:#c0392b;color:#fff;font-size:clamp(1.05rem,2.6vw,1.55rem);font-weight:800;letter-spacing:.01em;text-align:center;padding:0.85rem 1.1rem;line-height:1.35;box-shadow:0 4px 16px rgba(0,0,0,.18)}
+.reg-close-banner.reg-closed{background:#6b1c14}

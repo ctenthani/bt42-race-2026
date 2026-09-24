@@ -331,6 +331,11 @@ exports.handler = async (event) => {
   if (process.env.REGISTRATION_ENABLED === 'false') {
     return json(403, { ok: false, error: 'Registration is closed' });
   }
+  const REG_CLOSE_MS = Date.parse('2026-09-25T23:59:59+02:00');
+  if (Number.isFinite(REG_CLOSE_MS) && Date.now() > REG_CLOSE_MS && process.env.REGISTRATION_FORCE_OPEN !== 'true') {
+    // Chair override is also stored on shared siteContent; checked after state load below.
+    event._bt42PastDeadline = true;
+  }
 
   let body;
   try {
@@ -425,6 +430,11 @@ exports.handler = async (event) => {
 
   try {
     const { state } = await readState();
+    const forced = state && state.siteContent && state.siteContent.registrationForced;
+    const past = event._bt42PastDeadline || (Date.now() > Date.parse('2026-09-25T23:59:59+02:00'));
+    if (forced === 'closed' || (past && forced !== 'open' && process.env.REGISTRATION_FORCE_OPEN !== 'true')) {
+      return json(403, { ok: false, error: 'Registration closed Friday 25 September 2026 at 23:59' });
+    }
     const list = Array.isArray(state.registrations) ? state.registrations.slice() : [];
     let added = 0;
     for (const reg of regs) {
