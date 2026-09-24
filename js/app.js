@@ -232,6 +232,21 @@
   applyRegistrationGate();
   setInterval(applyRegistrationGate, 30000);
 
+  function applySurveyBanner() {
+    const el = document.getElementById('survey-banner-home');
+    if (!el) return;
+    const openAt = Date.parse('2026-09-27T12:00:00+02:00');
+    if (Date.now() >= openAt) {
+      el.classList.remove('soon');
+      el.innerHTML = '<a href="#survey">Complete the BT42.195km Race survey — tell us how the day went</a>';
+    } else {
+      el.classList.add('soon');
+      el.innerHTML = '<a href="#survey">Survey opens Sunday 27 September at 12:00 noon — tap for details</a>';
+    }
+  }
+  applySurveyBanner();
+  setInterval(applySurveyBanner, 60000);
+
   // Entry fees (MWK) — shown after race selection; bank account 782637
   const ENTRY_FEES = window.BT42_ENTRY_FEES = {
     '42.195': 15000,

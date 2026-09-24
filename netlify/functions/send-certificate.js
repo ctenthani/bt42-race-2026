@@ -593,6 +593,9 @@ exports.handler = async (event) => {
   } else if (type === 'volunteer_onboard') {
     subject = body.subject || 'Volunteer onboarding — BT42.195km Race 2026';
     html = body.html || `<p>Dear Volunteer,</p><p>Thank you for joining the BT42.195km Race crew.</p>`;
+  } else if (type === 'survey_invite') {
+    subject = body.subject || 'BT42.195km Race — please complete the survey';
+    html = body.html || `<p>Dear ${esc(fullName)},</p><p>Please complete the race survey: <a href="https://btrace.netlify.app/#survey">btrace.netlify.app/#survey</a></p>`;
   } else {
     html = body.html || `<p>Dear ${esc(fullName)},</p><p>Message from BT42.195km Race.</p>`;
   }

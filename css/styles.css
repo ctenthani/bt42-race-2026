@@ -1939,3 +1939,8 @@ body.stadium-mode #public-results tr:nth-child(-n+3) td { color: #f5d76e; font-w
 
 .reg-close-banner{display:block;width:100%;box-sizing:border-box;background:#c0392b;color:#fff;font-size:clamp(1.05rem,2.6vw,1.55rem);font-weight:800;letter-spacing:.01em;text-align:center;padding:0.85rem 1.1rem;line-height:1.35;box-shadow:0 4px 16px rgba(0,0,0,.18)}
 .reg-close-banner.reg-closed{background:#6b1c14}
+
+.survey-banner{display:block;width:100%;box-sizing:border-box;background:#145a32;color:#F4D03F;font-size:clamp(1.05rem,2.6vw,1.55rem);font-weight:800;text-align:center;padding:0.9rem 1.1rem;line-height:1.35}
+.survey-banner a{color:#F4D03F;text-decoration:underline}
+.survey-banner.soon{background:#1a5276;color:#fff}
+.survey-banner.soon a{color:#fff}

@@ -280,6 +280,7 @@
       if (panel) panel.classList.add('active');
     }
     try { enableChairPageEditor(); } catch (e) {}
+    try { if (typeof maybeAutoSendSurveyInvites === 'function') maybeAutoSendSurveyInvites(); } catch (e) {}
   }
 
   function unlock(role, user, userPerms) {
@@ -4154,6 +4155,70 @@ w.document.close();
       r.readAsDataURL(file);
     });
   }
+  function stampText() {
+    const d = new Date();
+    return 'APPROVED BY CHAIR — Chifundo Tenthani — ' + d.toISOString().slice(0, 10);
+  }
+  function stampImageDataUrl(dataUrl, label) {
+    return new Promise((resolve) => {
+      if (!dataUrl || dataUrl.indexOf('data:image') !== 0) return resolve(dataUrl);
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = img.width;
+        c.height = img.height;
+        const ctx = c.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const h = Math.max(36, Math.round(img.height * 0.08));
+        ctx.fillStyle = 'rgba(20,90,50,0.88)';
+        ctx.fillRect(0, img.height - h, img.width, h);
+        ctx.fillStyle = '#F4D03F';
+        ctx.font = 'bold ' + Math.max(16, Math.round(h * 0.42)) + 'px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label || stampText(), img.width / 2, img.height - h / 2);
+        resolve(c.toDataURL('image/jpeg', 0.88));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  }
+  function previewApprovalDoc(r) {
+    if (!r || !r.fileData) { alert('No file on this requisition.'); return; }
+    let modal = document.getElementById('ap-preview-modal');
+    if (modal) modal.remove();
+    modal = document.createElement('div');
+    modal.id = 'ap-preview-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,16,0.72);z-index:90;display:flex;align-items:flex-start;justify-content:center;padding:18px 10px;overflow:auto';
+    const stamped = r.status === 'approved';
+    const src = (stamped && r.stampedData) ? r.stampedData : r.fileData;
+    const isImg = (r.fileType || src || '').indexOf('image') >= 0 || /\.(png|jpe?g|gif|webp)$/i.test(r.fileName || '');
+    const isPdf = (r.fileType || '').indexOf('pdf') >= 0 || /\.pdf$/i.test(r.fileName || '');
+    let body = '';
+    if (isImg) body = '<img src="' + src + '" alt="" style="max-width:100%;height:auto;display:block;margin:0 auto;background:#fff" />';
+    else if (isPdf) body = '<iframe title="Preview" src="' + src + '" style="width:100%;min-height:70vh;border:0;background:#fff"></iframe>';
+    else body = '<p class="form-note">Preview is available for PDF and images. This file type can still be opened below.</p><p><a class="btn" href="' + src + '" target="_blank" rel="noopener">Open file</a></p>';
+    modal.innerHTML = '<div style="background:#fff;max-width:920px;width:100%;border-radius:12px;padding:1rem;position:relative">' +
+      (stamped ? '<div style="background:#145a32;color:#F4D03F;font-weight:800;text-align:center;padding:0.55rem 0.7rem;margin-bottom:0.7rem;letter-spacing:.04em">APPROVED BY CHAIR — Chifundo Tenthani' + (r.approvedOn ? ' · ' + escapeHtml(r.approvedOn) : '') + '</div>' : '') +
+      '<p style="margin:0 0 0.5rem"><strong>' + escapeHtml(r.payee || '') + '</strong> · ' + escapeHtml(r.fileName || 'Document') + '</p>' +
+      body +
+      '<p style="margin-top:0.8rem"><button type="button" class="btn" id="ap-preview-close">Close</button></p></div>';
+    document.body.appendChild(modal);
+    modal.querySelector('#ap-preview-close').onclick = () => modal.remove();
+    modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.remove(); });
+  }
+  async function markApprovedWithStamp(r) {
+    r.status = 'approved';
+    r.approvedOn = new Date().toISOString().slice(0, 10);
+    r.comment = 'Approved by Chair — Chifundo Tenthani';
+    r.chairStamp = stampText();
+    if (r.fileData && (r.fileType || '').indexOf('image') >= 0) {
+      r.stampedData = await stampImageDataUrl(r.fileData, r.chairStamp);
+    } else {
+      r.stampedData = r.fileData || '';
+    }
+    return r;
+  }
   function renderApprovals() {
     const box = $('#ctrl-approvals');
     if (!box || !canRequisitions()) return;
@@ -4165,8 +4230,11 @@ w.document.close();
       const total = Number(r.amount || 0) + Number(r.vat || 0);
       const st = r.status === 'approved' ? 'pay-ok' : (r.status === 'rejected' ? 'pay-no' : (r.status === 'returned' ? 'pay-no' : 'pay-wait'));
       const fileLink = (r.fileData && r.fileName)
-        ? '<a href="' + r.fileData + '" download="' + escapeHtml(r.fileName) + '">' + escapeHtml(r.fileName) + '</a>'
+        ? ('<button type="button" class="btn-mini ap-preview" data-i="' + i + '">Preview' + (r.status === 'approved' ? ' · stamped' : '') + '</button>')
         : '—';
+      const stampNote = r.status === 'approved'
+        ? '<div class="pay-status pay-ok" style="margin-top:0.25rem">APPROVED BY CHAIR</div>'
+        : '';
       const actions = isChair
         ? ('<button type="button" class="btn-mini ap-toggle" data-i="' + i + '">' + (r.status === 'approved' ? 'Mark pending' : 'Approve') + '</button> ' +
            (r.status !== 'approved' ? '<button type="button" class="btn-mini ap-reject" data-i="' + i + '">Reject</button> ' : '') +
@@ -4177,7 +4245,7 @@ w.document.close();
         );
       return '<tr>' +
         '<td>' + escapeHtml(r.approvedOn || r.requested || '') + '</td>' +
-        '<td><strong>' + escapeHtml(r.payee || '') + '</strong><br><span class="form-note">' + escapeHtml(r.items || '') + '</span><br>' + fileLink + '</td>' +
+        '<td><strong>' + escapeHtml(r.payee || '') + '</strong><br><span class="form-note">' + escapeHtml(r.items || '') + '</span><br>' + fileLink + stampNote + '</td>' +
         '<td>' + escapeHtml([r.bank, r.account].filter(Boolean).join(' · ') || '—') + '</td>' +
         '<td>' + mk(r.amount) + (r.vat ? '<br><span class="form-note">VAT ' + mk(r.vat) + '</span>' : '') + '</td>' +
         '<td><strong>' + mk(total) + '</strong></td>' +
@@ -4268,8 +4336,11 @@ w.document.close();
       renderApprovals();
       alert(isChair ? 'Saved as approved.' : 'Sent to the Chair. Status: pending.');
     };
+    box.querySelectorAll('.ap-preview').forEach((btn) => {
+      btn.onclick = () => previewApprovalDoc(loadApprovals()[Number(btn.dataset.i)]);
+    });
     box.querySelectorAll('.ap-toggle').forEach((btn) => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         if (!isChair) return;
         const next = loadApprovals();
         const r = next[Number(btn.dataset.i)];
@@ -4277,10 +4348,10 @@ w.document.close();
         if (r.status === 'approved') {
           r.status = 'pending';
           r.approvedOn = '';
+          r.chairStamp = '';
+          r.stampedData = '';
         } else {
-          r.status = 'approved';
-          r.approvedOn = new Date().toISOString().slice(0, 10);
-          r.comment = 'Approved by Chair — Chifundo Tenthani';
+          await markApprovedWithStamp(r);
         }
         saveApprovals(next);
         renderApprovals();
@@ -4478,14 +4549,83 @@ w.document.close();
     box.innerHTML = html;
   }
 
+  function collectSurveyInviteList() {
+    let regs = [];
+    try { regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { regs = []; }
+    const vols = loadVolunteers();
+    const seen = {};
+    const out = [];
+    function add(email, name, audience) {
+      const e = String(email || '').trim().toLowerCase();
+      if (!e || e.indexOf('@') < 0 || seen[e]) return;
+      seen[e] = true;
+      out.push({ email: e, fullName: name || 'Friend of BT42', audience: audience || 'public' });
+    }
+    regs.forEach((r) => add(r.email || r.teamContactEmail, r.fullName || r.teamName, 'participant'));
+    vols.forEach((v) => add(v.email, v.fullName, 'volunteer'));
+    return out;
+  }
+  async function sendSurveyInvites(opts) {
+    const list = collectSurveyInviteList();
+    if (!list.length) { alert('No athlete or volunteer emails on file.'); return { ok: 0, fail: 0 }; }
+    const link = (location.origin || 'https://btrace.netlify.app') + '/#survey';
+    let ok = 0, fail = 0;
+    for (let i = 0; i < list.length; i++) {
+      const p = list[i];
+      const html = '<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto">' +
+        '<h2 style="color:#145a32">Please complete the BT42.195km Race survey</h2>' +
+        '<p>Dear ' + String(p.fullName || '').replace(/</g, '') + ',</p>' +
+        '<p>Thank you for being part of the BT42.195km Race on Sunday 27 September 2026. We need your honest view of the day.</p>' +
+        '<p><a href="' + link + '" style="display:inline-block;background:#145a32;color:#fff;padding:10px 16px;text-decoration:none;border-radius:6px;font-weight:700">Complete the survey</a></p>' +
+        '<p>It takes a few minutes. Link: ' + link + '</p>' +
+        '<p>— Organising Committee</p></div>';
+      const j = await sendAthleteEmail({
+        type: 'survey_invite',
+        forceSend: true,
+        to: p.email,
+        email: p.email,
+        fullName: p.fullName,
+        subject: 'BT42.195km Race — please complete the survey',
+        html: html,
+        raceDate: '27 September 2026'
+      });
+      if (j && j.ok && !j.skipped) ok++; else fail++;
+    }
+    const sc = loadSiteContent();
+    sc.surveyInvitesSent = new Date().toISOString();
+    sc.surveyInvitesCount = ok;
+    saveSiteContent(sc);
+    if (getSyncToken()) livePush({ siteContent: sc }).catch(() => {});
+    if (!opts || !opts.silent) alert('Survey invites sent: ' + ok + '. Not sent: ' + fail + '.');
+    return { ok, fail };
+  }
+  function maybeAutoSendSurveyInvites() {
+    if (!isChair && !currentUser) return;
+    if (Date.now() < Date.parse('2026-09-27T12:00:00+02:00')) return;
+    const sc = loadSiteContent();
+    if (sc.surveyInvitesSent) return;
+    sendSurveyInvites({ silent: true }).then((r) => {
+      if (r && r.ok) console.info('Survey invites auto-sent', r);
+    }).catch(() => {});
+  }
+
   function renderSurveyPreview() {
     const box = $('#ctrl-survey-preview');
     if (!box) return;
+    maybeAutoSendSurveyInvites();
     if (!isChair) {
-      box.innerHTML = '<p class="form-note">Survey questions and live totals. Pretest form is Chair only.</p>';
+      box.innerHTML = '<p class="form-note">Survey questions and live totals. Pretest form is Chair only.</p>' +
+        (currentUser ? '<p><button type="button" class="btn" id="survey-send-invites">Send survey to collected emails</button></p>' : '');
+      const b = $('#survey-send-invites');
+      if (b) b.onclick = () => sendSurveyInvites();
       return;
     }
-    box.innerHTML = '<p><a class="btn btn-primary" href="#survey">Open public survey page (respondent view)</a></p><div id="chair-survey-pretest"></div>';
+    box.innerHTML = '<p><a class="btn btn-primary" href="#survey">Open public survey page (respondent view)</a> ' +
+      '<button type="button" class="btn" id="survey-send-invites">Send survey to all athlete + volunteer emails</button></p>' +
+      '<p class="form-note">Invites go automatically after 12:00 on race day the first time Control Room is opened, and can be sent again from this button.</p>' +
+      '<div id="chair-survey-pretest"></div>';
+    const sendBtn = $('#survey-send-invites');
+    if (sendBtn) sendBtn.onclick = () => sendSurveyInvites();
     const mount = $('#chair-survey-pretest');
     if (window.BT42_renderSurvey && mount) {
       window.BT42_renderSurvey(mount, {
