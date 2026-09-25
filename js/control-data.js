@@ -303,7 +303,7 @@ window.BT42_DATA = {
     { time: '06:20', activity: '10 km race starts', location: 'Start line', lead: 'Starter' },
     { time: '06:30–07:30', activity: 'Aerobics session — KuHES Complex Trainers (free entry)', location: 'Kamuzu Stadium', lead: 'Marketing / Volunteers' },
     { time: '07:30–08:00', activity: 'Tug of war', location: 'Kamuzu Stadium', lead: 'Volunteers' },
-    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Hon. Alfred Gangata, MP, Minister of Youth, Sports and Culture (Guest of Honour)', location: 'Stadium podium', lead: 'Protocol / Chair' },
+    { time: '09:00', activity: 'Speeches: Tenthani, Chamwala, Chauluka (Zamara), Mayor Osman, Jim Kalua (MNCS Board Chairperson), Hon. Alfred Gangata, MP, Minister of Youth, Sports and Culture (Guest of Honour)', location: 'Stadium podium', lead: 'Protocol / Chair' },
     { time: '09:30', activity: 'Prize presentation', location: 'Stadium podium', lead: 'Chair + MC' },
     { time: '12:00', activity: 'End of programme · survey open · course recovery', location: 'Stadium / online', lead: 'Logistics + Chair' },
     { time: '13:00+', activity: 'Core team debrief hot-wash (quick)', location: 'Stadium', lead: 'Chair' }
