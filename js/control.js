@@ -4138,12 +4138,42 @@ w.document.close();
     } catch (e) {}
     return APPROVALS_SEED.slice();
   }
+  function slimApproval(r) {
+    if (!r) return r;
+    const copy = Object.assign({}, r);
+    delete copy.stampedData;
+    return copy;
+  }
   function saveApprovals(list, opts) {
-    localStorage.setItem(APPROVALS_KEY, JSON.stringify(list || []));
+    try {
+      localStorage.setItem(APPROVALS_KEY, JSON.stringify((list || []).map(slimApproval)));
+    } catch (e) {
+      try {
+        const light = (list || []).map((r) => {
+          const c = slimApproval(r);
+          if (c.fileData && String(c.fileData).length > 400000) c.fileData = '';
+          return c;
+        });
+        localStorage.setItem(APPROVALS_KEY, JSON.stringify(light));
+      } catch (e2) {
+        console.warn('Approvals local save failed', e2);
+      }
+    }
     if (!getSyncToken()) return;
-    if (isChair) livePush({ approvals: list }).catch(() => {});
-    else if (opts && opts.added) livePush({ newApprovals: opts.added }).catch(() => {});
-    else if (opts && opts.updated) livePush({ updateApprovals: opts.updated }).catch(() => {});
+    const updated = (opts && opts.updated) ? opts.updated.map(slimApproval) : null;
+    if (updated && updated.length) {
+      livePush({ updateApprovals: updated }).catch((err) => console.warn('approvals sync', err));
+    } else if (opts && opts.added) {
+      livePush({ newApprovals: opts.added.map(slimApproval) }).catch(() => {});
+    } else if (isChair) {
+      livePush({ updateApprovals: (list || []).map(slimApproval) }).catch(() => {
+        livePush({ approvals: (list || []).map((r) => {
+          const c = slimApproval(r);
+          if (c.fileData && String(c.fileData).length > 200000) delete c.fileData;
+          return c;
+        }) }).catch(() => {});
+      });
+    }
   }
   function fileToDataUrl(file) {
     return new Promise((resolve, reject) => {
@@ -4212,10 +4242,13 @@ w.document.close();
     r.approvedOn = new Date().toISOString().slice(0, 10);
     r.comment = 'Approved by Chair — Chifundo Tenthani';
     r.chairStamp = stampText();
-    if (r.fileData && (r.fileType || '').indexOf('image') >= 0) {
-      r.stampedData = await stampImageDataUrl(r.fileData, r.chairStamp);
-    } else {
-      r.stampedData = r.fileData || '';
+    r.stampedData = '';
+    try {
+      if (r.fileData && ((r.fileType || '').indexOf('image') >= 0) && String(r.fileData).length < 900000) {
+        r.stampedData = await stampImageDataUrl(r.fileData, r.chairStamp);
+      }
+    } catch (e) {
+      r.stampedData = '';
     }
     return r;
   }
@@ -4341,20 +4374,51 @@ w.document.close();
     });
     box.querySelectorAll('.ap-toggle').forEach((btn) => {
       btn.onclick = async () => {
-        if (!isChair) return;
+        if (!isChair) {
+          alert('Sign in as Chair to approve.');
+          return;
+        }
         const next = loadApprovals();
         const r = next[Number(btn.dataset.i)];
         if (!r) return;
-        if (r.status === 'approved') {
-          r.status = 'pending';
-          r.approvedOn = '';
-          r.chairStamp = '';
-          r.stampedData = '';
-        } else {
-          await markApprovedWithStamp(r);
+        try {
+          if (r.status === 'approved') {
+            r.status = 'pending';
+            r.approvedOn = '';
+            r.chairStamp = '';
+            r.stampedData = '';
+            r.comment = 'Returned to pending by Chair';
+          } else {
+            await markApprovedWithStamp(r);
+          }
+          const patch = {
+            id: r.id,
+            status: r.status,
+            approvedOn: r.approvedOn || '',
+            comment: r.comment || '',
+            chairStamp: r.chairStamp || '',
+            payee: r.payee,
+            amount: r.amount,
+            vat: r.vat,
+            items: r.items,
+            bank: r.bank,
+            account: r.account
+          };
+          saveApprovals(next, { updated: [patch] });
+          renderApprovals();
+        } catch (err) {
+          try {
+            r.status = 'approved';
+            r.approvedOn = new Date().toISOString().slice(0, 10);
+            r.comment = 'Approved by Chair — Chifundo Tenthani';
+            r.chairStamp = stampText();
+            r.stampedData = '';
+            saveApprovals(next, { updated: [r] });
+            renderApprovals();
+          } catch (err2) {
+            alert('Could not save approval: ' + (err2.message || err.message || err));
+          }
         }
-        saveApprovals(next);
-        renderApprovals();
       };
     });
     box.querySelectorAll('.ap-sendback').forEach((btn) => {
