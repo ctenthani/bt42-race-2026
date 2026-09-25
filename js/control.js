@@ -4141,7 +4141,6 @@ w.document.close();
   function slimApproval(r) {
     if (!r) return r;
     const copy = Object.assign({}, r);
-    delete copy.stampedData;
     return copy;
   }
   function saveApprovals(list, opts) {
@@ -4185,11 +4184,52 @@ w.document.close();
       r.readAsDataURL(file);
     });
   }
-  function stampText() {
-    const d = new Date();
-    return 'APPROVED BY CHAIR — Chifundo Tenthani — ' + d.toISOString().slice(0, 10);
+  function approvalDateTime(d) {
+    const dt = d instanceof Date ? d : new Date(d || Date.now());
+    try {
+      return new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Africa/Blantyre',
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false
+      }).format(dt).replace(',', '') + ' CAT';
+    } catch (e) {
+      return dt.toLocaleString() + ' CAT';
+    }
   }
-  function stampImageDataUrl(dataUrl, label) {
+  function stampText(d) {
+    return 'Approved by Chair — Chifundo Tenthani — ' + approvalDateTime(d);
+  }
+  function dataUrlToBytes(dataUrl) {
+    const b64 = String(dataUrl || '').split(',')[1] || '';
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  function drawHodBox(ctx, w, h, when) {
+    const boxW = Math.max(240, Math.round(w * 0.44));
+    const boxH = Math.max(78, Math.round(h * 0.12));
+    const x = Math.round(w * 0.055);
+    const y = h - boxH - Math.round(h * 0.055);
+    ctx.fillStyle = 'rgba(255,255,255,0.96)';
+    ctx.strokeStyle = '#145a32';
+    ctx.lineWidth = Math.max(2, Math.round(w * 0.003));
+    ctx.fillRect(x, y, boxW, boxH);
+    ctx.strokeRect(x, y, boxW, boxH);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const fs = Math.max(12, Math.round(boxH * 0.16));
+    ctx.fillStyle = '#145a32';
+    ctx.font = 'bold ' + fs + 'px sans-serif';
+    ctx.fillText('Head of Department', x + 10, y + 8);
+    ctx.font = 'bold ' + Math.round(fs * 1.2) + 'px sans-serif';
+    ctx.fillText('Approved by Chair', x + 10, y + 8 + fs + 3);
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = fs + 'px sans-serif';
+    ctx.fillText('Chifundo Tenthani', x + 10, y + 8 + fs * 2.4);
+    ctx.fillText(approvalDateTime(when), x + 10, y + 8 + fs * 3.5);
+  }
+  function stampImageDataUrl(dataUrl, when) {
     return new Promise((resolve) => {
       if (!dataUrl || dataUrl.indexOf('data:image') !== 0) return resolve(dataUrl);
       const img = new Image();
@@ -4199,22 +4239,70 @@ w.document.close();
         c.height = img.height;
         const ctx = c.getContext('2d');
         ctx.drawImage(img, 0, 0);
-        const h = Math.max(36, Math.round(img.height * 0.08));
-        ctx.fillStyle = 'rgba(20,90,50,0.88)';
-        ctx.fillRect(0, img.height - h, img.width, h);
-        ctx.fillStyle = '#F4D03F';
-        ctx.font = 'bold ' + Math.max(16, Math.round(h * 0.42)) + 'px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(label || stampText(), img.width / 2, img.height - h / 2);
-        resolve(c.toDataURL('image/jpeg', 0.88));
+        drawHodBox(ctx, img.width, img.height, when);
+        resolve(c.toDataURL('image/jpeg', 0.9));
       };
       img.onerror = () => resolve(dataUrl);
       img.src = dataUrl;
     });
   }
+  async function stampPdfHod(dataUrl, when) {
+    const Lib = window.PDFLib;
+    if (!Lib || !dataUrl) return dataUrl;
+    try {
+      const pdf = await Lib.PDFDocument.load(dataUrlToBytes(dataUrl));
+      const page = pdf.getPages()[pdf.getPageCount() - 1];
+      const { width, height } = page.getSize();
+      const font = await pdf.embedFont(Lib.StandardFonts.HelveticaBold);
+      const fontR = await pdf.embedFont(Lib.StandardFonts.Helvetica);
+      const boxW = Math.min(270, width * 0.5);
+      const boxH = 64;
+      const x = 32;
+      const y = 36;
+      page.drawRectangle({
+        x: x, y: y, width: boxW, height: boxH,
+        color: Lib.rgb(1, 1, 1),
+        borderColor: Lib.rgb(0.08, 0.35, 0.2),
+        borderWidth: 1.3
+      });
+      page.drawText('Head of Department', { x: x + 8, y: y + boxH - 16, size: 9, font, color: Lib.rgb(0.08, 0.35, 0.2) });
+      page.drawText('Approved by Chair', { x: x + 8, y: y + boxH - 31, size: 12, font, color: Lib.rgb(0.08, 0.35, 0.2) });
+      page.drawText('Chifundo Tenthani', { x: x + 8, y: y + boxH - 45, size: 9, font: fontR, color: Lib.rgb(0.12, 0.12, 0.12) });
+      page.drawText(approvalDateTime(when), { x: x + 8, y: y + 8, size: 9, font: fontR, color: Lib.rgb(0.12, 0.12, 0.12) });
+      return await pdf.saveAsBase64({ dataUri: true });
+    } catch (e) {
+      console.warn('PDF HOD stamp failed', e);
+      return dataUrl;
+    }
+  }
+  function makeHodStampSheet(r, when) {
+    const c = document.createElement('canvas');
+    c.width = 1240;
+    c.height = 1754;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#145a32';
+    ctx.fillRect(0, 0, c.width, 90);
+    ctx.fillStyle = '#F4D03F';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('BT42.195km Race — approved requisition', c.width / 2, 56);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '22px sans-serif';
+    const lines = [
+      'Payee: ' + (r.payee || ''),
+      'Items: ' + (r.items || ''),
+      'Amount: MK ' + (r.amount || ''),
+      'Original file: ' + (r.fileName || '—')
+    ];
+    lines.forEach((line, i) => ctx.fillText(line, 70, 160 + i * 40));
+    drawHodBox(ctx, c.width, c.height, when);
+    return c.toDataURL('image/jpeg', 0.88);
+  }
   function previewApprovalDoc(r) {
-    if (!r || !r.fileData) { alert('No file on this requisition.'); return; }
+    if (!r || !(r.stampedData || r.fileData)) { alert('No file on this requisition.'); return; }
     let modal = document.getElementById('ap-preview-modal');
     if (modal) modal.remove();
     modal = document.createElement('div');
@@ -4222,14 +4310,15 @@ w.document.close();
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(10,20,16,0.72);z-index:90;display:flex;align-items:flex-start;justify-content:center;padding:18px 10px;overflow:auto';
     const stamped = r.status === 'approved';
     const src = (stamped && r.stampedData) ? r.stampedData : r.fileData;
-    const isImg = (r.fileType || src || '').indexOf('image') >= 0 || /\.(png|jpe?g|gif|webp)$/i.test(r.fileName || '');
-    const isPdf = (r.fileType || '').indexOf('pdf') >= 0 || /\.pdf$/i.test(r.fileName || '');
+    const look = src || '';
+    const isImg = (r.fileType || look).indexOf('image') >= 0 || look.indexOf('data:image') === 0 || /\.(png|jpe?g|gif|webp)$/i.test(r.fileName || '');
+    const isPdf = (r.fileType || look).indexOf('pdf') >= 0 || look.indexOf('application/pdf') >= 0 || /\.pdf$/i.test(r.fileName || '');
     let body = '';
     if (isImg) body = '<img src="' + src + '" alt="" style="max-width:100%;height:auto;display:block;margin:0 auto;background:#fff" />';
     else if (isPdf) body = '<iframe title="Preview" src="' + src + '" style="width:100%;min-height:70vh;border:0;background:#fff"></iframe>';
-    else body = '<p class="form-note">Preview is available for PDF and images. This file type can still be opened below.</p><p><a class="btn" href="' + src + '" target="_blank" rel="noopener">Open file</a></p>';
+    else body = '<p class="form-note">Open the stamped copy below.</p><p><a class="btn" href="' + src + '" target="_blank" rel="noopener">Open file</a></p>';
     modal.innerHTML = '<div style="background:#fff;max-width:920px;width:100%;border-radius:12px;padding:1rem;position:relative">' +
-      (stamped ? '<div style="background:#145a32;color:#F4D03F;font-weight:800;text-align:center;padding:0.55rem 0.7rem;margin-bottom:0.7rem;letter-spacing:.04em">APPROVED BY CHAIR — Chifundo Tenthani' + (r.approvedOn ? ' · ' + escapeHtml(r.approvedOn) : '') + '</div>' : '') +
+      (stamped ? '<div style="background:#145a32;color:#F4D03F;font-weight:800;text-align:center;padding:0.55rem 0.7rem;margin-bottom:0.7rem">Head of Department — Approved by Chair · ' + escapeHtml(approvalDateTime(r.approvedAt || r.approvedOn)) + '</div>' : '') +
       '<p style="margin:0 0 0.5rem"><strong>' + escapeHtml(r.payee || '') + '</strong> · ' + escapeHtml(r.fileName || 'Document') + '</p>' +
       body +
       '<p style="margin-top:0.8rem"><button type="button" class="btn" id="ap-preview-close">Close</button></p></div>';
@@ -4238,20 +4327,33 @@ w.document.close();
     modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.remove(); });
   }
   async function markApprovedWithStamp(r) {
+    const when = new Date();
     r.status = 'approved';
-    r.approvedOn = new Date().toISOString().slice(0, 10);
-    r.comment = 'Approved by Chair — Chifundo Tenthani';
-    r.chairStamp = stampText();
+    r.approvedOn = when.toISOString().slice(0, 10);
+    r.approvedAt = when.toISOString();
+    r.comment = 'Head of Department: Approved by Chair — ' + approvalDateTime(when);
+    r.chairStamp = stampText(when);
     r.stampedData = '';
     try {
-      if (r.fileData && ((r.fileType || '').indexOf('image') >= 0) && String(r.fileData).length < 900000) {
-        r.stampedData = await stampImageDataUrl(r.fileData, r.chairStamp);
+      const src = r.fileData || '';
+      const type = String(r.fileType || r.fileName || src).toLowerCase();
+      if (src.indexOf('data:image') === 0 || type.indexOf('image') >= 0) {
+        r.stampedData = await stampImageDataUrl(src, when);
+        r.fileType = 'image/jpeg';
+      } else if (src.indexOf('application/pdf') >= 0 || type.indexOf('pdf') >= 0) {
+        r.stampedData = await stampPdfHod(src, when);
+        r.fileType = 'application/pdf';
+      } else {
+        r.stampedData = makeHodStampSheet(r, when);
+        r.fileType = 'image/jpeg';
       }
     } catch (e) {
-      r.stampedData = '';
+      r.stampedData = makeHodStampSheet(r, when);
+      r.fileType = 'image/jpeg';
     }
     return r;
   }
+
   function renderApprovals() {
     const box = $('#ctrl-approvals');
     if (!box || !canRequisitions()) return;
