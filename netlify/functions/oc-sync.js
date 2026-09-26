@@ -397,7 +397,17 @@ function mergeState(current, body, role) {
   if (body.replaceFinishes && body.finishes && typeof body.finishes === 'object') {
     next.finishes = body.finishes;
   } else if (body.finishes && typeof body.finishes === 'object') {
-    next.finishes = Object.assign({}, current.finishes || {}, body.finishes);
+    const curF = current.finishes || {};
+    const incF = body.finishes || {};
+    const outF = Object.assign({}, curF);
+    Object.keys(incF).forEach((k) => {
+      const inc = incF[k] || {};
+      const old = outF[k] || {};
+      const it = Date.parse(inc.updatedAt || inc.finishedAt || 0) || 0;
+      const ot = Date.parse(old.updatedAt || old.finishedAt || 0) || 0;
+      if (!old.status || it >= ot || inc.status === 'oncourse') outF[k] = inc;
+    });
+    next.finishes = outF;
   }
   if (body.attendance && typeof body.attendance === 'object') {
     next.attendance = Object.assign({}, current.attendance || {}, body.attendance);
