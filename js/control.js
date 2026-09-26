@@ -24,6 +24,99 @@
   const SYNC_TOKEN_KEY = 'bt42_oc_sync_token';
   const SYNC_META_KEY = 'bt42_oc_sync_meta';
   const VOL_KEY = 'bt42_volunteers';
+  const SEED_VOLUNTEERS = [
+    { fullName: 'Magret Kachingwe', phone: '985287348' },
+    { fullName: 'Leah Maliro', phone: '984397770' },
+    { fullName: 'Princess Muleka', phone: '992909838' },
+    { fullName: 'Talandira Kachimanga', phone: '994855568' },
+    { fullName: 'Mphatso Makuwila', phone: '' },
+    { fullName: 'Yusuf Maulana', phone: '991928620' },
+    { fullName: 'Pemphero Tembo', phone: '987829839' },
+    { fullName: 'Henry Vesha', phone: '883712866' },
+    { fullName: 'Japhet Shadreck', phone: '989605823' },
+    { fullName: 'John Nyondo', phone: '985329189' },
+    { fullName: 'Maxon Shadreck', phone: '981505668' },
+    { fullName: 'Peter Wilad', phone: '897917724' },
+    { fullName: 'Christina Banda', phone: '888298367' },
+    { fullName: 'Samuel Gremu', phone: '889979427' },
+    { fullName: 'Chimwemwe Kadumba', phone: '993228747' },
+    { fullName: 'Benson Machilinga', phone: '893490393' },
+    { fullName: 'Christian Lipemba', phone: '893722833' },
+    { fullName: 'Prince Ligomeka', phone: '990419760' },
+    { fullName: 'Abdul Sallam', phone: '999141408' },
+    { fullName: 'Shepard Katsitsi', phone: '996166005' },
+    { fullName: 'Shammie John', phone: '980561005' },
+    { fullName: 'Asyatu Yusuf', phone: '' },
+    { fullName: 'Enelesi Makawa', phone: '' },
+    { fullName: 'Abdul Adin', phone: '' },
+    { fullName: 'Faliki', phone: '' },
+    { fullName: 'Harlod Muza', phone: '' },
+    { fullName: 'Ronald Kandulu', phone: '' },
+    { fullName: 'Yvonne Thunga', phone: '' },
+    { fullName: 'Lackson Gama', phone: '' },
+    { fullName: 'Lawrence Malanda', phone: '' },
+    { fullName: 'Hope Matchado', phone: '' },
+    { fullName: 'Mary', phone: '' },
+    { fullName: 'Ian', phone: '' },
+    { fullName: 'Precious', phone: '' },
+    { fullName: 'Ledison Chipili', phone: '' },
+    { fullName: 'Mary Luwanya', phone: '' },
+    { fullName: 'Paul Bulaziyo', phone: '' },
+    { fullName: 'Martha Sabola', phone: '' },
+    { fullName: 'Thom Kamoto', phone: '' },
+    { fullName: 'Patricia Kambalame', phone: '' },
+    { fullName: 'Linet Kayuni', phone: '' },
+    { fullName: 'Austin Ndolo', phone: '' },
+    { fullName: 'Yamikani Lozi', phone: '', note: 'from Zomba' },
+    { fullName: 'Andrew Lunda', phone: '', note: 'from Zomba' },
+    { fullName: 'Enerst Kapito', phone: '' },
+    { fullName: 'Chimwemwe Khoza', phone: '' },
+    { fullName: 'Sekelani Makuluni', phone: '886546326' },
+    { fullName: 'Robert Kamwendo', phone: '9953555653' },
+    { fullName: 'Martha Tsabola', phone: '' },
+    { fullName: 'Loveness Tchoani', phone: '' },
+    { fullName: 'Francis Makuluni', phone: '' },
+    { fullName: 'Angellina Chiphwanya', phone: '' },
+    { fullName: 'Mathews Chipapi', phone: '' },
+    { fullName: 'Moffat Mkandawire', phone: '' },
+    { fullName: 'Linly Masona', phone: '' },
+    { fullName: 'Francisco Machira', phone: '' },
+    { fullName: 'Fravia Zamaere', phone: '' },
+    { fullName: 'Clara Mhone', phone: '' },
+    { fullName: 'Aaron Wallani', phone: '' },
+    { fullName: 'Tusekire Sibale', phone: '' }
+  ];
+  function volunteerNameKey(v) {
+    return String(v.fullName || v.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+  function ensureSeedVolunteers() {
+    const list = loadVolunteers();
+    const have = new Set(list.map(volunteerNameKey).filter(Boolean));
+    let added = 0;
+    SEED_VOLUNTEERS.forEach((s) => {
+      const k = volunteerNameKey(s);
+      if (!k || have.has(k)) return;
+      list.push({
+        fullName: s.fullName,
+        email: s.email || '',
+        phone: s.phone || '',
+        note: s.note || '',
+        status: 'selected',
+        roles: [],
+        source: 'chair-xlsx-26sep',
+        createdAt: new Date().toISOString()
+      });
+      have.add(k);
+      added += 1;
+    });
+    if (added) {
+      saveVolunteers(list);
+      if (getSyncToken()) {
+        livePush({ volunteers: list, replaceVolunteers: true }).catch(() => {});
+      }
+    }
+    return list;
+  }
   const APPROVALS_KEY = 'bt42_chair_approvals';
   const APPROVALS_SEED = [
     {
@@ -1407,14 +1500,31 @@
       }
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status >= 500) {
+      return { ok: false, error: 'HTTP ' + res.status + ' (sync store down — local list kept)' };
+    }
     if (!res.ok || !data.ok) {
       return { ok: false, error: (data && (data.detail || data.error)) || ('HTTP ' + res.status) };
     }
+    if (data.degraded || !data.state) {
+      return { ok: true, degraded: true, error: data.error || 'degraded' };
+    }
     const s = data.state || {};
-    // Shared store is source of truth — replace local (do not merge, or deletes never stick)
     if (Array.isArray(s.registrations)) {
+      let local = [];
+      try { local = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch (e) { local = []; }
+      const keyOf = (r) =>
+        String(r.phone || r.teamContactPhone || '').replace(/\s+/g, '').toLowerCase() +
+        '|' + String(r.fullName || '').trim().toLowerCase();
+      const map = new Map();
+      s.registrations.forEach((r) => map.set(keyOf(r), r));
+      local.forEach((r) => {
+        const k = keyOf(r);
+        if (!map.has(k)) map.set(k, r);
+      });
+      const merged = Array.from(map.values());
       try {
-        localStorage.setItem('bt42_registrations', JSON.stringify(s.registrations));
+        localStorage.setItem('bt42_registrations', JSON.stringify(merged));
       } catch (e) {}
       try { ensureRestoredAthletes(); } catch (e) {}
     }
@@ -1433,10 +1543,16 @@
       localStorage.setItem(PAYMENT_KEY, JSON.stringify(mergedPay));
     }
     if (s.bibs && typeof s.bibs === 'object') {
-      localStorage.setItem(BIB_KEY, JSON.stringify(s.bibs));
+      const localB = loadBibs();
+      const mergedB = Object.assign({}, s.bibs);
+      Object.keys(localB).forEach((k) => {
+        if (!mergedB[k] || !mergedB[k].number) mergedB[k] = localB[k];
+      });
+      localStorage.setItem(BIB_KEY, JSON.stringify(mergedB));
     }
     if (s.finishes && typeof s.finishes === 'object') {
-      localStorage.setItem(FINISH_KEY, JSON.stringify(s.finishes));
+      const localF = loadFinishes();
+      localStorage.setItem(FINISH_KEY, JSON.stringify(Object.assign({}, s.finishes, localF)));
     }
     if (s.attendance && typeof s.attendance === 'object') {
       localStorage.setItem(ATTEND_KEY, JSON.stringify(s.attendance));
@@ -1445,7 +1561,24 @@
       try { localStorage.setItem(STAFF_KEY, JSON.stringify(s.staffUsers)); } catch (e) {}
     }
     if (Array.isArray(s.volunteers)) {
-      try { localStorage.setItem(VOL_KEY, JSON.stringify(s.volunteers)); } catch (e) {}
+      try {
+        let localV = [];
+        try { localV = JSON.parse(localStorage.getItem(VOL_KEY) || '[]'); } catch (e) { localV = []; }
+        if (!Array.isArray(localV)) localV = [];
+        if (s.volunteers.length === 0 && localV.length > 0) {
+          /* keep local — empty remote must not wipe the crew list */
+        } else {
+          const vKey = (v) => String(v.email || '').trim().toLowerCase() + '|' + String(v.name || v.fullName || '').trim().toLowerCase();
+          const map = new Map();
+          s.volunteers.forEach((v) => map.set(vKey(v), v));
+          localV.forEach((v) => {
+            const k = vKey(v);
+            if (!map.has(k)) map.set(k, v);
+          });
+          localStorage.setItem(VOL_KEY, JSON.stringify(Array.from(map.values())));
+        }
+        try { ensureSeedVolunteers(); } catch (e2) {}
+      } catch (e) {}
     }
     if ((isChair || canRequisitions()) && Array.isArray(s.approvals)) {
       try { localStorage.setItem(APPROVALS_KEY, JSON.stringify(s.approvals)); } catch (e) {}
@@ -1674,40 +1807,9 @@
   }
 
 
-  const RESTORED_ATHLETES = [
-    {
-      fullName: 'Maggie Chitseko',
-      aliases: ['maggei chitseko', 'maggie chitseko', 'maggie  chitseko'],
-      distance: '10',
-      email: '',
-      phone: '',
-      source: 'netlify-forms-restore'
-    },
-    {
-      fullName: 'Mussa Maundala',
-      aliases: ['mussa maundala', 'musa maundala'],
-      distance: '42.195',
-      email: '',
-      phone: '',
-      source: 'netlify-forms-restore'
-    },
-    {
-      fullName: 'Evance Imran',
-      aliases: ['dennis jones phiri', 'denis jones phiri', 'evance imran'],
-      distance: '42.195',
-      source: 'chair-start-list-26sep'
-    },
-    { fullName: 'Ndacha Happy Mcherenje', aliases: ['ndacha happy mcherenje', 'happy mcherenje'], distance: '42.195', bib: 1087, source: 'chair-start-list-26sep' },
-    { fullName: 'Goodson Benala', aliases: ['goodson benala'], distance: '42.195', bib: 1089, source: 'chair-start-list-26sep' },
-    { fullName: 'Akaba Anwobil', aliases: ['akaba anwobil'], distance: '10', bib: 2029, source: 'chair-start-list-26sep' },
-    { fullName: 'Chifundo Salapa', aliases: ['chifundo salapa'], distance: '10', bib: 2102, source: 'chair-start-list-26sep' },
-    { fullName: 'Smart Potifala', aliases: ['smart potifala'], distance: '10', bib: 2101, source: 'chair-start-list-26sep' },
-    { fullName: 'Musaa Abilu', aliases: ['musaa abilu', 'musa abilu'], distance: '10', bib: 2085, source: 'chair-start-list-26sep' },
-    { fullName: 'Bosco Kwilonga', aliases: ['bosco kwilonga'], distance: '10', bib: 2087, source: 'chair-start-list-26sep' },
-    { fullName: 'Joanne Stewart', aliases: ['joanne stewart'], distance: '5', bib: 3075, source: 'chair-start-list-26sep' },
-    { fullName: 'Mwaiwathu Khupe', aliases: ['mwaiwathu khupe'], distance: '5', bib: 3076, source: 'chair-start-list-26sep' },
-    { fullName: 'Chisomo Mcherenje', aliases: ['chisomo mcherenje'], distance: '5', bib: 3077, source: 'chair-start-list-26sep' }
-  ];
+  const RESTORED_ATHLETES = (window.BT42_START_LIST && window.BT42_START_LIST.length)
+    ? window.BT42_START_LIST
+    : [];
 
   function namesMatchAthlete(r, spec) {
     const n = String(r.fullName || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -1729,10 +1831,11 @@
           phone: spec.phone || '',
           email: spec.email || '',
           distance: spec.distance,
+          teamName: spec.team || '',
           submittedAt: new Date().toISOString(),
           source: spec.source,
           restored: true,
-          paymentRef: 'Netlify Forms — restored by Chair'
+          paymentRef: 'Start list restore'
         });
         idx = list.length - 1;
         changed = true;
@@ -1949,8 +2052,17 @@
 
   function wireAssignAllBibs() {
     const btn = $('#btn-assign-all');
-    if (!btn) return;
-    btn.onclick = assignAllMissingBibs;
+    if (btn) btn.onclick = assignAllMissingBibs;
+    const apply = $('#btn-apply-startlist');
+    if (apply) apply.onclick = () => {
+      try {
+        ensureRestoredAthletes();
+        renderParticipants();
+        alert('Late start-list applied on this device (Evance Imran, Mcherenje, Benala, Anwobil, Salapa, Potifala, Abilu, Kwilonga, Stewart, Khupe, Chisomo Mcherenje, Yotamu Phiri 1090, Desire Kaduka 1091). If live sync is 502, Push local when the yellow chip turns green.');
+      } catch (e) {
+        alert('Could not apply start-list: ' + (e.message || e));
+      }
+    };
   }
 
   function renderParticipants() {
@@ -1975,6 +2087,7 @@
       <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
       ${canDownloadStartList() ? '<br><button type="button" class="btn-mini" id="btn-start-list">Download start list (Excel · one sheet per race)</button>' : ''}
       ${canBibs() ? ' <button type="button" class="btn-mini" id="btn-assign-all">Assign all missing bibs</button>' : ''}
+      ${isChair ? ' <button type="button" class="btn-mini" id="btn-apply-startlist">Apply Chair late start-list</button>' : ''}
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -3688,6 +3801,7 @@ w.document.close();
   function renderVolunteersAdmin() {
     const box = $('#ctrl-volunteers');
     if (!box) return;
+    try { ensureSeedVolunteers(); } catch (e) {}
     const list = loadVolunteers();
     const canEdit = canVolunteers();
     const canRole = canAssignVolunteerRole();
