@@ -738,7 +738,7 @@
               <label>Name (part of the name is enough)</label>
               <input type="text" id="lookup-q" autocomplete="off" placeholder="e.g. Chitseko" />
             </div>
-            <button type="submit" class="btn btn-primary" id="lookup-go">Search</button>
+            <button type="button" class="btn btn-primary" id="lookup-go">Search</button>
           </form>
           <div id="lookup-out"></div>
         </div>
@@ -782,7 +782,7 @@
           <!-- Control Room content -->
           <div id="control-room" class="control-room hidden">
             <div class="ctrl-toolbar">
-              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926g</span>
+              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926h</span>
               <button type="button" id="ctrl-logout" class="btn-logout">Log out</button>
             </div>
             <div class="ctrl-tabs">
@@ -853,7 +853,23 @@
             <div id="panel-staff" class="ctrl-panel">
               <h3>Staff logins</h3>
               <p class="form-note">Chair only. Create usernames and passwords. Tick Payment, Bibs, Finish and/or Volunteers (select crew and issue certificates). The Chair login already has every permission and sees all volunteer details.</p>
-              <div id="staff-admin"></div>
+              <div id="staff-admin">
+                <div class="card" style="margin-bottom:1rem;padding:0.75rem">
+                  <h4 style="margin-top:0">Create staff login</h4>
+                  <div class="form-row">
+                    <div class="form-group"><label>Username *</label><input type="text" id="staff-new-user" placeholder="e.g. nkanyenda" /></div>
+                    <div class="form-group"><label>Display name</label><input type="text" id="staff-new-name" /></div>
+                  </div>
+                  <div class="form-group"><label>Password *</label><input type="text" id="staff-new-pass" placeholder="at least 4 characters" /></div>
+                  <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-pay" checked /> Can verify payments</label>
+                  <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-bibs" checked /> Can assign bibs</label>
+                  <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-finish" checked /> Can enter Finish / DNF</label>
+                  <label style="display:block;margin:0.35rem 0"><input type="checkbox" id="staff-can-volunteers" /> Volunteers</label>
+                  <button type="button" class="btn btn-primary" id="staff-create-btn">Create login</button>
+                  <p class="form-note" id="staff-seed-note">Seeded logins (password <code>bt42staff</code>): nkanyenda, amsowoya, gmkandawire</p>
+                </div>
+                <div id="staff-list-fallback"></div>
+              </div>
             </div>
 
             <div id="panel-volunteers" class="ctrl-panel">
@@ -952,5 +968,103 @@
   <script src="js/control.20260926g.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.20260926g.js"></script>
+  <script>
+  (function () {
+    function esc(s) { return String(s || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]); }); }
+    async function sha256(text) {
+      try {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(text)));
+        return Array.from(new Uint8Array(buf)).map(function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+      } catch (e) { return 'x' + String(text).length; }
+    }
+    window.BT42FindAthlete = async function () {
+      const qEl = document.getElementById('lookup-q');
+      const out = document.getElementById('lookup-out');
+      if (!qEl || !out) return;
+      const q = String(qEl.value || '').trim().toLowerCase();
+      if (q.length < 2) { out.innerHTML = '<p class="form-note">Type at least two letters.</p>'; return; }
+      out.innerHTML = '<p class="form-note">Searching…</p>';
+      let rows = [];
+      try {
+        const res = await fetch('/.netlify/functions/results');
+        const j = await res.json();
+        rows = (j && j.rows) || [];
+      } catch (e) { rows = []; }
+      if (!rows.length) {
+        try {
+          const regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+          rows = (regs || []).map(function (r) {
+            return { name: r.fullName || '', email: r.email || r.teamContactEmail || '', distance: r.distance || '', bib: r.bib || '', status: '', time: '' };
+          });
+        } catch (e) {}
+      }
+      const hits = rows.filter(function (r) {
+        const blob = [r.name, r.email, r.bib, r.distance].join(' ').toLowerCase();
+        return blob.indexOf(q) >= 0;
+      });
+      if (!hits.length) {
+        out.innerHTML = '<p class="form-note">No match for “' + esc(q) + '”.</p>';
+        return;
+      }
+      let html = '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Name</th><th>Race</th><th>Bib</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+      hits.forEach(function (r) {
+        html += '<tr><td>' + esc(r.name) + '</td><td>' + esc(r.distance) + '</td><td>' + esc(r.bib || '—') + '</td><td>' + esc(r.status || 'entered') + '</td><td>' + esc(r.time || '—') + '</td></tr>';
+      });
+      out.innerHTML = html + '</tbody></table></div><p class="form-note">' + hits.length + ' match(es).</p>';
+    };
+    function bindLookup() {
+      const form = document.getElementById('lookup-form');
+      const go = document.getElementById('lookup-go');
+      const q = document.getElementById('lookup-q');
+      if (form) form.addEventListener('submit', function (e) { e.preventDefault(); window.BT42FindAthlete(); });
+      if (go) go.addEventListener('click', function (e) { e.preventDefault(); window.BT42FindAthlete(); });
+      if (q) q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); window.BT42FindAthlete(); } });
+    }
+    function bindStaffFallback() {
+      const btn = document.getElementById('staff-create-btn');
+      if (!btn || btn.getAttribute('data-bound') === '1') return;
+      btn.setAttribute('data-bound', '1');
+      btn.addEventListener('click', async function () {
+        const username = String((document.getElementById('staff-new-user') || {}).value || '').trim().toLowerCase();
+        const displayName = String((document.getElementById('staff-new-name') || {}).value || '').trim();
+        const password = String((document.getElementById('staff-new-pass') || {}).value || '').trim();
+        if (!username || username.length < 2) { alert('Username required'); return; }
+        if (!password || password.length < 4) { alert('Password at least 4 characters'); return; }
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem('bt42_staff_users') || '[]'); } catch (e) { list = []; }
+        if (!Array.isArray(list)) list = [];
+        if (list.some(function (u) { return String(u.username || '').toLowerCase() === username; })) {
+          alert('Username already exists'); return;
+        }
+        const passwordHash = await sha256(password);
+        list.push({
+          username: username,
+          displayName: displayName,
+          passwordHash: passwordHash,
+          role: 'ops',
+          canPayment: !!(document.getElementById('staff-can-pay') || {}).checked,
+          canBibs: !!(document.getElementById('staff-can-bibs') || {}).checked,
+          canFinish: !!(document.getElementById('staff-can-finish') || {}).checked,
+          canVolunteers: !!(document.getElementById('staff-can-volunteers') || {}).checked,
+          canRequisitions: false,
+          disabled: false,
+          createdAt: new Date().toISOString()
+        });
+        localStorage.setItem('bt42_staff_users', JSON.stringify(list));
+        alert('Created login for "' + username + '". Share the password with them.');
+        const box = document.getElementById('staff-list-fallback');
+        if (box) {
+          box.innerHTML = '<p class="form-note">Accounts on this device: ' + list.map(function (u) { return u.username; }).join(', ') + '</p>';
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+      bindLookup();
+      bindStaffFallback();
+    });
+    bindLookup();
+    bindStaffFallback();
+  })();
+  </script>
 </body>
 </html>
