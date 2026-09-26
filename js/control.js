@@ -1407,8 +1407,14 @@
       }
     });
     const data = await res.json().catch(() => ({}));
+    if (res.status >= 500) {
+      return { ok: false, error: 'HTTP ' + res.status + ' (sync store down — local list kept)' };
+    }
     if (!res.ok || !data.ok) {
       return { ok: false, error: (data && (data.detail || data.error)) || ('HTTP ' + res.status) };
+    }
+    if (data.degraded || !data.state) {
+      return { ok: true, degraded: true, error: data.error || 'degraded' };
     }
     const s = data.state || {};
     // Shared store is source of truth — replace local (do not merge, or deletes never stick)
@@ -1706,7 +1712,9 @@
     { fullName: 'Bosco Kwilonga', aliases: ['bosco kwilonga'], distance: '10', bib: 2087, source: 'chair-start-list-26sep' },
     { fullName: 'Joanne Stewart', aliases: ['joanne stewart'], distance: '5', bib: 3075, source: 'chair-start-list-26sep' },
     { fullName: 'Mwaiwathu Khupe', aliases: ['mwaiwathu khupe'], distance: '5', bib: 3076, source: 'chair-start-list-26sep' },
-    { fullName: 'Chisomo Mcherenje', aliases: ['chisomo mcherenje'], distance: '5', bib: 3077, source: 'chair-start-list-26sep' }
+    { fullName: 'Chisomo Mcherenje', aliases: ['chisomo mcherenje'], distance: '5', bib: 3077, source: 'chair-start-list-26sep' },
+    { fullName: 'Yotamu Phiri', aliases: ['yotamu phiri'], distance: '42.195', bib: 1090, source: 'chair-start-list-26sep' },
+    { fullName: 'Desire Kaduka', aliases: ['desire kaduka'], distance: '42.195', bib: 1091, source: 'chair-start-list-26sep' }
   ];
 
   function namesMatchAthlete(r, spec) {
@@ -1949,8 +1957,17 @@
 
   function wireAssignAllBibs() {
     const btn = $('#btn-assign-all');
-    if (!btn) return;
-    btn.onclick = assignAllMissingBibs;
+    if (btn) btn.onclick = assignAllMissingBibs;
+    const apply = $('#btn-apply-startlist');
+    if (apply) apply.onclick = () => {
+      try {
+        ensureRestoredAthletes();
+        renderParticipants();
+        alert('Late start-list applied on this device (Evance Imran, Mcherenje, Benala, Anwobil, Salapa, Potifala, Abilu, Kwilonga, Stewart, Khupe, Chisomo Mcherenje, Yotamu Phiri 1090, Desire Kaduka 1091). If live sync is 502, Push local when the yellow chip turns green.');
+      } catch (e) {
+        alert('Could not apply start-list: ' + (e.message || e));
+      }
+    };
   }
 
   function renderParticipants() {
@@ -1975,6 +1992,7 @@
       <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
       ${canDownloadStartList() ? '<br><button type="button" class="btn-mini" id="btn-start-list">Download start list (Excel · one sheet per race)</button>' : ''}
       ${canBibs() ? ' <button type="button" class="btn-mini" id="btn-assign-all">Assign all missing bibs</button>' : ''}
+      ${isChair ? ' <button type="button" class="btn-mini" id="btn-apply-startlist">Apply Chair late start-list</button>' : ''}
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
