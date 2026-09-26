@@ -303,11 +303,50 @@
   function saveStaffUsers(list) {
     localStorage.setItem(STAFF_KEY, JSON.stringify(list || []));
   }
+  const STAFF_SEED = [
+    { username: 'nkanyenda', displayName: 'Nkanyenda', canPayment: true, canBibs: true, canFinish: true, canVolunteers: false, canRequisitions: false },
+    { username: 'amsowoya', displayName: 'A. Msowoya', canPayment: true, canBibs: true, canFinish: true, canVolunteers: false, canRequisitions: false },
+    { username: 'gmkandawire', displayName: 'G.M. Kandawire', canPayment: false, canBibs: false, canFinish: false, canVolunteers: true, canRequisitions: false },
+    { username: 'gmkanndawire', displayName: 'G.M. Kandawire', canPayment: false, canBibs: false, canFinish: false, canVolunteers: true, canRequisitions: false }
+  ];
+  const STAFF_SEED_HASH = '23d2e5c3930ee244592833d76acebaa45a159a301147f885bc6c1c176ccafb28';
+  function ensureSeedStaff() {
+    const list = loadStaffUsers();
+    let added = 0;
+    STAFF_SEED.forEach((s) => {
+      if (list.some((u) => String(u.username || '').toLowerCase() === s.username)) return;
+      list.push({
+        username: s.username,
+        displayName: s.displayName,
+        passwordHash: STAFF_SEED_HASH,
+        role: 'ops',
+        canPayment: !!s.canPayment,
+        canBibs: !!s.canBibs,
+        canFinish: !!s.canFinish,
+        canVolunteers: !!s.canVolunteers,
+        canRequisitions: !!s.canRequisitions,
+        disabled: false,
+        seeded: true,
+        createdAt: new Date().toISOString()
+      });
+      added += 1;
+    });
+    if (added) {
+      saveStaffUsers(list);
+      if (typeof getSyncToken === 'function' && getSyncToken()) {
+        livePush({ staffUsers: list }).catch(() => {});
+      }
+    }
+    return list;
+  }
   function canPayment() { return isChair || !!perms.payment; }
   function canBibs() { return isChair || !!perms.bibs; }
   function canFinish() { return isChair || !!perms.finish; }
   function canManageStaff() { return isChair || !!perms.manageStaff; }
-  function canVolunteers() { return isChair || !!perms.volunteers || String(currentUser || '').toLowerCase() === 'gmkanndawire'; }
+  function canVolunteers() {
+    const u = String(currentUser || '').toLowerCase();
+    return isChair || !!perms.volunteers || u === 'gmkanndawire' || u === 'gmkandawire';
+  }
   function canAssignVolunteerRole() {
     return !!(unlocked && (isChair || currentUser));
   }
@@ -508,9 +547,10 @@
     if (!getSyncToken()) setSyncToken(COMMITTEE_PIN);
     try {
       const pulled = await pullSharedState();
-      if (pulled && pulled.state && Array.isArray(pulled.state.staffUsers)) {
+      if (pulled && pulled.state && Array.isArray(pulled.state.staffUsers) && pulled.state.staffUsers.length) {
         saveStaffUsers(pulled.state.staffUsers);
       }
+      try { ensureSeedStaff(); } catch (e) {}
     } catch (e) {
       console.warn('Could not pull staff list before login', e);
     }
@@ -1628,7 +1668,26 @@
       } catch (e) {}
     }
     if ((isChair || canRequisitions()) && Array.isArray(s.approvals)) {
-      try { localStorage.setItem(APPROVALS_KEY, JSON.stringify(s.approvals)); } catch (e) {}
+      try {
+        const localA = loadApprovals();
+        if (!s.approvals.length && localA.length) {
+          /* keep local approvals */
+        } else {
+          const map = new Map();
+          localA.forEach((r) => map.set(String(r.id || r.payee), r));
+          s.approvals.forEach((r) => {
+            const k = String(r.id || r.payee);
+            const prev = map.get(k) || {};
+            map.set(k, Object.assign({}, prev, r, {
+              status: r.status === 'approved' || prev.status === 'approved' ? 'approved' : (r.status || prev.status),
+              approvedOn: r.approvedOn || prev.approvedOn,
+              fileData: r.fileData || prev.fileData,
+              stampedData: r.stampedData || prev.stampedData
+            }));
+          });
+          localStorage.setItem(APPROVALS_KEY, JSON.stringify(Array.from(map.values())));
+        }
+      } catch (e) {}
     }
     if (Array.isArray(s.surveyResponses)) {
       try { localStorage.setItem('bt42_survey_responses', JSON.stringify(s.surveyResponses)); } catch (e) {}
@@ -2120,6 +2179,135 @@
     };
   }
 
+  const RESEND_EMAILS = [
+  'abubakarmkwanda@gmail.com',
+  'alinafe.s.luka@hotmail.com',
+  'allanchirwa3@gmail.com',
+  'ammielmzungu@gmail.com',
+  'andy.kumwenda@gmail.com',
+  'anitatmajawa@gmail.com',
+  'apliyaya@gmail.com',
+  'arabaannobil4@gmail.com',
+  'arijeta1994@hotmail.com',
+  'atupelealick@gmail.com',
+  'bandarodney087@gmail.com',
+  'bchisawo@gmail.com',
+  'bdjambo@gmail.com',
+  'benedicto.munthali@gmail.com',
+  'bkmndolo@gmail.com',
+  'blessedchigwe@gmail.com',
+  'blessingsluwanda4@gmail.com',
+  'blessingsm697@gmail.com',
+  'blessingsmwapasa@gmail.com',
+  'callcentre@natbankmw.com',
+  'charleskchalira@gmail.com',
+  'chidambesarah@gmail.com',
+  'chimwemwe.katola@gmail.com',
+  'chisomokambirinya@gmail.com',
+  'chisomomassah21@gmail.com',
+  'chisomomassah@gmail.com',
+  'chitsekomaggie@gmai.com',
+  'chrismlauzi3@gmail.com',
+  'chrispinepaul32@gmail.com',
+  'cosnatsoko@gmail.com',
+  'ctenthani@gmail.com',
+  'ctenthani@mubas.ac.mw',
+  'dapsonnkhoma@gmail.com',
+  'enyhanja@gmail.com',
+  'eranivela@gmail.com',
+  'ethian2010@gmail.com',
+  'evancemsukwa49@gmail.com',
+  'fareedkawinga@gmail.com',
+  'fmkonde@gmail.com',
+  'francishkalonga@gmail.com',
+  'funnymbabalo@gmail.com',
+  'funnymwanza@yahoo.com',
+  'g.kandulu2@gmail.com',
+  'gilbertnkhoma44@gmail.com',
+  'hamuzankomo@gmail.com',
+  'happyngwata628@gmail.com',
+  'hastingsmaponya@gmail.com',
+  'healthconsultafrica5@gmail.com',
+  'iannkhata123@gmail.com',
+  'innokamanga@gmail.com',
+  'jafaliejossam@gmail.com',
+  'jameschimpeni@gmail.com',
+  'jamesdafter8@gmail.com',
+  'jim.kalua@centenarybank.co.mw',
+  'jordannamwendo1992@gmail.com',
+  'josephine_banda@yahoo.com',
+  'jostewartscot@yahoo.co.uk',
+  'kasawalad@gmail.com',
+  'kcrtsamba@gmail.com',
+  'keshowbiz@gmail.com',
+  'lomandhlozi@gmail.com',
+  'mandinatendai6@gmail.com',
+  'maundalamussa@gmail.com',
+  'mbalechindikani@gmail.com',
+  'michaelgwaza@gmail.com',
+  'mikokhuoge@gmail.com',
+  'missjoanneliddle@yahoo.com',
+  'mlonyenichisi@gmail.com',
+  'mnyaliranellie@gmail.com',
+  'moffatkalindo7@gmail.com',
+  'mofolovictor02@gmail.com',
+  'msowoyaardron@gmail.com',
+  'mulekaprincess@gmail.com',
+  'mustaphernicks00@gmail.com',
+  'mwai02.khupe@gmail.com',
+  'mzeemakawa@gmail.com',
+  'na2yoon@gmail.com',
+  'nafendaferankhande@gmail.com',
+  'nigel.todd@chibukumw.com',
+  'nyirendamisheck630@gmail.com',
+  'obriensibande@gmail.com',
+  'omaramin.7102@gmail.com',
+  'onexkabala@gmail.com',
+  'owaispasta0@gmail.com',
+  'owenmsyali@gmail.com',
+  'peterchiwaya92@gmail.com',
+  'phirid@ka.ac.mw',
+  'piwayo@gmail.com',
+  'rebeccakwadakwatha@gmail.com',
+  'richiemc007@gmail.com',
+  'sarah.schaller1603@web.de',
+  'sbhonyonyomw1@gmail.com',
+  'shalomjere7@gmail.com',
+  'shemmalongo@gmail.com',
+  'shuckranmaundala@gmail.com',
+  'sibrahim@mlw.mw',
+  'silje_sb@hotmail.com',
+  'sufiad@gmail.com',
+  'suhaibrash03@gmail.com',
+  'sungananinamakonje089@gmail.com',
+  'theodora.khofi@gmail.com',
+  'tithokozec@gmail.com',
+  'tiyamikekampala8@gmail.com',
+  'tiyankhoma30@gmail.com',
+  'tsanzohiwa@gmail.com',
+  'vestryrunners@gmail.com',
+  'vincentkanyemba04@gmail.com',
+  'yasminkazembe1@gmeil.com',
+  'zikunkhatah@gmail.com',
+  'zionedaudi@gmail.com'
+];
+  const RESEND_NAME_EMAIL = {
+    'nigel todd': 'nigel.todd@chibukumw.com',
+    'anita majawa': 'anitatmajawa@gmail.com',
+    'ethian harneck': 'ethian2010@gmail.com',
+    'joanne stewart': 'jostewartscot@yahoo.co.uk',
+    'mwaiwathu khupe': 'mwai02.khupe@gmail.com',
+    'akaba anwobil': 'arabaannobil4@gmail.com',
+    'mussa maundala': 'maundalamussa@gmail.com',
+    'maggie chitseko': 'chitsekomaggie@gmai.com',
+    'yamikani khuoge': 'mikokhuoge@gmail.com',
+    'princess muleka': 'mulekaprincess@gmail.com',
+    'chisomo massah': 'chisomomassah21@gmail.com',
+    'andy kumwenda': 'andy.kumwenda@gmail.com',
+    'evance imran': 'evancemsukwa49@gmail.com',
+    'evance msukwa': 'evancemsukwa49@gmail.com',
+    'shuckran maundala': 'shuckranmaundala@gmail.com'
+  };
   function normName(s) {
     return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
@@ -2140,13 +2328,27 @@
       const e = String(row.email || '').trim();
       if (n && e.indexOf('@') > 0) byName[n] = e;
     });
+    function matchResend(name) {
+      const n = normName(name);
+      if (RESEND_NAME_EMAIL[n]) return RESEND_NAME_EMAIL[n];
+      const bits = n.split(' ').filter((w) => w.length > 2);
+      if (!bits.length) return '';
+      let hit = '';
+      RESEND_EMAILS.forEach((em) => {
+        const local = em.split('@')[0].replace(/[0-9._-]+/g, ' ');
+        const ok = bits.filter((w) => local.indexOf(w) >= 0 || em.indexOf(w) >= 0);
+        if (ok.length >= Math.min(2, bits.length)) hit = em;
+        else if (!hit && bits.length === 1 && local.indexOf(bits[0]) >= 0) hit = em;
+      });
+      return hit;
+    }
     let n = 0;
     list.forEach((r) => {
       if (r.email && String(r.email).indexOf('@') > 0) return;
-      const e = byName[normName(r.fullName)] || byName[normName(r.previousFullName)];
+      const e = byName[normName(r.fullName)] || byName[normName(r.previousFullName)] || matchResend(r.fullName) || matchResend(r.previousFullName);
       if (e) {
         r.email = e;
-        r.emailRecoveredFrom = 'forms-or-store';
+        r.emailRecoveredFrom = 'resend-export';
         n += 1;
       }
     });
@@ -3594,6 +3796,7 @@
 
 
   function renderStaffAdmin() {
+    try { ensureSeedStaff(); } catch (e) {}
     const box = $('#staff-admin');
     if (!box) return;
     if (!canManageStaff()) {
