@@ -967,8 +967,23 @@
       const q = String((document.getElementById('lookup-q') || {}).value || '').trim().toLowerCase();
       if (q.length < 2) { out.innerHTML = '<p class="form-note">Type at least two letters.</p>'; return; }
       out.innerHTML = '<p class="form-note">Searching…</p>';
+      function localRows() {
+        try {
+          const regs = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+          const bibs = JSON.parse(localStorage.getItem('bt42_bib_numbers') || '{}');
+          const fins = JSON.parse(localStorage.getItem('bt42_finish_status') || '{}');
+          return (regs || []).map((r, i) => {
+            const phone = String(r.phone || r.teamContactPhone || '').replace(/\s+/g, '');
+            const name = String(r.fullName || '').trim().toLowerCase();
+            const k = (phone && name) ? phone + '|' + name : (phone || name || ('idx-' + i));
+            const bib = (bibs[k] && bibs[k].number) || '';
+            const fin = fins[k] || {};
+            return { name: r.fullName || '', distance: r.distance || '', bib: String(bib || ''), status: fin.status || '', time: fin.time || '', email: r.email || '' };
+          });
+        } catch (e) { return []; }
+      }
       fetch('/.netlify/functions/results').then((r) => r.json()).then((j) => {
-        const rows = (j && j.rows) || [];
+        const rows = ((j && j.rows) && j.rows.length) ? j.rows : localRows();
         const hits = rows.filter((r) => String(r.name || '').toLowerCase().indexOf(q) >= 0 || String(r.bib || '') === q);
         if (!hits.length) {
           out.innerHTML = '<p class="form-note">No match yet. Bibs and times appear after assignment and finish.</p>';
@@ -979,7 +994,16 @@
           html += '<tr><td>' + String(r.name || '').replace(/</g, '') + '</td><td>' + String(r.distance || '') + '</td><td>' + (r.bib || '—') + '</td><td>' + (r.status || '') + '</td><td>' + (r.time || '—') + '</td></tr>';
         });
         out.innerHTML = html + '</tbody></table></div>';
-      }).catch(() => { out.innerHTML = '<p class="form-note">Lookup will work when results are online.</p>'; });
+      }).catch(() => {
+        const rows = localRows();
+        const hits = rows.filter((r) => String(r.name || '').toLowerCase().indexOf(q) >= 0 || String(r.bib || '') === q);
+        if (!hits.length) { out.innerHTML = '<p class="form-note">No match on this device. Open Control Room Participants if the live store is down.</p>'; return; }
+        let html = '<div class="table-wrap"><table class="ctrl-table"><thead><tr><th>Name</th><th>Race</th><th>Bib</th><th>Status</th><th>Time</th></tr></thead><tbody>';
+        hits.forEach((r) => {
+          html += '<tr><td>' + String(r.name || '').replace(/</g, '') + '</td><td>' + String(r.distance || '') + '</td><td>' + (r.bib || '—') + '</td><td>' + (r.status || '') + '</td><td>' + (r.time || '—') + '</td></tr>';
+        });
+        out.innerHTML = html + '</tbody></table></div>';
+      });
     }
     form.onsubmit = function (e) { e.preventDefault(); run(); };
     const go = document.getElementById('lookup-go');
