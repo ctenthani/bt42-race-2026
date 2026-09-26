@@ -314,7 +314,16 @@
     const list = loadStaffUsers();
     let added = 0;
     STAFF_SEED.forEach((s) => {
-      if (list.some((u) => String(u.username || '').toLowerCase() === s.username)) return;
+      const existing = list.find((u) => String(u.username || '').toLowerCase() === s.username);
+      if (existing) {
+        if (!existing.see) {
+          existing.see = s.canVolunteers
+            ? { dash: true, participants: false, volunteers: true, results: false, survey: false, meetings: false, budget: false, runsheet: false, roles: false, notes: false }
+            : { dash: true, participants: true, volunteers: false, results: true, survey: false, meetings: false, budget: false, runsheet: false, roles: false, notes: false };
+          added += 1;
+        }
+        return;
+      }
       list.push({
         username: s.username,
         displayName: s.displayName,
@@ -327,6 +336,9 @@
         canRequisitions: !!s.canRequisitions,
         disabled: false,
         seeded: true,
+        see: s.canVolunteers
+          ? { dash: true, participants: false, volunteers: true, results: false, survey: false, meetings: false, budget: false, runsheet: false, roles: false, notes: false }
+          : { dash: true, participants: true, volunteers: false, results: true, survey: false, meetings: false, budget: false, runsheet: false, roles: false, notes: false },
         createdAt: new Date().toISOString()
       });
       added += 1;
@@ -417,7 +429,7 @@
     if (badge) {
       let label = 'Committee (view)';
       let cls = 'role-badge committee';
-      if (isChair) { label = 'Chair' + (currentUser ? ' · ' + currentUser : ''); cls = 'role-badge chair'; }
+      if (isChair) { label = 'Chair'; cls = 'role-badge chair'; }
       else if (canPayment() || canBibs() || canFinish() || canVolunteers()) {
         const bits = [];
         if (canPayment()) bits.push('pay');
@@ -529,7 +541,7 @@
     }
 
     // Bootstrap: username optional if using legacy single-field PINs
-    if ((!username || username === 'chair') && password.toLowerCase() === CHAIR_PIN) {
+    if (password.toLowerCase() === CHAIR_PIN || username === 'chair' && password.toLowerCase() === CHAIR_PIN) {
       unlock('chair', 'chair');
       return;
     }
@@ -2306,8 +2318,32 @@
     'andy kumwenda': 'andy.kumwenda@gmail.com',
     'evance imran': 'evancemsukwa49@gmail.com',
     'evance msukwa': 'evancemsukwa49@gmail.com',
-    'shuckran maundala': 'shuckranmaundala@gmail.com'
+    'shuckran maundala': 'shuckranmaundala@gmail.com',
+    'ardron msowoya': 'msowoyaardron@gmail.com',
+    'msowoya ardron': 'msowoyaardron@gmail.com',
+    'mzee makawa': 'mzeemakawa@gmail.com',
+    'makawa mzee': 'mzeemakawa@gmail.com'
   };
+  const TEAM_INBOXES = [
+    { email: 'msowoyaardron@gmail.com', keys: ['msowoya', 'ardron'] },
+    { email: 'mzeemakawa@gmail.com', keys: ['makawa', 'mzee', 'mulanje athletics', 'tauka'] },
+    { email: 'chisomomassah21@gmail.com', keys: ['massah'] },
+    { email: 'chimwemwe.katola@gmail.com', keys: ['nsaru'] },
+    { email: 'vestryrunners@gmail.com', keys: ['vestry'] },
+    { email: 'chidambesarah@gmail.com', keys: ['cbc'] },
+    { email: 'dapsonnkhoma@gmail.com', keys: ['unify'] },
+    { email: 'funnymbabalo@gmail.com', keys: ['malawi academy'] },
+    { email: 'josephine_banda@yahoo.com', keys: ['jo and kp'] },
+    { email: 'mikokhuoge@gmail.com', keys: ['zamara pensions'] },
+    { email: 'phirid@ka.ac.mw', keys: ['wings of hope'] }
+  ];
+  function teamInboxForRow(r) {
+    const blob = [r.fullName, r.previousFullName, r.teamName, r.club, r.teamContactEmail, r.email].join(' ').toLowerCase();
+    for (let i = 0; i < TEAM_INBOXES.length; i++) {
+      if (TEAM_INBOXES[i].keys.some((k) => blob.indexOf(k) >= 0)) return TEAM_INBOXES[i].email;
+    }
+    return '';
+  }
   function normName(s) {
     return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
   }
@@ -2344,10 +2380,13 @@
     }
     let n = 0;
     list.forEach((r) => {
+      const teamE = teamInboxForRow(r);
+      if (teamE && !r.teamContactEmail) r.teamContactEmail = teamE;
       if (r.email && String(r.email).indexOf('@') > 0) return;
-      const e = byName[normName(r.fullName)] || byName[normName(r.previousFullName)] || matchResend(r.fullName) || matchResend(r.previousFullName);
+      const e = byName[normName(r.fullName)] || byName[normName(r.previousFullName)] || matchResend(r.fullName) || matchResend(r.previousFullName) || teamE;
       if (e) {
         r.email = e;
+        r.teamContactEmail = r.teamContactEmail || teamE || e;
         r.emailRecoveredFrom = 'resend-export';
         n += 1;
       }
@@ -2434,7 +2473,7 @@
     html += `<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.75rem;margin:0.75rem 0">
         <p style="font-size:0.85rem;margin:0"><strong>${rows.length}</strong> shared entries · <strong>${verified}</strong> paid · <strong>${finished}</strong> finished</p>
         <button type="button" class="btn-mini" id="sync-local-shared">Upload this phone's local entries to shared list</button>
-        ${isChair ? '<button type="button" class="btn-mini" id="clear-all-entries" style="border-color:#C0392B;color:#C0392B">Clear all entries</button>' : ''}
+        ${isChair ? '<button type="button" class="btn-mini" id="clear-all-entries" style="border-color:#C0392B;color:#C0392B">Clear all entries (Chair only)</button>' : ''}
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:0.4rem;margin:0 0 0.75rem">
         ${chip('all', 'All (' + rows.length + ')')}
@@ -2514,7 +2553,7 @@
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
           <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
-        <td class="actions-cell"><button type="button" class="btn-mini entry-delete" data-i="${i}" style="border-color:#C0392B;color:#C0392B">Delete</button></td>
+        <td class="actions-cell">${isChair ? '<button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
       </tr>`;
     });
     html += '</tbody></table></div>';
@@ -2750,7 +2789,7 @@
 
     container.querySelectorAll('.entry-delete').forEach(btn => {
       btn.onclick = async () => {
-        if (!(isChair || canPayment() || canBibs())) { alert('Sign in as Chair or Ops to delete an entry.'); return; }
+        if (!isChair) { alert('Only the Chair can delete an athlete.'); return; }
         const i = Number(btn.dataset.i);
         let list = [];
         try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
@@ -3387,7 +3426,8 @@
   }
 
   function queueCompletionEmail(r, finishTime) {
-    const to = (r.email || r.teamContactEmail || '').trim();
+    const to = (athleteEmail(r) || r.email || r.teamContactEmail || teamInboxForRow(r) || '').trim();
+    const teamCopy = (r.teamContactEmail || teamInboxForRow(r) || '').trim();
     if (!to) {
       console.info('No email on file — completion certificate not emailed for', r.fullName);
       return;
@@ -3448,6 +3488,21 @@
       }).then((j) => {
         if (j && j.ok) console.log('Completion certificate emailed to', to);
         else console.warn('Completion certificate email result', j);
+        if (teamCopy && teamCopy.toLowerCase() !== to.toLowerCase()) {
+          sendAthleteEmail({
+            type: 'completion',
+            to: teamCopy,
+            fullName: name,
+            distance: dist,
+            finishTime: finishTime || '',
+            email: teamCopy,
+            subject: 'Certificate of Completion — ' + name + ' — BT42.195km Race 2026',
+            raceDate: '27 September 2026',
+            isCompletion: true,
+            signatures: sigsC,
+            pdfBase64: pdfBase64
+          }).then(() => console.log('Team copy of completion cert to', teamCopy));
+        }
       });
     }).catch((e) => console.warn('Completion cert signatures', e));
   }

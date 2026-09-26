@@ -954,7 +954,11 @@ img { max-width: 100%; display: block; }
   margin-bottom: 1rem;
   border-bottom: 1px solid var(--border);
   -webkit-overflow-scrolling: touch;
+  position: relative;
+  z-index: 6;
+  pointer-events: auto;
 }
+.ctrl-tab { pointer-events: auto; cursor: pointer; }
 .ctrl-tab {
   flex-shrink: 0;
   padding: 0.5rem 0.9rem;
