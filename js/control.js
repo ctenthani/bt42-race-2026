@@ -1560,6 +1560,14 @@
       local.forEach((r) => {
         const k = keyOf(r);
         if (!map.has(k)) map.set(k, r);
+        else {
+          const cur = map.get(k) || {};
+          map.set(k, Object.assign({}, r, cur, {
+            email: cur.email || r.email || r.teamContactEmail || '',
+            teamContactEmail: cur.teamContactEmail || r.teamContactEmail || r.email || '',
+            phone: cur.phone || r.phone || r.teamContactPhone || ''
+          }));
+        }
       });
       const merged = Array.from(map.values());
       try {
@@ -2093,6 +2101,14 @@
     const btn = $('#btn-assign-all');
     if (btn) btn.onclick = assignAllMissingBibs;
     const apply = $('#btn-apply-startlist');
+    const recover = $('#btn-recover-emails');
+    if (recover) recover.onclick = async () => {
+      recover.disabled = true;
+      recover.textContent = 'Recovering…';
+      const n = await hydrateEmailsFromServer();
+      renderParticipants();
+      alert(n ? ('Recovered ' + n + ' email(s) from Forms / live store. Check the name cells.') : 'No extra emails found on Forms for names that are missing an address. Use Correct email for those rows.');
+    };
     if (apply) apply.onclick = () => {
       try {
         ensureRestoredAthletes();
@@ -2104,11 +2120,52 @@
     };
   }
 
+  function normName(s) {
+    return String(s || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+  async function hydrateEmailsFromServer() {
+    let remote = [];
+    try {
+      const res = await fetch('/.netlify/functions/results');
+      const j = await res.json();
+      remote = (j && j.rows) || [];
+    } catch (e) {
+      remote = [];
+    }
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+    const byName = {};
+    remote.forEach((row) => {
+      const n = normName(row.name || row.fullName);
+      const e = String(row.email || '').trim();
+      if (n && e.indexOf('@') > 0) byName[n] = e;
+    });
+    let n = 0;
+    list.forEach((r) => {
+      if (r.email && String(r.email).indexOf('@') > 0) return;
+      const e = byName[normName(r.fullName)] || byName[normName(r.previousFullName)];
+      if (e) {
+        r.email = e;
+        r.emailRecoveredFrom = 'forms-or-store';
+        n += 1;
+      }
+    });
+    if (n) {
+      try { localStorage.setItem('bt42_registrations', JSON.stringify(list)); } catch (e) {}
+      if (getSyncToken()) livePush({ registrations: list, replaceRegistrations: false }).catch(() => {});
+    }
+    return n;
+  }
   function renderParticipants() {
     const container = $('#ctrl-participants');
     if (!container) return;
     let rows = [];
     try { ensureRestoredAthletes(); } catch (e) {}
+    try { backfillAthleteEmails(); } catch (e) {}
+    if (!window.__bt42EmailHydrate) {
+      window.__bt42EmailHydrate = true;
+      hydrateEmailsFromServer().then((n) => { if (n) renderParticipants(); }).catch(() => {});
+    }
     try {
       rows = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
     } catch { rows = []; }
@@ -2126,7 +2183,7 @@
       <br>Pay to National Bank of Malawi account <code>782637</code> (reference: name + mobile).
       ${canDownloadStartList() ? '<br><button type="button" class="btn-mini" id="btn-start-list">Download start list (Excel · one sheet per race)</button>' : ''}
       ${canBibs() ? ' <button type="button" class="btn-mini" id="btn-assign-all">Assign all missing bibs</button>' : ''}
-      ${isChair ? ' <button type="button" class="btn-mini" id="btn-apply-startlist">Apply Chair late start-list</button>' : ''}
+      ${isChair ? ' <button type="button" class="btn-mini" id="btn-apply-startlist">Apply Chair late start-list</button> <button type="button" class="btn-mini" id="btn-recover-emails">Recover emails from Forms</button>' : ''}
       ${sigReady ? '<br><span class="pay-status pay-ok">E-signatures loaded</span>' : (isChair ? '<br><span class="pay-status pay-wait">Upload e-signatures below before issuing certificates</span>' : '')}
     </div>
 
@@ -2220,7 +2277,7 @@
       const finTitle = !canFinish() ? 'Need Ops/Chair login' : (!hasBib ? 'Assign bib first' : '');
       html += `<tr>
         <td>${i + 1}</td>
-        <td><strong>${escapeHtml(r.fullName || '')}</strong>${r.email ? '<br><small>' + escapeHtml(r.email) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button>${isChair ? ' <label class="form-note">Edit one field <select class="entry-field" data-i="'+i+'"><option value="">Choose…</option><option value="fullName">Name</option><option value="phone">Phone</option><option value="email">Email</option><option value="distance">Race</option><option value="dob">Date of birth</option><option value="gender">Gender</option><option value="club">Club / team</option><option value="emergencyName">Emergency name</option><option value="emergencyPhone">Emergency phone</option><option value="paymentRef">Payment reference</option></select></label> <button type="button" class="btn-mini entry-one" data-i="'+i+'">Save field</button>' : ''}</td>
+        <td><strong>${escapeHtml(r.fullName || '')}</strong>${athleteEmail(r) ? '<br><small>' + escapeHtml(athleteEmail(r)) + '</small>' : '<br><small class="form-note">No email</small>'}<br><button type="button" class="btn-mini entry-edit" data-i="${i}">Correct name</button> <button type="button" class="btn-mini entry-email" data-i="${i}">Correct email</button>${isChair ? ' <label class="form-note">Edit one field <select class="entry-field" data-i="'+i+'"><option value="">Choose…</option><option value="fullName">Name</option><option value="phone">Phone</option><option value="email">Email</option><option value="distance">Race</option><option value="dob">Date of birth</option><option value="gender">Gender</option><option value="club">Club / team</option><option value="emergencyName">Emergency name</option><option value="emergencyPhone">Emergency phone</option><option value="paymentRef">Payment reference</option></select></label> <button type="button" class="btn-mini entry-one" data-i="'+i+'">Save field</button>' : ''}</td>
         <td>${escapeHtml(r.phone || '')}</td>
         <td>${escapeHtml(distanceLabel(r.distance))}</td>
         <td><small>${escapeHtml(entryStamp(r))}</small></td>
@@ -2805,10 +2862,11 @@
         const r = rows[Number(btn.dataset.i)];
         // Auto-open completion certificate and queue outbound email hook
         if (r) {
+          if (!r.email) r.email = athleteEmail(r);
           openCertificate(r, 'completion');
           queueCompletionEmail(r, time);
-          if (!(r.email || '').trim()) {
-            alert('Marked finished. No email on file for this athlete — certificate was not emailed. Print/save from the certificate window.');
+          if (!athleteEmail(r)) {
+            alert('Marked finished. No email on file for this athlete — certificate was not emailed. Use Correct email, then tap Completion cert.');
           }
         }
         renderParticipants();
@@ -2829,10 +2887,11 @@
         if (getSyncToken()) livePush({ finishes: map }).catch(() => {});
         const r = rows[Number(btn.dataset.i)];
         if (r) {
+          if (!r.email) r.email = athleteEmail(r);
           openCertificate(r, 'participation');
           queueParticipationEmail(r, 'Did Not Finish (DNF)');
-          if (!(r.email || '').trim()) {
-            alert('Marked DNF. No email on file — participation certificate was not emailed.');
+          if (!athleteEmail(r)) {
+            alert('Marked DNF. No email on file — use Correct email, then Participation cert.');
           }
         }
         renderParticipants();
@@ -2967,6 +3026,44 @@
     return [row];
   }
 
+  function athleteEmail(row) {
+    if (!row) return '';
+    const direct = String(row.email || row.teamContactEmail || '').trim();
+    if (direct && direct.indexOf('@') > 0) return direct;
+    try {
+      const list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]');
+      const team = String(row.teamName || row.club || '').trim().toLowerCase();
+      if (team) {
+        const hit = list.find((r) => String(r.teamName || r.club || '').trim().toLowerCase() === team && String(r.email || r.teamContactEmail || '').indexOf('@') > 0);
+        if (hit) return String(hit.email || hit.teamContactEmail).trim();
+      }
+    } catch (e) {}
+    return '';
+  }
+  function backfillAthleteEmails() {
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
+    let n = 0;
+    const byTeam = {};
+    list.forEach((r) => {
+      const t = String(r.teamName || '').trim().toLowerCase();
+      const e = String(r.email || r.teamContactEmail || '').trim();
+      if (t && e.indexOf('@') > 0) byTeam[t] = e;
+    });
+    list.forEach((r) => {
+      if (r.email && String(r.email).indexOf('@') > 0) return;
+      const t = String(r.teamName || '').trim().toLowerCase();
+      const fallback = r.teamContactEmail || byTeam[t] || '';
+      if (fallback && String(fallback).indexOf('@') > 0) {
+        r.email = String(fallback).trim();
+        n += 1;
+      }
+    });
+    if (n) {
+      try { localStorage.setItem('bt42_registrations', JSON.stringify(list)); } catch (e) {}
+    }
+    return n;
+  }
   function teamContactEmail(row, mates) {
     const list = mates && mates.length ? mates : (row ? [row] : []);
     for (const m of list) {

@@ -257,7 +257,7 @@ async function fetchNetlifyFormSubmissions() {
       source: 'netlify-forms',
       formSubmissionId: s.id || s.number || null
     };
-  }).filter((r) => r.fullName && r.phone);
+  }).filter((r) => r.fullName);
 }
 
 function mergeRegistrationLists(primary, secondary) {
