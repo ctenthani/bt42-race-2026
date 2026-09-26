@@ -1690,7 +1690,23 @@
       email: '',
       phone: '',
       source: 'netlify-forms-restore'
-    }
+    },
+    {
+      fullName: 'Evance Imran',
+      aliases: ['dennis jones phiri', 'denis jones phiri', 'evance imran'],
+      distance: '42.195',
+      source: 'chair-start-list-26sep'
+    },
+    { fullName: 'Ndacha Happy Mcherenje', aliases: ['ndacha happy mcherenje', 'happy mcherenje'], distance: '42.195', bib: 1087, source: 'chair-start-list-26sep' },
+    { fullName: 'Goodson Benala', aliases: ['goodson benala'], distance: '42.195', bib: 1089, source: 'chair-start-list-26sep' },
+    { fullName: 'Akaba Anwobil', aliases: ['akaba anwobil'], distance: '10', bib: 2029, source: 'chair-start-list-26sep' },
+    { fullName: 'Chifundo Salapa', aliases: ['chifundo salapa'], distance: '10', bib: 2102, source: 'chair-start-list-26sep' },
+    { fullName: 'Smart Potifala', aliases: ['smart potifala'], distance: '10', bib: 2101, source: 'chair-start-list-26sep' },
+    { fullName: 'Musaa Abilu', aliases: ['musaa abilu', 'musa abilu'], distance: '10', bib: 2085, source: 'chair-start-list-26sep' },
+    { fullName: 'Bosco Kwilonga', aliases: ['bosco kwilonga'], distance: '10', bib: 2087, source: 'chair-start-list-26sep' },
+    { fullName: 'Joanne Stewart', aliases: ['joanne stewart'], distance: '5', bib: 3075, source: 'chair-start-list-26sep' },
+    { fullName: 'Mwaiwathu Khupe', aliases: ['mwaiwathu khupe'], distance: '5', bib: 3076, source: 'chair-start-list-26sep' },
+    { fullName: 'Chisomo Mcherenje', aliases: ['chisomo mcherenje'], distance: '5', bib: 3077, source: 'chair-start-list-26sep' }
   ];
 
   function namesMatchAthlete(r, spec) {
@@ -1703,6 +1719,7 @@
     let list = [];
     try { list = JSON.parse(localStorage.getItem('bt42_registrations') || '[]'); } catch { list = []; }
     const pays = loadPayments();
+    const bibs = loadBibs();
     let changed = false;
     RESTORED_ATHLETES.forEach((spec) => {
       let idx = list.findIndex((r) => namesMatchAthlete(r, spec));
@@ -1735,15 +1752,25 @@
           changed = true;
         }
       });
+      if (spec.bib) {
+        const key = participantKey(r, idx);
+        const cur = bibs[key];
+        if (!cur || Number(cur.number) !== Number(spec.bib)) {
+          bibs[key] = { number: Number(spec.bib), distance: spec.distance, assignedAt: new Date().toISOString(), assignedBy: 'chair-start-list' };
+          changed = true;
+        }
+      }
     });
     if (changed) {
       localStorage.setItem('bt42_registrations', JSON.stringify(list));
       savePayments(pays);
+      saveBibs(bibs);
       if (getSyncToken()) {
         livePush({
           registrations: list,
           replaceRegistrations: false,
-          payments: pays
+          payments: pays,
+          bibs: bibs
         }).catch(() => {});
       }
     }

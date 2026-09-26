@@ -31,3 +31,6 @@
 [functions]
   directory = "netlify/functions"
   node_bundler = "esbuild"
+
+[functions."oc-sync"]
+  timeout = 26
