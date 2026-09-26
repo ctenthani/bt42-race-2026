@@ -353,7 +353,7 @@ async function writeState(state) {
 function mergeState(current, body, role) {
   const next = Object.assign({}, current);
   if (Array.isArray(body.registrations)) {
-    if (body.replaceRegistrations || body.registrations.length === 0) {
+    if (body.replaceRegistrations === true && body.registrations.length > 0) {
       next.registrations = body.registrations;
     } else {
       const keyOf = (r) =>
