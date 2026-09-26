@@ -353,7 +353,7 @@ async function writeState(state) {
 function mergeState(current, body, role) {
   const next = Object.assign({}, current);
   if (Array.isArray(body.registrations)) {
-    if (body.replaceRegistrations === true && body.registrations.length > 0) {
+    if (body.replaceRegistrations || body.registrations.length === 0) {
       next.registrations = body.registrations;
     } else {
       const keyOf = (r) =>
@@ -529,27 +529,9 @@ exports.handler = async (event) => {
 
   try {
     if (event.httpMethod === 'GET') {
-      let state;
-      let backend = 'none';
-      try {
-        const got = await readState();
-        state = got.state;
-        backend = got.backend;
-      } catch (e) {
-        return json(200, {
-          ok: true,
-          degraded: true,
-          backend: 'none',
-          error: e && e.message ? e.message : String(e),
-          state: null
-        });
-      }
+      const { state, backend } = await readState();
       let formsCount = 0;
       let formsError = null;
-      const skipForms = /skipForms=1/.test(String(event.rawQuery || event.queryStringParameters && event.queryStringParameters.skipForms || '1')) || true;
-      if (skipForms) {
-        return json(200, { ok: true, backend, formsMerged: 0, formsSkipped: true, state });
-      }
       try {
         const fromForms = await fetchNetlifyFormSubmissions();
         formsCount = fromForms.length;
