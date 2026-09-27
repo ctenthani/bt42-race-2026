@@ -36,7 +36,6 @@
           <a href="#volunteers" data-page="volunteers">Volunteers</a>
           <a href="#sponsors" data-page="sponsors">Sponsors</a>
           <a href="#results" data-page="results">Results</a>
-          <a href="#report" data-page="report">Report</a>
           <a href="#lookup" data-page="lookup">Find athlete</a>
           <a href="#survey" data-page="survey">Survey</a>
           <a href="#programme" data-page="programme">Programme</a>
@@ -795,7 +794,7 @@
           <!-- Control Room content -->
           <div id="control-room" class="control-room hidden">
             <div class="ctrl-toolbar">
-              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926u</span>
+              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926v</span>
               <button type="button" id="ctrl-logout" class="btn-logout">Log out</button>
             </div>
             <div class="ctrl-tabs">
@@ -803,6 +802,7 @@
               <button class="ctrl-tab" data-panel="deadlines">Deadlines</button>
               <button class="ctrl-tab" data-panel="chair">Chair notes</button>
               <button class="ctrl-tab" data-panel="approvals">Approvals</button>
+              <button class="ctrl-tab" data-panel="report">Live report</button>
               <button class="ctrl-tab" data-panel="survey">Survey</button>
               <button class="ctrl-tab" data-panel="results">Live results</button>
               <button class="ctrl-tab" data-panel="staff">Staff logins</button>
@@ -841,8 +841,13 @@
             </div>
             <div id="panel-approvals" class="ctrl-panel">
               <h3 class="ctrl-section-title">Chair approvals — cash requisitions</h3>
-              <p class="form-note">Private to the Chair. Record each requisition you approve. Seeded with the 19 September 2026 batch from Marketing.</p>
+              <p class="form-note">Chair approves, returns or rejects. GS uploads when given the requisitions tick.</p>
               <div id="ctrl-approvals"></div>
+            </div>
+            <div id="panel-report" class="ctrl-panel">
+              <h3 class="ctrl-section-title">Live / final race report</h3>
+              <p class="form-note">Chair only. Refreshes from the live store. Locks as final after 4 October 2026 23:59 CAT.</p>
+              <div id="report-root"></div>
             </div>
             <div id="panel-survey" class="ctrl-panel">
               <h3 class="ctrl-section-title">Race-day feedback — preview and results</h3>
@@ -978,9 +983,9 @@
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="js/control-data.js?v=20260925c"></script>
   <script src="js/start-list-restore.js?v=20260926e"></script>
-  <script src="js/control.20260926t.js"></script>
+  <script src="js/control.20260926v.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="js/app.20260926u.js"></script>
+  <script src="js/app.20260926v.js"></script>
   <script>
   (function () {
     function esc(s) { return String(s || '').replace(/[&<>]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]); }); }
