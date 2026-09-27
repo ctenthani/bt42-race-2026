@@ -227,7 +227,7 @@ async function buildCertificatePdf(opts) {
   const col = [70, 321, 572];
   const colW = 200;
   const peopleFull = [
-    ['Jim Kalua', 'Chairman of the Council', 'Malawi National Council of Sports', 'kalua'],
+    ['Escort Chinula', 'MNCS Board Member', 'Malawi National Council of Sports', 'kalua'],
     ['Kondwani Chamwala', 'President of Athletics Malawi', 'Athletics Malawi', 'chamwala'],
     ['Chifundo Tenthani', 'Chair, Organising Committee', 'BT42.195km Race 2026', 'tenthani']
   ];
@@ -380,7 +380,7 @@ async function buildVolunteerAppreciationPdf(opts) {
   const people = [
     { key: 'tenthani', name: 'Chifundo Tenthani', title: 'Chairperson — BT42.195km Race' },
     { key: 'chamwala', name: 'Kondwani Chamwala', title: 'President — Athletics Malawi' },
-    { key: 'kalua', name: 'Jim Kalua', title: 'Chairman — MNCS' }
+    { key: 'kalua', name: 'Escort Chinula', title: 'MNCS Board Member' }
   ];
   const colW = 175;
   const startX = 150;

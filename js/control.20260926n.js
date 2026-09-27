@@ -1328,37 +1328,8 @@
   }
 
   function loadSigs() {
-    let map = {};
-    try { map = normalizeSigMap(JSON.parse(localStorage.getItem(SIGS_KEY) || '{}')); }
-    catch { map = normalizeSigMap({}); }
-    if (!map.kalua) map.kalua = 'assets/sig-chinula.jpg';
-    return map;
-  }
-
-  function seedChinulaSignature() {
-    try {
-      if (sessionStorage.getItem('bt42_chinula_p') === '1') return;
-    } catch (e) {}
-    const img = new Image();
-    img.onload = function () {
-      try {
-        const c = document.createElement('canvas');
-        c.width = img.width || 640;
-        c.height = img.height || 360;
-        const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, c.width, c.height);
-        ctx.drawImage(img, 0, 0);
-        const data = c.toDataURL('image/jpeg', 0.82);
-        const map = loadSigs();
-        map.kalua = data;
-        localStorage.setItem(SIGS_KEY, JSON.stringify(map));
-        try { sessionStorage.setItem('bt42_chinula_p', '1'); } catch (e2) {}
-        if (getSyncToken() && isChair) livePush({ signatures: map }).catch(function () {});
-        renderSigPreviews();
-      } catch (e) {}
-    };
-    img.src = 'assets/sig-chinula.jpg';
+    try { return normalizeSigMap(JSON.parse(localStorage.getItem(SIGS_KEY) || '{}')); }
+    catch { return normalizeSigMap({}); }
   }
 
   function saveSigs(map) {
@@ -5780,7 +5751,6 @@ w.document.close();
     try { if (canManageStaff()) renderStaffAdmin(); } catch (e) {}
     try { if (isChair) renderSiteContentAdmin(); } catch (e) {}
     try { applySiteContentToPublic(); } catch (e) {}
-    try { seedChinulaSignature(); } catch (e) {}
     try { initControlTabs(); } catch (e) {}
     try { applyRoleUI(); } catch (e) {}
     document.addEventListener('visibilitychange', () => {

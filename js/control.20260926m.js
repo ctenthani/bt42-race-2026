@@ -1328,37 +1328,8 @@
   }
 
   function loadSigs() {
-    let map = {};
-    try { map = normalizeSigMap(JSON.parse(localStorage.getItem(SIGS_KEY) || '{}')); }
-    catch { map = normalizeSigMap({}); }
-    if (!map.kalua) map.kalua = 'assets/sig-chinula.jpg';
-    return map;
-  }
-
-  function seedChinulaSignature() {
-    try {
-      if (sessionStorage.getItem('bt42_chinula_p') === '1') return;
-    } catch (e) {}
-    const img = new Image();
-    img.onload = function () {
-      try {
-        const c = document.createElement('canvas');
-        c.width = img.width || 640;
-        c.height = img.height || 360;
-        const ctx = c.getContext('2d');
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, c.width, c.height);
-        ctx.drawImage(img, 0, 0);
-        const data = c.toDataURL('image/jpeg', 0.82);
-        const map = loadSigs();
-        map.kalua = data;
-        localStorage.setItem(SIGS_KEY, JSON.stringify(map));
-        try { sessionStorage.setItem('bt42_chinula_p', '1'); } catch (e2) {}
-        if (getSyncToken() && isChair) livePush({ signatures: map }).catch(function () {});
-        renderSigPreviews();
-      } catch (e) {}
-    };
-    img.src = 'assets/sig-chinula.jpg';
+    try { return normalizeSigMap(JSON.parse(localStorage.getItem(SIGS_KEY) || '{}')); }
+    catch { return normalizeSigMap({}); }
   }
 
   function saveSigs(map) {
@@ -1471,7 +1442,7 @@
     }
     const sigs = opts.signatures || {};
     const people = [
-      { k: 'kalua', n: 'Escort Chinula', t: 'MNCS Board Member' },
+      { k: 'kalua', n: 'Jim Kalua', t: 'Chairman of the Council' },
       { k: 'chamwala', n: 'Kondwani Chamwala', t: 'President of Athletics Malawi' },
       { k: 'tenthani', n: 'Chifundo Tenthani', t: 'Chair, Organising Committee' }
     ];
@@ -2665,10 +2636,10 @@
 
     ${isChair ? `<div class="sig-upload-box">
       <h4 style="margin:0 0 0.5rem">Electronic signatures (Chair only)</h4>
-      <p class="form-note" style="margin-bottom:0.5rem">Upload PNG/JPG for Chinula, Chamwala and Tenthani. These are embedded on athlete <strong>and volunteer</strong> certificates. After upload you should see “Signature saved and synced.” Use <strong>Push signatures</strong> if a certificate went out unsigned.</p>
+      <p class="form-note" style="margin-bottom:0.5rem">Upload PNG/JPG for Kalua, Chamwala and Tenthani. These are embedded on athlete <strong>and volunteer</strong> certificates. After upload you should see “Signature saved and synced.” Use <strong>Push signatures</strong> if a certificate went out unsigned.</p>
       <button type="button" class="btn-mini" id="sig-push-now">Push signatures to shared store</button>
       <div class="sig-upload-grid">
-        <label>Escort Chinula (MNCS Board Member)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" /></label>
+        <label>Jim Kalua (Chairman, MNCS)<input type="file" accept="image/*" data-sig="kalua" class="sig-file" /></label>
         <label>Kondwani Chamwala (President, Athletics Malawi)<input type="file" accept="image/*" data-sig="chamwala" class="sig-file" /></label>
         <label>Chifundo Tenthani (OC Chair)<input type="file" accept="image/*" data-sig="tenthani" class="sig-file" /></label>
       </div>
@@ -3546,7 +3517,7 @@
     const box = $('#sig-previews');
     if (!box) return;
     const s = loadSigs();
-    const labels = { kalua: 'Escort Chinula', chamwala: 'Kondwani Chamwala', tenthani: 'Chifundo Tenthani' };
+    const labels = { kalua: 'Jim Kalua', chamwala: 'Kondwani Chamwala', tenthani: 'Chifundo Tenthani' };
     box.innerHTML = Object.keys(labels).map(k => {
       if (!s[k]) return `<div class="sig-prev empty">${labels[k]}: not uploaded</div>`;
       return `<div class="sig-prev"><img src="${s[k]}" alt="${labels[k]}" /><span>${labels[k]}</span></div>`;
@@ -3727,7 +3698,7 @@
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       reasonLine,
       '<p>Race day: <strong>27 September 2026</strong> · Blantyre, Malawi</p>',
-      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Escort Chinula (MNCS Board Member); Kondwani Chamwala (President, Athletics Malawi);',
+      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p>— Organising Committee, BT42.195km Race</p>',
       '</div>'
@@ -3792,7 +3763,7 @@
       ' <strong>Malawi National Council of Sports</strong>.</p>',
       timeLine,
       '<p>Race day: <strong>27 September 2026</strong> · Blantyre, Malawi</p>',
-      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Escort Chinula (MNCS Board Member); Kondwani Chamwala (President, Athletics Malawi);',
+      '<p style="margin-top:1.5rem;font-size:0.9rem;color:#555">Signatories: Jim Kalua (Chairman, MNCS); Kondwani Chamwala (President, Athletics Malawi);',
       ' Chifundo Tenthani (Chair, Organising Committee).</p>',
       '<p style="font-size:0.85rem;color:#777">A printable certificate is also available from the Organising Committee on request.</p>',
       '<p>— Organising Committee, BT42.195km Race</p>',
@@ -3965,7 +3936,7 @@
       ${email ? ' · ' + email.replace(/</g, '') : ''}
     </p>
     <div class="sigs">
-      ${sigBlock(sigs.kalua, 'Escort Chinula', 'MNCS Board Member<br>Malawi National Council of Sports')}
+      ${sigBlock(sigs.kalua, 'Jim Kalua', 'Chairman of the Council<br>Malawi National Council of Sports')}
       ${sigBlock(sigs.chamwala, 'Kondwani Chamwala', 'President of Athletics Malawi<br>Athletics Malawi')}
       ${sigBlock(sigs.tenthani, 'Chifundo Tenthani', 'Chair, Organising Committee<br>BT42.195km Race 2026')}
     </div>
@@ -4550,7 +4521,7 @@ h2 { margin:8px 0 0; font-size:15px; color:#2980b9; }
   <div class="who">${name.replace(/[<>]/g,'')}</div>
   <p>served as <strong>${role.replace(/[<>]/g,'')}</strong> at the BT42.195km Race 2026, organised under the auspices of the Malawi National Council of Sports.</p>
   <div class="sig">
-    ${sigCell(sigs.kalua, 'Escort Chinula', 'MNCS Board Member')}
+    ${sigCell(sigs.kalua, 'Jim Kalua', 'Chairman, MNCS')}
     ${sigCell(sigs.chamwala, 'Kondwani Chamwala', 'President, Athletics Malawi')}
     ${sigCell(sigs.tenthani, 'Chifundo Tenthani', 'Chair, OC')}
   </div>
@@ -5780,7 +5751,6 @@ w.document.close();
     try { if (canManageStaff()) renderStaffAdmin(); } catch (e) {}
     try { if (isChair) renderSiteContentAdmin(); } catch (e) {}
     try { applySiteContentToPublic(); } catch (e) {}
-    try { seedChinulaSignature(); } catch (e) {}
     try { initControlTabs(); } catch (e) {}
     try { applyRoleUI(); } catch (e) {}
     document.addEventListener('visibilitychange', () => {
