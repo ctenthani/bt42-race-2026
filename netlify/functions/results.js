@@ -131,6 +131,7 @@ exports.handler = async (event) => {
       return {
         name: r.fullName || '',
         email: r.email || r.teamContactEmail || '',
+        gender: r.gender || '',
         distance: distCode(r.distance),
         bib: String(bib || ''),
         status: fin.status || 'entered',

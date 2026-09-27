@@ -2748,7 +2748,7 @@
         <label class="form-note" style="margin-left:8px">Team / contact
           <select id="team-email-filter">${teamOpts.join('')}</select>
         </label>
-        ${isChair ? '<button type="button" class="btn-mini" id="bulk-oncourse">Mark visible On course</button> <button type="button" class="btn-mini" id="bulk-finish">Mark visible Finished</button> <button type="button" class="btn-mini" id="bulk-dnf">Mark visible DNF</button> <button type="button" class="btn-mini" id="bulk-dns">Mark visible DNS</button>' : ''}
+        ${isChair ? '<button type="button" class="btn-mini" id="bulk-oncourse">Mark visible On course</button> <button type="button" class="btn-mini" id="bulk-finish">Mark visible Finished</button> <button type="button" class="btn-mini" id="bulk-dnf">Mark visible DNF</button>' : ''}
       </div>
       <div class="sponsor-table-wrap"><table class="ctrl-table">
       <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Race</th><th>Gender</th><th>Entered</th><th>Payment</th><th>Bib</th><th>Finish</th><th>Certificates</th><th></th></tr></thead><tbody>`;
@@ -2815,15 +2815,14 @@
         <td>
           <span class="pay-status ${fClass}">${fLabel}</span>
           <div class="actions-cell">
-            ${isChair ? '<select class="fin-set" data-key="' + escapeHtml(key) + '" data-i="' + i + '"><option value="oncourse"' + (fst !== 'finished' && fst !== 'dnf' && fst !== 'dns' ? ' selected' : '') + '>On course</option><option value="finished"' + (fst === 'finished' ? ' selected' : '') + '>Finished</option><option value="dnf"' + (fst === 'dnf' ? ' selected' : '') + '>DNF</option><option value="dns"' + (fst === 'dns' ? ' selected' : '') + '>DNS</option></select>' : ''}
+            ${isChair ? '<select class="fin-set" data-key="' + escapeHtml(key) + '" data-i="' + i + '"><option value="oncourse"' + (fst !== 'finished' && fst !== 'dnf' ? ' selected' : '') + '>On course</option><option value="finished"' + (fst === 'finished' ? ' selected' : '') + '>Finished</option><option value="dnf"' + (fst === 'dnf' ? ' selected' : '') + '>DNF</option></select>' : ''}
             <button type="button" class="btn-mini fin-ok" data-key="${escapeHtml(key)}" data-i="${i}" ${finDisabled ? 'disabled title="' + finTitle + '"' : ''}>Finish</button>
             <button type="button" class="btn-mini fin-dnf" data-key="${escapeHtml(key)}" data-i="${i}" ${finDisabled ? 'disabled title="' + finTitle + '"' : ''}>DNF</button>
-            <button type="button" class="btn-mini fin-dns" data-key="${escapeHtml(key)}" data-i="${i}" ${!canFinish() ? 'disabled title="Need Ops/Chair login"' : ''}>DNS</button>
           </div>
         </td>
         <td class="actions-cell">
           <button type="button" class="btn-mini fin-cert" data-i="${i}" data-type="completion" ${fst !== 'finished' ? 'disabled title="Mark finished first"' : ''}>Completion cert</button>
-          <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${(fst !== 'dnf' && fst !== 'dns') ? 'disabled title="For DNF / DNS"' : ''}>Participation cert</button>
+          <button type="button" class="btn-mini part-cert" data-i="${i}" data-type="participation" ${fst !== 'dnf' ? 'disabled title="For DNF only"' : ''}>Participation cert</button>
         </td>
         <td class="actions-cell">${isChair ? '<button type="button" class="btn-mini entry-delete" data-i="' + i + '" style="border-color:#C0392B;color:#C0392B">Delete</button>' : ''}</td>
       </tr>`;
@@ -2877,23 +2876,13 @@
         return;
       }
       if (status === 'dnf') {
-        map[key] = { status: 'dnf', updatedAt: new Date().toISOString(), finishedAt: new Date().toISOString() };
+        map[key] = { status: 'dnf', finishedAt: new Date().toISOString() };
         saveFinishes(map);
         if (getSyncToken()) livePush({ finishes: map }).catch(() => {});
         if (r) {
           if (!r.email) r.email = athleteEmail(r);
           openCertificate(r, 'participation');
           queueParticipationEmail(r, 'Did Not Finish (DNF)');
-        }
-      }
-      if (status === 'dns') {
-        map[key] = { status: 'dns', updatedAt: new Date().toISOString(), finishedAt: new Date().toISOString() };
-        saveFinishes(map);
-        if (getSyncToken()) livePush({ finishes: map }).catch(() => {});
-        if (r) {
-          if (!r.email) r.email = athleteEmail(r);
-          openCertificate(r, 'participation');
-          queueParticipationEmail(r, 'Did Not Start (DNS)');
         }
       }
     }
@@ -2911,7 +2900,7 @@
       visible.forEach(({ r, i }) => {
         const key = participantKey(r, i);
         const bibsMap = loadBibs();
-        if (!(bibsMap[key] && bibsMap[key].number) && status !== 'oncourse' && status !== 'dns') return;
+        if (!(bibsMap[key] && bibsMap[key].number) && status !== 'oncourse') return;
         setFinishStatus(key, i, status);
       });
       renderParticipants();
@@ -2920,7 +2909,6 @@
     const b1 = $('#bulk-oncourse'); if (b1) b1.onclick = () => bulkVisible('oncourse');
     const b2 = $('#bulk-finish'); if (b2) b2.onclick = () => bulkVisible('finished');
     const b3 = $('#bulk-dnf'); if (b3) b3.onclick = () => bulkVisible('dnf');
-    const b4 = $('#bulk-dns'); if (b4) b4.onclick = () => bulkVisible('dns');
 
 
 
@@ -3489,23 +3477,6 @@
           }
         }
         renderParticipants();
-      };
-    });
-    container.querySelectorAll('.fin-dns').forEach(btn => {
-      btn.onclick = () => {
-        if (!canFinish()) { alert('Your login cannot enter DNS.'); return; }
-        const map = loadFinishes();
-        map[btn.dataset.key] = { status: 'dns', updatedAt: new Date().toISOString(), finishedAt: new Date().toISOString() };
-        saveFinishes(map);
-        if (getSyncToken()) livePush({ finishes: map }).catch(() => {});
-        const r = rows[Number(btn.dataset.i)];
-        if (r) {
-          if (!r.email) r.email = athleteEmail(r);
-          openCertificate(r, 'participation');
-          queueParticipationEmail(r, 'Did Not Start (DNS)');
-        }
-        renderParticipants();
-        renderLiveResults();
       };
     });
     container.querySelectorAll('.fin-cert, .part-cert').forEach(btn => {
