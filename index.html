@@ -720,18 +720,6 @@
         <div class="container" id="public-results"></div>
       </section>
 
-      <section id="page-report" class="page">
-        <div class="page-header">
-          <div class="container">
-            <h1>Race report</h1>
-            <p id="report-status-line">Live operational report · final edition locks 4 October 2026 23:59 CAT</p>
-          </div>
-        </div>
-        <div class="container section" id="report-root">
-          <p class="form-note">Loading live figures…</p>
-        </div>
-      </section>
-
       <section id="page-lookup" class="page">
         <div class="page-header">
           <div class="container">
@@ -794,7 +782,7 @@
           <!-- Control Room content -->
           <div id="control-room" class="control-room hidden">
             <div class="ctrl-toolbar">
-              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926w</span>
+              <span id="ctrl-role-badge" class="role-badge committee">Not signed in</span><span class="form-note" id="ctrl-build-stamp" style="margin-left:8px">build 20260926x</span>
               <button type="button" id="ctrl-logout" class="btn-logout">Log out</button>
             </div>
             <div class="ctrl-tabs">
@@ -847,7 +835,7 @@
             <div id="panel-report" class="ctrl-panel">
               <h3 class="ctrl-section-title">Live / final race report</h3>
               <p class="form-note">Chair only. Refreshes from the live store. Locks as final after 4 October 2026 23:59 CAT.</p>
-              <div id="report-root"></div>
+              <div id="ctrl-live-report"><p class="form-note">Open this tab to load the ranked report.</p></div>
             </div>
             <div id="panel-survey" class="ctrl-panel">
               <h3 class="ctrl-section-title">Race-day feedback — preview and results</h3>
@@ -983,7 +971,7 @@
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="js/control-data.js?v=20260925c"></script>
   <script src="js/start-list-restore.js?v=20260926e"></script>
-  <script src="js/control.20260926w.js"></script>
+  <script src="js/control.20260926x.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="js/app.20260926v.js"></script>
   <script>
