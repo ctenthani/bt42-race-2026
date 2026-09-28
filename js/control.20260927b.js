@@ -26,79 +26,89 @@
   const SYNC_META_KEY = 'bt42_oc_sync_meta';
   const VOL_KEY = 'bt42_volunteers';
   const SEED_VOLUNTEERS = [
-    { fullName: 'Magret Kachingwe', email: 'kachingwemaggie43@gmail.com', phone: '', note: '' },
-    { fullName: 'Leah Maliro', email: 'leahmaliro9@gmail.com', phone: '', note: '' },
-    { fullName: 'Princess Muleka', email: 'mulekaprincess@gmail.com', phone: '', note: '' },
-    { fullName: 'Mphatso Makuwila', email: 'makuwilam@gmail.com', phone: '', note: '' },
-    { fullName: 'Pemphero Tembo', email: 'pemphotembo00@gmail.com', phone: '', note: '' },
-    { fullName: 'Henry Vesha', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Japhet Shadreck', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'John Nyondo', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Maxon Shadreck', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Peter Wilard', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Christina Banda', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Samuel Gremu', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Chimwemwe Kadumba', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Benson Machilinga', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Christian Lipemba', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Prince Ligomeka', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Abdul Sallam', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Shepard Katsitsi', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Moses Zakeyu', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Malumbo Nyirenda', email: 'malumbonyirenda03@gmail.com', phone: '', note: '' },
-    { fullName: 'Ronald Kandulu', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Yvonne Thunga', email: 'Yvonnethunga@gmail.com', phone: '', note: '' },
-    { fullName: 'Lackson Gama', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Robert Malanda', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Steven Kachigamba', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Hope Matchado', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Ian Thindwa', email: 'thindwaian@gmail.com', phone: '', note: '' },
-    { fullName: 'Precious Kazombo', email: 'preciousjonathan456@gmail.com', phone: '', note: '' },
-    { fullName: 'Ledison Chipili', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Mary Luwanya', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Paul Bulaziyo', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Martha Sabola', email: 'marthasabola727@gmail.com', phone: '', note: '' },
-    { fullName: 'Thom Kamoto', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Patricia Kambalame', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Linet Kayuni', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Austin Mndolo', email: 'austinmndolo7@gmail.com', phone: '', note: '' },
-    { fullName: 'Yamikani Lozi', email: 'loziyamikan@gmail.com', phone: '', note: '' },
-    { fullName: 'Andrew Lunda', email: 'lundaandrew99@gmail.com', phone: '', note: '' },
-    { fullName: 'Enerst Kapito', email: 'kapitoernest@gmail.com', phone: '', note: '' },
-    { fullName: 'Chimwemwe Khoza', email: 'khozachimwemwe3@gmail.com', phone: '', note: '' },
-    { fullName: 'Sekelani Makuluni', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Robert Kamwendo', email: 'robertkamwendo2001@gmail.com', phone: '', note: '' },
-    { fullName: 'Loveness Thyolani', email: 'thyolaniloveness@gmail.com', phone: '', note: '' },
-    { fullName: 'Francis Makuluni', email: 'fmakuluni5@gmail.com', phone: '', note: '' },
-    { fullName: 'Angellina Chiphwanya', email: 'angellinachiphwanya@gmail.com', phone: '', note: '' },
-    { fullName: 'Mathews Chipapi', email: 'matthewschipapi@gmail.com', phone: '', note: '' },
-    { fullName: 'Moffat Mkandawire', email: 'moffatmkandawire202@gmail.com', phone: '', note: '' },
-    { fullName: 'Linly Masona', email: 'linlymasona7@gmail.com', phone: '', note: '' },
-    { fullName: 'Francisco Machira', email: 'franciscomachila@gmail.com', phone: '', note: '' },
-    { fullName: 'Flavia Zamaere', email: 'zamaeref@gmail.com', phone: '', note: '' },
-    { fullName: 'Clara Mhone', email: 'claramhone1@gmail.com', phone: '', note: '' },
-    { fullName: 'Aaron Wallani', email: 'aaronwallani@gmail.com', phone: '', note: '' },
-    { fullName: 'Tusekire Sibale', email: 'sibaletusekire@gmail.com', phone: '', note: '' },
-    { fullName: 'Yohane Chikalipo', email: 'yohanechikalipo2@gmail.com', phone: '', note: '' },
-    { fullName: 'Jacqueline Chiphwanya', email: 'jacquelinechiphwanya87@gmail.com', phone: '', note: '' },
-    { fullName: 'Mphatso Sibu', email: 'Bratsoicecubes@gmail.com', phone: '', note: '' },
-    { fullName: 'Samson Nyirenda', email: 'samlasco3085@gmail.com', phone: '', note: '' },
-    { fullName: 'Tiwale Tawala  Walleni', email: 'wallanitiwale@gmail.com', phone: '', note: '' },
-    { fullName: 'Gitrick Nyambi', email: 'gracianmk@gmail.com', phone: '', note: '' },
-    { fullName: 'Taonga Mwale', email: 'taonga.mwale@outlook.com', phone: '', note: '' },
-    { fullName: 'Madalitso Brown Sinduwa', email: 'sinduwa21chibwe@gmail.com', phone: '', note: '' },
-    { fullName: 'Tiyanjane Kalongonda', email: 'ethapok@gmail.com', phone: '', note: '' },
-    { fullName: 'Tinyade Kasinja', email: 'tnyadekasinja@gmail.com', phone: '', note: '' },
-    { fullName: 'Merria Ndalama', email: 'meriandalama300@gmail.com', phone: '', note: '' },
-    { fullName: 'Sarah Chidambe', email: 'limbikanichiumia@gmail.com', phone: '', note: '' },
-    { fullName: 'Lawrence katete', email: 'laurencecestephen3@gmail.com', phone: '', note: '' },
-    { fullName: 'Leshina Tepani', email: 'leshinatepani9@gmail.com', phone: '', note: '' },
-    { fullName: 'Douglas Sikanyika', email: 'georgeluhanga30@gmail.com', phone: '', note: '' },
-    { fullName: 'Emmanuel Mambo', email: 'georgeluhanga30@gmail.com', phone: '', note: '' },
-    { fullName: 'Marion Kalea', email: 'Marionkalea95@gmail.com', phone: '', note: '' },
-    { fullName: 'Gladys Maluwa', email: 'gladysmaluwa1@gmail.com', phone: '', note: '' },
-    { fullName: 'Joyce Pande', email: '', phone: '', note: '' },
-    { fullName: 'Innocent Chilongo', email: '', phone: '', note: '' }
+    { fullName: 'Magret Kachingwe', email: 'kachingwemaggie43@gmail.com', phone: '994944688', note: '' },
+    { fullName: 'Leah Maliro', email: 'leahmaliro9@gmail.com', phone: '984397770', note: '' },
+    { fullName: 'Princess Muleka', email: 'mulekaprincess@gmail.com', phone: '992909838', note: '' },
+    { fullName: 'Talandira Kachimanga', email: 'kachimangatalandira@gmail.com', phone: '994855568', note: '' },
+    { fullName: 'Mphatso makuwila', email: 'makuwilam@gmail.com', phone: '986337265', note: '' },
+    { fullName: 'Yusuf Maulana', email: 'ym3926848@gmail.com', phone: '991928620', note: '' },
+    { fullName: 'Pemphero Tembo', email: 'pemphotembo00@gmail.com', phone: '987829839', note: '' },
+    { fullName: 'Henry Vesha', email: 'limbikanichiumia@gmail.com', phone: '883712866', note: '' },
+    { fullName: 'Japhet Shadreck', email: 'limbikanichiumia@gmail.com', phone: '989605823', note: '' },
+    { fullName: 'John Nyondo', email: 'limbikanichiumia@gmail.com', phone: '985329189', note: '' },
+    { fullName: 'Maxon Shadreck', email: 'limbikanichiumia@gmail.com', phone: '981505668', note: '' },
+    { fullName: 'Peter Wilad', email: 'limbikanichiumia@gmail.com', phone: '897917724', note: '' },
+    { fullName: 'Christina Banda', email: 'limbikanichiumia@gmail.com', phone: '888298367', note: '' },
+    { fullName: 'Samuel Gremu', email: 'limbikanichiumia@gmail.com', phone: '889979427', note: '' },
+    { fullName: 'Chimwemwe Kadumba', email: 'limbikanichiumia@gmail.com', phone: '993228747', note: '' },
+    { fullName: 'Benson Machilinga', email: 'limbikanichiumia@gmail.com', phone: '893490393', note: '' },
+    { fullName: 'Christian Lipemba', email: 'limbikanichiumia@gmail.com', phone: '893722833', note: '' },
+    { fullName: 'Prince Ligomeka', email: 'limbikanichiumia@gmail.com', phone: '990419760', note: '' },
+    { fullName: 'Abdul Sallam', email: 'limbikanichiumia@gmail.com', phone: '999141408', note: '' },
+    { fullName: 'Shepard Katsitsi', email: 'limbikanichiumia@gmail.com', phone: '996166005', note: '' },
+    { fullName: 'Shammie John', email: 'limbikanichiumia@gmail.com', phone: '980561005', note: '' },
+    { fullName: 'Asyatu Yusuf', email: 'limbikanichiumia@gmail.com', phone: '981476996', note: '' },
+    { fullName: 'Moses Zakeyu', email: 'limbikanichiumia@gmail.com', phone: '987443996', note: '' },
+    { fullName: 'Abdul Adin', email: 'limbikanichiumia@gmail.com', phone: '999079657', note: '' },
+    { fullName: 'Judith Zakeyu', email: 'limbikanichiumia@gmail.com', phone: '987443996', note: '' },
+    { fullName: 'Malumbo Nyirenda', email: 'malumbonyirenda03@gmail.com', phone: '0893459881/0992774038', note: '' },
+    { fullName: 'Ronald kandulu', email: 'gracianmk@gmail.com', phone: '888404102', note: '' },
+    { fullName: 'Yvonne thunga', email: 'Yvonnethunga@gmail.com', phone: '888190002', note: '' },
+    { fullName: 'Lackson Gama', email: 'gracianmk@gmail.com', phone: '999874434', note: '' },
+    { fullName: 'Robert Malanda', email: 'gracianmk@gmail.com', phone: '997899193', note: '' },
+    { fullName: 'Steven Kachigamba', email: 'gracianmk@gmail.com', phone: '881067323', note: '' },
+    { fullName: 'Hope Matchado', email: 'gracianmk@gmail.com', phone: '882068755', note: '' },
+    { fullName: 'Ian Thindwa', email: 'thindwaian@gmail.com', phone: '993761279', note: '' },
+    { fullName: 'Precious kazombo', email: 'preciousjonathan456@gmail.com', phone: '996903210', note: '' },
+    { fullName: 'Ledison Chipili', email: 'gracianmk@gmail.com', phone: '881479922', note: '' },
+    { fullName: 'Mary Luwanya', email: 'gracianmk@gmail.com', phone: '990471263', note: '' },
+    { fullName: 'Paul Bulaziyo', email: 'gracianmk@gmail.com', phone: '881836648', note: '' },
+    { fullName: 'Martha Sabola', email: 'marthasabola727@gmail.com', phone: '883049242', note: '' },
+    { fullName: 'Thom kamoto', email: 'gracianmk@gmail.com', phone: '994076973', note: '' },
+    { fullName: 'Patricia Kambalame', email: 'gracianmk@gmail.com', phone: '995460517', note: '' },
+    { fullName: 'Linet Kayuni', email: 'gracianmk@gmail.com', phone: '894538861', note: '' },
+    { fullName: 'Austin Mndolo', email: 'austinmndolo7@gmail.com', phone: '993105494', note: '' },
+    { fullName: 'Yamikani Lozi', email: 'loziyamikan@gmail.com', phone: '991818200', note: 'from Zomba' },
+    { fullName: 'Andrew Lunda', email: 'lundaandrew99@gmail.com', phone: '991029541', note: 'from Zomba' },
+    { fullName: 'Enerst Kapito', email: 'kapitoernest@gmail.com', phone: '991750221', note: '' },
+    { fullName: 'Chimwemwe Khoza', email: 'khozachimwemwe3@gmail.com', phone: '888886630', note: '' },
+    { fullName: 'Sekelani Makuluni', email: 'gracianmk@gmail.com', phone: '886546326', note: '' },
+    { fullName: 'Robert Kamwendo', email: 'robertkamwendo2001@gmail.com', phone: '9953555653', note: '' },
+    { fullName: 'Loveness Thyolani', email: 'thyolaniloveness@gmail.com', phone: '882775644', note: '' },
+    { fullName: 'Francis Makuluni', email: 'fmakuluni5@gmail.com', phone: '994306319', note: '' },
+    { fullName: 'Angellina Chiphwanya', email: 'angellinachiphwanya@gmail.com', phone: '888428020', note: '' },
+    { fullName: 'Mathews Chipapi', email: 'matthewschipapi@gmail.com', phone: '882737448', note: '' },
+    { fullName: 'Moffat Mkandawire', email: 'moffatmkandawire202@gmail.com', phone: '993799101', note: '' },
+    { fullName: 'Linly Masona', email: 'linlymasona7@gmail.com', phone: '885705622', note: '' },
+    { fullName: 'Francisco Machira', email: 'franciscomachila@gmail.com', phone: '888416099', note: '' },
+    { fullName: 'Fravia Zamaere', email: 'zamaeref@gmail.com', phone: '999653074', note: '' },
+    { fullName: 'Clara Mhone', email: 'claramhone1@gmail.com', phone: '983323905', note: '' },
+    { fullName: 'Aaron Wallani', email: 'aaronwallani@gmail.com', phone: '999777200', note: '' },
+    { fullName: 'Tusekire Sibale', email: 'sibaletusekire@gmail.com', phone: '899837964', note: '' },
+    { fullName: 'Yohane Chikalipo', email: 'yohanechikalipo2@gmail.com', phone: '999914307', note: '' },
+    { fullName: 'Jacqueline Chiphwanya', email: 'jacquelinechiphwanya87@gmail.com', phone: '884159425', note: '' },
+    { fullName: 'Mphatso sibu', email: 'Bratsoicecubes@gmail.com', phone: '999119218', note: '' },
+    { fullName: 'Samson Nyirenda', email: 'samlasco3085@gmail.com', phone: '881794141', note: '' },
+    { fullName: 'Tiwale Tawala  Walleni', email: 'wallanitiwale@gmail.com', phone: '884704455', note: '' },
+    { fullName: 'Gitrid Nyambi', email: 'gracianmk@gmail.com', phone: '994166480', note: '' },
+    { fullName: 'Taonga Mwale', email: 'taonga.mwale@outlook.com', phone: '996519980', note: '' },
+    { fullName: 'Mphatso Manyera', email: 'manyeramphatso@gmail.com', phone: '999062830', note: '' },
+    { fullName: 'Madalitso Brown Sinduwa', email: 'sinduwa21chibwe@gmail.com', phone: '0888603355 /0999740330', note: '' },
+    { fullName: 'Tiyanjane Kalongonda', email: 'ethapok@gmail.com', phone: '888650872', note: '' },
+    { fullName: 'Tinyade Kasinja', email: 'tnyadekasinja@gmail.com', phone: '882724174', note: '' },
+    { fullName: 'Mercy Shaba', email: 'mercymyeishashawa@gmail.com', phone: '997495067', note: '' },
+    { fullName: 'Merria Ndalama', email: 'meriandalama300@gmail.com', phone: '991813054', note: '' },
+    { fullName: 'Sarah Chidambe', email: 'limbikanichiumia@gmail.com', phone: '888564809', note: '' },
+    { fullName: 'Lawrence katete', email: 'laurencecestephen3@gmail.com', phone: '888638430', note: '' },
+    { fullName: 'Leshina Tepani', email: 'leshinatepani9@gmail.com', phone: '882724134', note: '' },
+    { fullName: 'Douglas Sikanyika', email: 'georgeluhanga30@gmail.com', phone: '884042380', note: '' },
+    { fullName: 'Emmanuel Mambo', email: 'georgeluhanga30@gmail.com', phone: '993751980', note: '' },
+    { fullName: 'Marion kalea', email: 'Marionkalea95@gmail.com', phone: '998971847', note: '' },
+    { fullName: 'HARRY SICHALI', email: 'harrysichali@gmail.com', phone: '995247238', note: '' },
+    { fullName: "Faliki", email: "", phone: "", note: "" },
+    { fullName: "Enelesi Makawa", email: "", phone: "", note: "" },
+    { fullName: "Lawrence Malanda", email: "", phone: "", note: "" },
+    { fullName: "Martha Tsabola", email: "", phone: "", note: "" },
   ];
   function volunteerNameKey(v) {
     return String(v.fullName || v.name || '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -131,16 +141,13 @@
       have.add(k);
       added += 1;
     });
-    const allowed = new Set(SEED_VOLUNTEERS.map(volunteerNameKey));
-    const pruned = list.filter((v) => allowed.has(volunteerNameKey(v)));
-    const removed = list.length - pruned.length;
-    if (added || removed) {
-      saveVolunteers(pruned);
+    if (added) {
+      saveVolunteers(list);
       if (getSyncToken()) {
-        livePush({ volunteers: pruned, replaceVolunteers: true }).catch(() => {});
+        livePush({ volunteers: list, replaceVolunteers: true }).catch(() => {});
       }
     }
-    return pruned;
+    return list;
   }
   const APPROVALS_KEY = 'bt42_chair_approvals';
   const APPROVALS_SEED = [
@@ -4713,11 +4720,6 @@ w.document.close();
           <input type="file" id="vol-csv" accept=".csv,text/csv,text/plain" />
           <button type="button" class="btn-mini" id="vol-push">Push list to all gadgets</button>
           <button type="button" class="btn-mini" id="vol-mark-selected">Mark all listed as Selected</button>
-          <button type="button" class="btn-mini" id="vol-select-all">Select all</button>
-          <button type="button" class="btn-mini" id="vol-remove-all">Remove all</button>
-          <button type="button" class="btn-mini" id="vol-cert-all">Email certificates to all</button>
-          <button type="button" class="btn-mini" id="vol-compose">Compose email</button>
-          <button type="button" class="btn-mini" id="vol-email-all">Email to all</button>
           <button type="button" class="btn-mini" id="vol-onboard">Send onboarding email to all</button>
         </div>
       </div>` : '<p class="form-note">View only. Chair or Volunteers Coordinator can select and issue certificates.</p>') +
@@ -4847,49 +4849,6 @@ w.document.close();
     function wrapOnboardHtml(inner) {
       return '<div style="font-family:Georgia,serif;max-width:560px;margin:0 auto;color:#1a1a1a">' + inner + '</div>';
     }
-    const selAll = $('#vol-select-all');
-    if (selAll) selAll.onclick = () => {
-      if (!canVolunteers()) return;
-      const next = loadVolunteers().map((v) => Object.assign({}, v, { status: 'selected' }));
-      saveVolunteers(next); syncVolunteers(next); renderVolunteersAdmin();
-    };
-    const remAll = $('#vol-remove-all');
-    if (remAll) remAll.onclick = () => {
-      if (!canVolunteers()) return;
-      if (!confirm('Remove every volunteer from this list?')) return;
-      saveVolunteers([]); syncVolunteers([]); renderVolunteersAdmin();
-    };
-    const compose = $('#vol-compose');
-    if (compose) compose.onclick = () => {
-      const emails = loadVolunteers().map((v) => String(v.email || '').trim()).filter((e) => e.indexOf('@') > 0);
-      const uniq = Array.from(new Set(emails.map((e) => e.toLowerCase())));
-      if (!uniq.length) { alert('No volunteer emails on the list.'); return; }
-      window.location.href = 'mailto:?subject=' + encodeURIComponent('BT42.195km Race — volunteers') + '&bcc=' + encodeURIComponent(uniq.join(','));
-    };
-    const emailAll = $('#vol-email-all');
-    if (emailAll) emailAll.onclick = () => {
-      const emails = Array.from(new Set(loadVolunteers().map((v) => String(v.email || '').trim().toLowerCase()).filter((e) => e.indexOf('@') > 0)));
-      if (!emails.length) { alert('No volunteer emails.'); return; }
-      const sub = prompt('Subject', 'BT42.195km Race — message to volunteers') || '';
-      const body = prompt('Message', 'Thank you for serving at BT42.195km Race on 27 September 2026.') || '';
-      if (!sub) return;
-      emails.forEach((to) => {
-        fetch('/.netlify/functions/send-certificate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ kind: 'note', to: to, subject: sub, text: body, name: 'Volunteer' })
-        }).catch(() => {});
-      });
-      alert('Queued ' + emails.length + ' email(s).');
-    };
-    const certAll = $('#vol-cert-all');
-    if (certAll) certAll.onclick = () => {
-      if (!canVolunteers()) return;
-      const btns = box.querySelectorAll('.vol-cert:not([disabled])');
-      if (!btns.length) { alert('Select volunteers first, then issue certificates.'); return; }
-      if (!confirm('Email volunteer certificates to ' + btns.length + ' selected row(s)? Shared inboxes get one mail with several PDFs.')) return;
-      btns.forEach((b) => b.click());
-    };
     const onboard = $('#vol-onboard');
     if (onboard) onboard.onclick = () => {
       if (!canVolunteers()) { alert('Coordinator or Chair sends onboarding.'); return; }
